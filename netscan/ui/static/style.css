@@ -162,6 +162,8 @@ button:disabled { opacity: .6; cursor: progress; }
 @media (min-width: 56rem) { .verdict { grid-template-columns: 21rem minmax(0, 1fr); align-items: stretch; } }
 
 .score { padding: 1.5rem 1.6rem; display: flex; flex-direction: column; gap: .75rem; }
+/* cardul de scor are înălțimea conținutului lui (nu se întinde cât coloana din dreapta, ca să nu rămână un gol alb) */
+.verdict > .score { align-self: start; }
 .score-good { color: var(--good); }
 .score-fair { color: var(--fair); }
 .score-poor { color: var(--high); }
@@ -183,7 +185,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .scale li.is-current .range { color: var(--ink); }
 /* (fără ::after pe rândul curent: era un element gol care, cu gap-ul din flex, muta intervalul spre stânga) */
 .scale .s-good .icon { color: var(--good); } .scale .s-fair .icon { color: var(--fair); } .scale .s-poor .icon { color: var(--high); }
-.score-facts { margin-top: auto; color: var(--ink); border-top: 1px solid var(--line); padding-top: .8rem; display: flex; flex-direction: column; gap: .3rem; }
+.score-facts { margin-top: 0; color: var(--ink); border-top: 1px solid var(--line); padding-top: .8rem; display: flex; flex-direction: column; gap: .3rem; }
 .score-facts p { display: flex; align-items: center; gap: .35rem; }
 .score-facts .count { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
 
