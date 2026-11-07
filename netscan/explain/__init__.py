@@ -12,10 +12,11 @@ Textele nu depind de scanare și nu conțin numere de port, IP-uri sau coduri: �
 from __future__ import annotations
 
 from netscan.explain.glossary import get_glossary
+from netscan.explain.standards import get_standards
 from netscan.explain.templates_en import TEMPLATES as _EN
 from netscan.explain.templates_ro import TEMPLATES as _RO
 
-__all__ = ["LANGS", "fallback_text", "get_explanation", "get_glossary"]
+__all__ = ["LANGS", "fallback_text", "get_explanation", "get_glossary", "get_standards"]
 
 LANGS = ("ro", "en")
 _TEMPLATES = {"ro": _RO, "en": _EN}
