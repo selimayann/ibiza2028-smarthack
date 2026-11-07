@@ -115,6 +115,27 @@ def check_llm_text(text: Optional[str], scan: Scan, finding: Optional[Finding] =
     return CheckResult(not problems, problems)
 
 
+_PROBLEM_TEXT = {
+    "IP": ("IP-ul {v} nu e în scanare", "IP {v} is not in the scan"),
+    "PORT": ("portul {v} nu apare în scanare", "port {v} is not in the scan"),
+    "CODE": ("problema {v} nu a fost găsită în scanare", "problem {v} was not found in the scan"),
+    "UNKNOWN_CODE": ("codul {v} nu există în catalog", "code {v} is not in the catalog"),
+    "CVE": ("{v} nu apare în datele scanării", "{v} is not in the scan data"),
+    "PHONE": ("conține un număr de telefon", "it contains a phone number"),
+    "MAC": ("conține o adresă MAC", "it contains a MAC address"),
+    "URL": ("conține un link", "it contains a link"),
+    "TOO_LONG": ("e prea lung", "it is too long"),
+    "EMPTY": ("e gol", "it is empty"),
+}
+
+
+def explain_problem(problem: str, lang: str = "ro") -> str:
+    """„PORT:3389” -> „portul 3389 nu apare în scanare” (RO) / „port 3389 is not in the scan” (EN)."""
+    kind, _, value = problem.partition(":")
+    ro, en = _PROBLEM_TEXT.get(kind, (problem, problem))
+    return (en if lang == "en" else ro).format(v=value)
+
+
 def choose_text(llm_text: Optional[str], fallback: str, scan: Scan, finding: Optional[Finding] = None) -> tuple[str, str]:
     """Întoarce (text, sursa): textul LLM dacă trece verificarea, altfel textul predefinit."""
     if llm_text is not None and check_llm_text(llm_text, scan, finding).ok:

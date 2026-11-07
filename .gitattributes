@@ -1,2 +1,4 @@
 fixtures/validation/*.csv -text
 fixtures/lab/*.xml -text
+start.bat text eol=crlf
+start.command text eol=lf

@@ -41,6 +41,7 @@ ibiza2028-smarthack/
 │   ├── questions.md       întrebări pentru mentori + răspunsuri (Oneata)
 │   ├── direction.md       direcția produsului, după nucleu (toți)
 │   ├── demo.md            pregătirea demo-ului și cele 7 verificări live
+│   ├── live_checks.md     comenzile exacte pentru verificările live + rezultatele locale
 │   └── roles/             instrucțiunile pentru Claude-ul fiecăruia
 ├── fixtures/
 │   ├── sample.json        exemplu în forma contractului (toți)
@@ -57,6 +58,15 @@ ibiza2028-smarthack/
 ├── lab/                   Ayan: docker-compose, nginx, servicii false
 └── tests/
 ```
+
+## Pornire rapidă
+
+După instalare (secțiunea Setup), interfața pornește dintr-un **dublu-click**:
+
+- **Windows:** `start.bat` (din terminal: `.\start.bat`; scris doar `start.bat`, cmd îl confundă cu comanda internă `start`).
+- **macOS:** `start.command` (prima dată: click dreapta → Open, ca macOS să permită rularea).
+
+Scriptul folosește mediul virtual `.venv` dacă există, pornește `python -m netscan ui --port 5055` și deschide browserul pe `http://127.0.0.1:5055/`. Ascultă doar pe 127.0.0.1, fără drepturi de administrator, fără scanare și fără instalări. Portul 5055 (nu 5000), pentru că pe macOS portul 5000 e folosit de AirPlay Receiver. Oprire: închide fereastra.
 
 ## Setup
 
@@ -89,6 +99,7 @@ python -m netscan delete-history       # șterge istoricul local
 python -m netscan ask <fișier.xml> "Ce fac întâi?"   # asistentul: răspunde doar din scanare, fără rețea
 python -m netscan ask <fișier.xml> "Ce fac întâi?" --local-ai          # + reformulare cu AI local (Ollama), verificată
 python -m netscan ask <fișier.xml> x --verify-text "<text inventat>"   # demo: validatorul respinge datele inventate
+python -m netscan demo-ai-check fixtures/lab/scan_01_before.xml   # demo pentru juriu: 3 texte simulate respinse, 1 acceptat
 python -m netscan watch --every 15 --confirm      # monitorul: scanează periodic doar hotspotul, alerte la schimbări
 python -m netscan trap --confirm                  # ușa-capcană: alertă când cineva din hotspot încearcă să intre
 python -m netscan listen --confirm                # ascultare pasivă: numele anunțate de dispozitive (mDNS/SSDP)
@@ -96,7 +107,7 @@ python -m netscan listen --confirm                # ascultare pasivă: numele an
 
 ### Supraveghere fără agenți: monitorul și ușa-capcană
 
-- **`watch`** (FR-13): la fiecare ciclu (minimum 10 minute) reverifică rețeaua și ținta ca la `scan`, rulează aceeași comandă nmap, salvează în istoric și anunță în RO/EN: dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat. Dacă laptopul nu mai e pe hotspot, ciclul se sare fără scanare. Alertele se scriu local în `data/alerts.jsonl`; se păstrează doar ultimele 5 XML-uri ale monitorului. Terminal de Administrator; fără `--confirm`, doar dry-run.
+- **`watch`** (FR-13): la fiecare ciclu (minimum 10 minute) reverifică rețeaua și ținta ca la `scan`, rulează aceeași comandă nmap și anunță în terminal, în RO/EN: dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat. Dacă laptopul nu mai e pe hotspot, ciclul se sare fără scanare. Terminal de Administrator; fără `--confirm`, doar dry-run. **NFR-04:** procesul de admin scrie doar fișierele XML (`scans/watch_*.xml`, ultimele 5). Istoricul și alertele (`data/alerts.jsonl`, pentru UI) le aduce `python -m netscan import-scans`, rulat **ca utilizator normal** (refuză să ruleze ca admin), ca baza de date să rămână a ta și s-o vadă UI-ul. La fel `scan --confirm`: scrie doar XML-ul.
 - **`trap`**: un Telnet fals (implicit portul 2323) pe IP-ul laptopului din hotspot. Nimeni legitim nu se conectează acolo, deci orice încercare e o alertă: „cineva din rețea (IP) a încercat să intre”. Nu execută nimic, citește și aruncă ce primește, păstrează **doar IP, ora și portul** (`data/trap_attempts.jsonl`, șterse automat după 7 zile și de „Șterge istoricul”). Ignoră IP-urile din `NETSCAN_TRAP_IGNORE` (de ex. laptopul care scanează). Pe Windows trebuie permis portul în firewall doar pe rețeaua Private (comanda apare la dry-run).
 - **`listen`**: ascultă doar anunțurile pe care dispozitivele le trimit singure (mDNS, SSDP) pe interfața hotspotului, ca să afle nume ca „Chromecast Sufragerie” sau „HP LaserJet”. Nu trimite cereri și nu deschide link-urile din anunțuri; păstrează local doar IP, nume, serviciu (`data/device_names.jsonl`, șterse de „Șterge istoricul”).
 - **„Ce vede cineva care ascultă”**: la FTP, Telnet și HTTP fără HTTPS, asistentul (și UI-ul) arată cum arată o logare pentru cineva care ascultă rețeaua (`PASS parola-ta`). E un **exemplu inventat**; nu capturăm traficul nimănui.

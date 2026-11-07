@@ -4,9 +4,12 @@ La fiecare ciclu:
 1. rețeaua și ținta se verifică din nou (aceleași verificări ca `scan`: SSID, o singură rețea, guardrail);
    dacă laptopul nu mai e pe hotspot, ciclul se sare și NU se scanează nimic;
 2. nmap rulează cu exact aceeași comandă ca `scan --confirm` (listă fixă de argumente, --max-rate 100, -n);
-3. motorul analizează XML-ul (aceleași reguli), scanarea se salvează în istoric (MAC mascat);
-4. se compară cu scanarea anterioară și se dau alerte în RO/EN: dispozitiv nou/plecat, port nou/închis,
-   problemă nouă/rezolvată, scor schimbat. Alertele se scriu și local (data/alerts.jsonl), pentru UI.
+3. motorul analizează XML-ul (aceleași reguli), în memorie;
+4. se compară cu scanarea anterioară și se dau alerte în terminal, în RO/EN: dispozitiv nou/plecat, port
+   nou/închis, problemă nouă/rezolvată, scor schimbat.
+NFR-04: procesul cu drepturi de administrator scrie DOAR fișierele XML (scans/). Istoricul (SQLite) și alertele
+(data/alerts.jsonl) le scrie `import-scans`, rulat ca utilizator normal, ca să rămână ale utilizatorului și
+să le vadă UI-ul.
 
 Fără `--confirm` doar arată ce ar face (dry-run). Intervalul minim e de 10 minute (o scanare durează ~3,5 min).
 Un singur monitor poate rula odată (fișier de blocare). Se păstrează doar ultimele KEEP_XML fișiere XML
@@ -51,6 +54,11 @@ TEXTS = {
         "too_often": "Intervalul minim e de {min} minute (o scanare durează cam 3,5 minute).",
         "locked": "Un monitor rulează deja (PID {pid}). Oprește-l înainte să pornești altul.",
         "stopped": "Monitor oprit.",
+        "import_hint": ("Monitorul scrie doar fișierele XML (scans/). Pentru istoric și UI rulează, ca utilizator normal: "
+                        "python -m netscan import-scans"),
+        "import_admin": ("Rulează import-scans ca utilizator normal, nu ca Administrator: istoricul trebuie să fie al tău, "
+                         "ca să-l vadă UI-ul."),
+        "imported": "Am adus în istoric {n} scanări ale monitorului și {a} alerte.",
     },
     "en": {
         "NEW_DEVICE": "New device on the network: {ip} ({type}).",
@@ -70,6 +78,11 @@ TEXTS = {
         "too_often": "The minimum interval is {min} minutes (a scan takes about 3.5 minutes).",
         "locked": "A monitor is already running (PID {pid}). Stop it before starting another.",
         "stopped": "Monitor stopped.",
+        "import_hint": ("The monitor only writes XML files (scans/). For the history and the UI, run as a normal user: "
+                        "python -m netscan import-scans"),
+        "import_admin": ("Run import-scans as a normal user, not as Administrator: the history must be yours so the UI "
+                         "can see it."),
+        "imported": "Imported {n} monitor scans and {a} alerts into the history.",
     },
 }
 
@@ -163,15 +176,17 @@ def _prune_xml(scans_dir: Path, keep: int = KEEP_XML) -> None:
 
 def run_cycle(previous: Optional[Scan], lang: str = "ro", target: Optional[str] = None,
               prepare: Callable = runner.prepare_scan, execute: Callable = runner.execute,
-              analyze: Optional[Callable] = None, save: Optional[Callable] = None,
-              scans_dir: Path = SCANS_DIR, db_path=None, now: Callable = time.time) -> CycleResult:
-    """Un ciclu complet. Nu ridică excepții pentru probleme de rețea: întoarce status „skipped”/„failed”."""
+              analyze: Optional[Callable] = None, scans_dir: Path = SCANS_DIR,
+              now: Callable = time.time) -> CycleResult:
+    """Un ciclu complet, în procesul cu drepturi de administrator (NFR-04).
+
+    Scrie DOAR fișierul XML în `scans_dir` (plus copia bazei de sonde, lângă el). Nu scrie în istoric și nici
+    alerte pe disc: sub sudo / alt cont de admin, folderul de date ar putea fi altul sau ar rămâne al lui root,
+    iar UI-ul (utilizator normal) nu l-ar vedea. Alertele se afișează în terminal; istoricul îl aduce
+    `import-scans`, rulat ca utilizator normal. Nu ridică excepții pentru probleme de rețea."""
     t = TEXTS[lang if lang in TEXTS else "ro"]
     if analyze is None:
         from netscan.engine.parser import analyze_file as analyze
-    if save is None:
-        from netscan.ui.storage import save_scan
-        save = lambda scan: save_scan(scan, db_path)  # noqa: E731
 
     out_path = scans_dir / time.strftime(f"{WATCH_PREFIX}%Y%m%d_%H%M%S.xml", time.localtime(now()))
     plan = prepare(target, out_path=out_path)
@@ -181,30 +196,60 @@ def run_cycle(previous: Optional[Scan], lang: str = "ro", target: Optional[str] 
     if not result.ok:
         return CycleResult("failed", t["failed"].format(why=result.message(lang)))
 
-    scan = analyze(str(out_path))
+    scan = analyze(str(out_path))                     # doar în memorie
     _prune_xml(scans_dir)
     if scan.status != "ok":
         return CycleResult("failed", t["failed"].format(why=scan.error_code or "?"))
-    save(scan)
-
     if previous is None:
         return CycleResult("baseline", t["baseline"].format(n=len(scan.hosts), score=scan.score), scan=scan)
     alerts = build_alerts(previous, scan, ts=now())
-    local_data.append_events(local_data.alerts_path(db_path), (asdict(a) for a in alerts))
     if not alerts:
         return CycleResult("no_change", t["no_change"].format(score=scan.score), scan=scan)
     return CycleResult("changes", "\n".join(a.text(lang) for a in alerts), alerts=alerts, scan=scan)
 
 
+# --- importul în istoric (utilizator normal) ---------------------------------------------------------------
+
+def import_scans(scans_dir: Path = SCANS_DIR, db_path=None, lang: str = "ro", out: Callable[[str], None] = print,
+                 is_admin: Callable[[], bool] = runner.is_admin, analyze: Optional[Callable] = None) -> int:
+    """Aduce scanările monitorului (`watch_*.xml`) în istoric și scrie alertele dintre ele.
+    Rulează ca utilizator normal, ca baza de date să fie a utilizatorului și s-o vadă UI-ul.
+    Se poate rula de câte ori vrei: scanările deja importate se sar."""
+    from netscan.ui.storage import find_scan, save_scan
+    t = TEXTS[lang if lang in TEXTS else "ro"]
+    if is_admin():
+        out(t["import_admin"])
+        return 2
+    if analyze is None:
+        from netscan.engine.parser import analyze_file as analyze
+    previous: Optional[Scan] = None
+    imported = n_alerts = 0
+    for path in sorted(Path(scans_dir).glob(f"{WATCH_PREFIX}*.xml")):
+        scan = analyze(str(path))
+        if scan.status != "ok":
+            continue
+        if find_scan(scan.file, scan.started_at, db_path) is None:
+            save_scan(scan, db_path)
+            imported += 1
+            if previous is not None:
+                alerts = build_alerts(previous, scan, ts=float(scan.started_at or time.time()))
+                local_data.append_events(local_data.alerts_path(db_path), (asdict(a) for a in alerts))
+                n_alerts += len(alerts)
+        previous = scan
+    out(t["imported"].format(n=imported, a=n_alerts))
+    return 0
+
+
 # --- blocarea (un singur monitor) ---------------------------------------------------------------------
+# Fișierul de blocare stă lângă XML-uri (folderul procesului privilegiat), nu în folderul de date.
 
-def _lock_path(db_path=None) -> Path:
-    return local_data.data_dir(db_path) / "watch.lock"
+def _lock_path(scans_dir: Path = SCANS_DIR) -> Path:
+    return Path(scans_dir) / ".watch.lock"
 
 
-def acquire_lock(db_path=None) -> Optional[int]:
+def acquire_lock(scans_dir: Path = SCANS_DIR) -> Optional[int]:
     """None dacă am luat blocarea; altfel PID-ul monitorului care rulează deja."""
-    path = _lock_path(db_path)
+    path = _lock_path(scans_dir)
     try:
         pid = int(path.read_text().strip())
         import psutil
@@ -217,16 +262,17 @@ def acquire_lock(db_path=None) -> Optional[int]:
     return None
 
 
-def release_lock(db_path=None) -> None:
+def release_lock(scans_dir: Path = SCANS_DIR) -> None:
     try:
-        _lock_path(db_path).unlink()
+        _lock_path(scans_dir).unlink()
     except FileNotFoundError:
         pass
 
 
 def watch(every_min: float, confirm: bool, lang: str = "ro", target: Optional[str] = None,
           max_cycles: Optional[int] = None, out: Callable[[str], None] = print,
-          sleep: Callable[[float], None] = time.sleep, cycle: Callable = run_cycle, db_path=None) -> int:
+          sleep: Callable[[float], None] = time.sleep, cycle: Callable = run_cycle,
+          scans_dir: Path = SCANS_DIR) -> int:
     t = TEXTS[lang if lang in TEXTS else "ro"]
     if every_min < MIN_INTERVAL_MIN:
         out(t["too_often"].format(min=MIN_INTERVAL_MIN))
@@ -240,15 +286,16 @@ def watch(every_min: float, confirm: bool, lang: str = "ro", target: Optional[st
             out(t["add_confirm"])
         return 0 if plan.ok else 2
 
-    other = acquire_lock(db_path)
+    other = acquire_lock(scans_dir)
     if other is not None:
         out(t["locked"].format(pid=other))
         return 2
+    out(t["import_hint"])
     previous: Optional[Scan] = None
     done = 0
     try:
         while max_cycles is None or done < max_cycles:
-            res = cycle(previous, lang=lang, target=target, db_path=db_path)
+            res = cycle(previous, lang=lang, target=target, scans_dir=scans_dir)
             out(time.strftime("[%H:%M] ") + res.message)
             if res.scan is not None:
                 previous = res.scan
@@ -260,5 +307,5 @@ def watch(every_min: float, confirm: bool, lang: str = "ro", target: Optional[st
     except KeyboardInterrupt:
         out(t["stopped"])
     finally:
-        release_lock(db_path)
+        release_lock(scans_dir)
     return 0
