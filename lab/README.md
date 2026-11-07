@@ -1,4 +1,4 @@
-# lab (Ayan)
+# lab (Oneata)
 
 Materialele pentru rețeaua de test. **Nu** fac parte din aplicație.
 

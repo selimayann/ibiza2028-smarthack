@@ -35,7 +35,7 @@
 {% macro ask_box(action, scan_index, question, reply, show_changes) -%}
   <section class="ask" id="ask" aria-labelledby="ask-h">
     <h2 id="ask-h">{{ T('ask_title') }}</h2>
-    <form method="get" action="{{ action }}#ask" class="ask-form">
+    <form method="get" action="{{ action }}#ask" class="ask-form" data-swap="#ask" data-focus="#ask-answer">
       {% if scan_index is not none %}<input type="hidden" name="scan" value="{{ scan_index }}">{% endif %}
       <label for="q" class="sr-only">{{ T('ask_label') }}</label>
       <input id="q" name="q" type="text" maxlength="500" value="{{ question }}" autocomplete="off" placeholder="{{ T('ask_ex1') }}">
@@ -43,13 +43,13 @@
     </form>
     <p class="ask-examples"><span class="muted">{{ T('ask_examples') }}</span>
       {% for k in ('ask_ex1', 'ask_ex2', 'ask_ex3') + (('ask_ex4',) if show_changes else ()) %}
-        <a href="{{ action }}?{% if scan_index is not none %}scan={{ scan_index }}&amp;{% endif %}q={{ T(k)|urlencode }}#ask">{{ T(k) }}</a>
+        <a href="{{ action }}?{% if scan_index is not none %}scan={{ scan_index }}&amp;{% endif %}q={{ T(k)|urlencode }}#ask" data-swap="#ask" data-focus="#ask-answer">{{ T(k) }}</a>
       {% endfor %}
     </p>
     {% if reply %}
       <div class="ask-reply" role="status">
         <p class="ask-q"><span class="muted">{{ T('ask_you') }}</span> {{ question }}</p>
-        <p class="ask-a">{{ reply.text }}</p>
+        <p class="ask-a" id="ask-answer" tabindex="-1">{{ reply.text }}</p>
         <p class="ask-src muted"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('ask_src_llm') if reply.source == 'llm' else T('ask_src_fallback') }}</p>
       </div>
     {% endif %}

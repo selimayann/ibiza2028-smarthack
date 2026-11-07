@@ -1,4 +1,4 @@
-"""Glosar RO/EN pentru termenii tehnici care apar în UI și în explicații (Ayan).
+"""Glosar RO/EN pentru termenii tehnici care apar în UI și în explicații (Oneata).
 
 get_glossary(lang) -> [{"term": str, "definition": str}, ...], ordonat alfabetic după termen.
 """

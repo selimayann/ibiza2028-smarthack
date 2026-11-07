@@ -1,4 +1,4 @@
-"""Explicații și pași de reparare (Ayan). Texte predefinite RO/EN = fallback-ul fără LLM.
+"""Explicații și pași de reparare (Oneata). Texte predefinite RO/EN = fallback-ul fără LLM.
 
 Interfața folosită de UI (netscan/ui/explain_stub.py):
     get_explanation(code, lang) -> {"text": str, "steps": [str, ...]}   # 1-5 pași, primul = „Fă asta întâi”

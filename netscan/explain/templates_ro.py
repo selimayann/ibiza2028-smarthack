@@ -1,4 +1,4 @@
-"""Explicații în română per cod (Ayan): max. 2 propoziții, 1-5 pași, nivelul unui copil de 12 ani.
+"""Explicații în română per cod (Oneata): max. 2 propoziții, 1-5 pași, nivelul unui copil de 12 ani.
 
 Reguli pentru texte (verificate în tests/test_explain.py):
 - fără numere de port, IP-uri, coduri din catalog, CVE-uri sau linkuri: textul e același pentru orice
@@ -117,9 +117,9 @@ TEMPLATES: dict[str, dict] = {
         "text": "UPnP le permite dispozitivelor să deschidă singure uși în router, fără să te întrebe. "
                 "Un virus de pe un dispozitiv poate folosi asta ca să deschidă rețeaua ta spre internet.",
         "steps": [
-            "Oprește UPnP din pagina de administrare a routerului.",
+            "Oprește UPnP din setările dispozitivului (la router: din pagina de administrare).",
             "Deschide manual în router doar porturile de care ai nevoie, și doar cât timp ai nevoie.",
-            "Actualizează firmware-ul routerului.",
+            "Actualizează firmware-ul dispozitivului.",
         ],
     },
     "SNMP_EXPOSED": {
@@ -143,7 +143,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "UNKNOWN_DEVICE": {
-        "text": "În rețea e un dispozitiv cu servicii deschise, dar fără nume și fără producător cunoscut. "
+        "text": "În rețea e un dispozitiv cu servicii deschise, căruia scanarea nu i-a putut afla numele sau producătorul. "
                 "E bine să știi ce e fiecare dispozitiv din rețeaua ta, pentru că unul străin poate spiona sau ataca.",
         "steps": [
             "Caută dispozitivul în lista de dispozitive conectate din router.",

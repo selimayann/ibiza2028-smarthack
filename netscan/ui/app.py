@@ -193,6 +193,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan_id = storage.find_scan(scan.file, scan.started_at, db)
         if scan_id is None:
             scan_id = storage.save_scan(scan, db)
+        if request.headers.get("X-Requested-With") == "fetch":  # actualizare parțială: rămânem pe pagina principală
+            return redirect(url_for("overview", scan=idx))
         return redirect(url_for("history_scan", scan_id=scan_id))
 
     @app.get("/devices")

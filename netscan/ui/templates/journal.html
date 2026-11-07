@@ -6,6 +6,7 @@
 <p class="muted lead">{{ T('journal_hint') }}</p>
 
 {% if groups %}
+  <div class="journal-groups">
   {% for g in groups %}
     <section class="journal-day" aria-labelledby="j-{{ g.scan_id }}">
       <h2 id="j-{{ g.scan_id }}">
@@ -15,6 +16,7 @@
       <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id) }}">{{ T('see_in_history') }}</a></p>
     </section>
   {% endfor %}
+  </div>
 {% else %}
   <p class="notice">{{ T('journal_empty') }}</p>
 {% endif %}

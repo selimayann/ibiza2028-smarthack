@@ -405,3 +405,25 @@ def test_delete_history_also_clears_ticks(tmp_path):
     assert storage.done_keys(s, app.config["DB_PATH"])
     storage.delete_history(app.config["DB_PATH"])
     assert storage.done_keys(s, app.config["DB_PATH"]) == set()
+
+
+# ---------- actualizări parțiale (JS local, îmbunătățire progresivă) ----------
+
+def test_pages_use_local_js_and_enhanced_forms(tmp_path):
+    client, _ = make_client(tmp_path, [sample(), sample()])
+    resp = client.get("/")
+    html = resp.get_data(as_text=True)
+    assert '<script src="/static/app.js" defer></script>' in html
+    assert 'data-swap="#worst"' in html and 'data-swap="#ask"' in html and 'data-swap="#save-area"' in html
+    assert "script-src 'self'" in resp.headers["Content-Security-Policy"]
+    js = client.get("/static/app.js").get_data(as_text=True)
+    assert "innerHTML" not in js and "eval(" not in js and "https://" not in js
+
+
+def test_save_via_fetch_stays_on_overview(tmp_path):
+    client, app = make_client(tmp_path, [sample()])
+    resp = client.post("/history/save", data={"token": app.config["FORM_TOKEN"], "scan": 0},
+                       headers={"X-Requested-With": "fetch"})
+    assert resp.status_code == 302 and resp.headers["Location"].endswith("/?scan=0")
+    resp = client.post("/history/save", data={"token": app.config["FORM_TOKEN"], "scan": 0})
+    assert "/scan/" in resp.headers["Location"]                 # fără JS: duce la istoric, ca înainte

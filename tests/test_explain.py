@@ -1,4 +1,4 @@
-"""Teste pentru explicațiile predefinite RO/EN (Ayan)."""
+"""Teste pentru explicațiile predefinite RO/EN (Oneata)."""
 
 from __future__ import annotations
 

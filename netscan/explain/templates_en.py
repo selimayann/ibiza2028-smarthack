@@ -1,4 +1,4 @@
-"""Explanations in English per code (Ayan): max 2 sentences, 1-5 steps, plain language.
+"""Explanations in English per code (Oneata): max 2 sentences, 1-5 steps, plain language.
 
 Same rules as templates_ro.py (checked in tests/test_explain.py): no port numbers, IPs, catalog codes,
 CVEs or links; `text` has at most 2 sentences; `steps` has 1-5 items, the most important first.
@@ -112,9 +112,9 @@ TEMPLATES: dict[str, dict] = {
         "text": "UPnP lets devices open doors in your router by themselves, without asking you. A virus on one "
                 "device can use it to open your network to the internet.",
         "steps": [
-            "Turn off UPnP in the router's admin page.",
+            "Turn off UPnP in the device's settings (on a router: in its admin page).",
             "Open ports manually in the router only when you need them, and only for as long as you need them.",
-            "Update the router firmware.",
+            "Update the device firmware.",
         ],
     },
     "SNMP_EXPOSED": {
@@ -138,7 +138,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "UNKNOWN_DEVICE": {
-        "text": "There is a device on the network with open services but no name and no known maker. You should "
+        "text": "There is a device on the network with open services, and the scan could not find its name or maker. You should "
                 "know what every device on your network is, because a stranger's device can spy or attack.",
         "steps": [
             "Look for the device in your router's list of connected devices.",
