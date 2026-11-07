@@ -38,8 +38,24 @@ def plan(target=None, info=INFO_OK, env=None, iflist=IFLIST, ports="22,80,443"):
 def test_build_nmap_args_exact():
     args = runner.build_nmap_args("172.20.10.0/28", "wlan0", "22,80", "scans/x.xml")
     assert args == ["nmap", "-sS", "-sU", "-sV", "--script", "http-title",
-                    "-p", "T:22,80,U:53,123,161,1900,5353",
+                    "-p", "T:22,80,1883,6379,27017,U:53,123,161,1900,5353",
                     "--max-rate", "100", "-e", "wlan0", "-oX", "scans/x.xml", "172.20.10.0/28"]
+
+
+def test_catalog_extra_ports_reach_command_with_real_top1000():
+    """1883 (mqtt), 6379 (redis) și 27017 (mongodb) lipsesc din top 1000; trebuie să fie în -p T:..."""
+    top = runner.load_top_ports()
+    for p in runner.CATALOG_EXTRA_TCP:
+        assert not runner._port_in_list(p, top)          # lista top 1000 rămâne neatinsă
+    spec = runner.build_nmap_args("172.20.10.0/28", "eth3", top, "x.xml")[7]
+    tcp = spec[2:spec.index(",U:")]
+    assert tcp.startswith(top)
+    for p in runner.CATALOG_EXTRA_TCP:
+        assert runner._port_in_list(p, tcp)
+
+
+def test_extra_ports_not_duplicated():
+    assert runner.tcp_port_spec("22,1883,6000-6400") == "22,1883,6000-6400,27017"
 
 
 def test_default_target_is_own_subnet(monkeypatch):
