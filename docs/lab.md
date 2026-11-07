@@ -71,24 +71,37 @@ docker compose -f lab/docker-compose.yml stop redis   # dispare DB_EXPOSED
 
 ## Findings așteptate per scanare (așteptare de test, nu rezultat)
 
-> Doar laptopul-țintă, la IP-ul lui din hotspot. **Nu sunt rezultate**: rezultatele le produce doar tool-ul.
+> **Nu sunt rezultate**: rezultatele le produce doar tool-ul (`python -m netscan analyze fixtures/lab/`).
+> Tabelul e ce ne așteptăm să vadă motorul, ca Radu să-l poată verifica. L-am confirmat local cu motorul
+> de pe branch-ul `engine` (commit `2efe22d`), la 14:30, pe 7 nov.
 
-| Scanare | Coduri așteptate (laptop-țintă) | Scor așteptat |
-|---|---|---|
-| `scan_01_before.xml` | SSH_OPEN (22), MQTT_EXPOSED (1883), FTP_CLEARTEXT (2121), OUTDATED_SERVICE (2121), TELNET_OPEN (2323), DB_EXPOSED (6379), HTTP_ADMIN_CLEARTEXT (8080) | 10 (= 100 − 90) |
-| `scan_02.xml` | identic cu `scan_01_before.xml` | 10 |
-| `scan_03_after.xml` | SSH_OPEN, MQTT_EXPOSED, FTP_CLEARTEXT, OUTDATED_SERVICE, HTTP_ADMIN_CLEARTEXT | 50 (= 100 − 50) |
+Rețeaua: `RSH-Ibiza2028`, `172.20.10.0/28`. Gateway (iPhone) `172.20.10.1`, laptop-țintă `172.20.10.14`,
+laptop-scanner `172.20.10.10` (nu apare: nmap pe Windows nu se scanează pe sine).
+Toate trei scanările: `nmap -sS -sU -sV --script http-title -p T:<top1000>,1883,6379,27017,U:53,123,161,1900,5353 --max-rate 100`, făcute cu `python -m netscan scan --confirm`.
 
-7 coduri diferite în scanarea 1 (cerința: cel puțin 5). Diferența 1 → 3: DB_EXPOSED și TELNET_OPEN rezolvate.
+| Scanare | Gateway `172.20.10.1` | Laptop-țintă `172.20.10.14` | Rânduri | Scor |
+|---|---|---|---|---|
+| `scan_01_before.xml` | UNKNOWN_DEVICE, FTP_CLEARTEXT (21) | UNKNOWN_DEVICE, SSH_OPEN (22), MQTT_EXPOSED (1883), FTP_CLEARTEXT (2121), OUTDATED_SERVICE (2121), TELNET_OPEN (2323), DB_EXPOSED (6379), HTTP_ADMIN_CLEARTEXT (8080) | 10 | 0 (100 − 110) |
+| `scan_02.xml` | identic | identic | 10 | 0 |
+| `scan_03_after.xml` | UNKNOWN_DEVICE, FTP_CLEARTEXT (21) | UNKNOWN_DEVICE, SSH_OPEN, MQTT_EXPOSED, FTP_CLEARTEXT, OUTDATED_SERVICE, HTTP_ADMIN_CLEARTEXT | 8 | 30 (100 − 70) |
 
-Posibile rânduri în plus (nu le forțăm, le notăm după capturi):
-- **UNKNOWN_DEVICE** pe laptopul-scanner (apare fără MAC), vezi întrebarea 8 din `docs/questions.md`.
-- **UNKNOWN_DEVICE** pe laptopul-țintă sau pe telefon, dacă au MAC randomizat (fără vendor), niciun hostname și cel puțin un port deschis. Asta poate schimba scorurile de mai sus.
+- 8 coduri diferite în scanarea 1 (cerința: cel puțin 5). Diferența 1 → 3: **DB_EXPOSED și TELNET_OPEN rezolvate**, scorul crește de la 0 la 30.
+- Scorul 0 la scanarea 1 vine din `max(0, …)`: suma punctelor e 110.
+- **Depind de răspunsurile mentorilor:**
+  - UNKNOWN_DEVICE pe ambele dispozitive: amândouă au MAC randomizat (bitul „administrat local” setat), deci fără vendor, și n-au hostname. Întrebările 5 și 8.
+  - FTP_CLEARTEXT pe `172.20.10.1:21`: nmap n-a confirmat serviciul, l-a ghicit din tabel (`method="table"`). Întrebarea 12.
+- Porturile `open|filtered` (1900/udp upnp, 5353/udp) nu dau findings.
+
+### Verificarea integrității
+Fișierele vin de la B cu `SHA256SUMS.txt`; înainte de analiză: `cd fixtures/lab && sha256sum -c SHA256SUMS.txt`.
+XML-urile **nu intră în repo** până la întrebarea 9 (au MAC-uri). Local: adaugă `fixtures/lab/*.xml` în `.git/info/exclude`.
 
 ## Probleme întâlnite
 
 - Pe laptopul-țintă rulau alte containere Docker (alt proiect) publicate pe `0.0.0.0`, inclusiv pe portul 6379. Le oprim înainte de lab; altfel apar ca findings în plus și blochează portul redis.
 - Docker ocolește firewall-ul Fedora (firewalld) când publică porturi. De aceea porturile se publică explicit doar pe `LAB_BIND`, nu pe toate interfețele.
 - **nmap a raportat portul 1883 ca `mosquitto version 1.6.15`, nu `mqtt`** (găsit de B la prima verificare). Cauza: scriptul `mqtt-subscribe` (categoria `version`, rulează automat la `-sV`) citește subiectul `$SYS/broker/version` și înlocuiește numele serviciului (`port.version.name = ver` în `mqtt-subscribe.nse`). Reparat în configurarea lab-ului, nu în motor și nu în XML: `sys_interval 0` în `lab/mosquitto/mosquitto.conf` oprește subiectele `$SYS`. Bun și pentru pitch: un broker real n-ar trebui să-și anunțe versiunea.
-- Laptopul-țintă apare cu MAC randomizat (`(Unknown)` la vendor) și fără hostname, deci motorul va raporta probabil și **UNKNOWN_DEVICE** pentru el.
+- Laptopul-țintă și iPhone-ul apar cu MAC randomizat (fără vendor) și fără hostname, deci motorul raportează **UNKNOWN_DEVICE** pentru amândouă.
+- Porturile 1883 (mqtt), 6379 (redis) și 27017 (mongodb) nu sunt în top 1000 TCP al nmap. Prima scanare 1 nu le-a verificat deloc; B le-a adăugat la `-p` în `runner.py` și scanarea s-a refăcut.
+- iPhone-ul (gateway) are 21/tcp deschis, pe care nmap îl numește `ftp` doar din tabelul de porturi (`method="table"`). Întrebarea 12.
 - Fedora Workstation permite implicit porturile 1025–65535 și SSH în firewall, deci nu trebuie deschis nimic manual.
