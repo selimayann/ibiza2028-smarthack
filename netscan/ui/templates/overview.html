@@ -21,13 +21,19 @@
             <p class="do-first-label">{{ T('do_first') if st.number == 1 else T('next_step') if st.status == 'todo' else T('step_label') }}</p>
             <p class="do-first-count">{{ T('step_of')|format(st.number, steps.total) }}</p>
           </div>
-          <p class="step-status step-status-{{ st.status }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'todo': 'low', 'declared': 'info', 'verified': 'good'}[st.status] }}"/></svg>{% if st.status == 'verified' %}{{ T('step_verified_live') if st.verified_by == 'live' else T('step_verified_scan')|format(st.verified_by) }}{% else %}{{ T('step_status_' ~ st.status) }}{% endif %}</p>
+          {# „De făcut” e starea implicită: arătăm starea doar când s-a schimbat (bifat / verificat) #}
+          {% if st.status != 'todo' %}<p class="step-status step-status-{{ st.status }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'todo': 'low', 'declared': 'info', 'verified': 'good'}[st.status] }}"/></svg>{% if st.status == 'verified' %}{{ T('step_verified_live') if st.verified_by == 'live' else T('step_verified_scan')|format(st.verified_by) }}{% else %}{{ T('step_status_' ~ st.status) }}{% endif %}</p>{% endif %}
           <p class="do-first-step" id="step-now" tabindex="-1">{{ sx.steps[0] }}</p>
+          {# „Pentru: …” doar când pasul e pentru altă problemă decât cea din cardul de deasupra (altfel se repetă) #}
+          {% set ww = worst.worst if worst else none %}
+          {% if not ww or (st.finding.device_id, st.finding.code, st.finding.port) != (ww.device_id, ww.code, ww.port) %}
           <p class="do-first-for">{{ T('step_on')|format(code_name(st.finding.code), device_type_label(st.device.device_type), st.device.ip) }}</p>
+          {% endif %}
           {% set evd = eavesdrop(st.finding.code) %}
           {% if evd %}<details class="eaves-details"><summary>{{ T('eaves_title') }}</summary>{{ eavesdrop_block(evd) }}</details>{% endif %}
           <div class="steps-progress" aria-hidden="true">{% for x in steps.steps %}<span class="{{ x.status }}{% if loop.index0 == steps.index %} now{% endif %}"></span>{% endfor %}</div>
-          <p class="steps-tally">{{ T('steps_tally')|format(steps.verified_count, steps.declared_count, steps.total) }}</p>
+          {# Contorul apare doar după primul pas bifat: la 0 / 0 repetă doar „Pasul 1 din N” #}
+          {% if steps.verified_count or steps.declared_count %}<p class="steps-tally">{{ T('steps_tally')|format(steps.verified_count, steps.declared_count, steps.total) }}</p>{% endif %}
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
             <a class="button button-primary guide-open" href="{{ url_for('device', device_id=st.finding.device_id) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
@@ -44,13 +50,17 @@
               {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number + 1) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
             </nav>
           </div>
-          <p class="verify-note">{{ T('verify_note') }}</p>
           {% if st.status != 'verified' %}{{ guide_dialog(st, hidden, guide_icon(st.device.device_type)) }}{% endif %}
-          {% if steps.verified_count or steps.declared_count %}
-            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
-              {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
-            </form>
-          {% endif %}
+          {# Explicația verificării și „Ia pașii de la capăt”: la cerere #}
+          <details class="step-more">
+            <summary>{{ T('step_how') }}</summary>
+            <p class="verify-note">{{ T('verify_note') }}</p>
+            {% if steps.verified_count or steps.declared_count %}
+              <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
+                {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
+              </form>
+            {% endif %}
+          </details>
         </div>
         {% else %}
         <div class="do-first do-first-done">
