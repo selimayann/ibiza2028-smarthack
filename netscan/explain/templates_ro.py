@@ -3,6 +3,7 @@
 Reguli pentru texte (verificate în tests/test_explain.py):
 - fără numere de port, IP-uri, coduri din catalog, CVE-uri sau linkuri: textul e același pentru orice
   scanare, deci nu are voie să afirme lucruri care s-ar putea să nu fie în scanarea utilizatorului;
+- `harm` = un rând „ce poate face cineva rău intenționat” (get_harm), fără exagerări;
 - `text` are cel mult 2 propoziții; `steps` are între 1 și 5 pași, primul e cel mai important
   (UI-ul îl afișează ca „Fă asta întâi”).
 """
@@ -11,9 +12,8 @@ from __future__ import annotations
 
 TEMPLATES: dict[str, dict] = {
     "TELNET_OPEN": {
-        "text": "Telnet e o ușă veche prin care cineva poate controla dispozitivul de la distanță, iar parola "
-                "trece prin rețea necriptată, ca o carte poștală pe care o poate citi oricine. Cine o prinde "
-                "poate prelua dispozitivul.",
+        "harm": "Cineva din rețea îți poate afla parola și poate controla dispozitivul.",
+        "text": "Telnet e o ușă veche prin care cineva poate controla dispozitivul de la distanță. Parola trece prin rețea la vedere, ca o carte poștală, iar cine o prinde poate prelua dispozitivul.",
         "steps": [
             "Oprește Telnet din pagina de administrare a dispozitivului (de obicei la „Servicii” sau „Acces la distanță”).",
             "Dacă ai nevoie de acces la distanță, folosește SSH în loc de Telnet.",
@@ -22,6 +22,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "RDP_EXPOSED": {
+        "harm": "Cineva poate ghici parola și poate folosi calculatorul ca și cum ar sta în fața lui.",
         "text": "Remote Desktop îi lasă pe alții să vadă și să controleze ecranul calculatorului prin rețea. "
                 "Atacatorii încearcă mii de parole pe el sau folosesc greșeli vechi din Windows ca să intre.",
         "steps": [
@@ -33,6 +34,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "VNC_EXPOSED": {
+        "harm": "Cineva din rețea poate vedea ce faci pe ecran și poate muta mouse-ul în locul tău.",
         "text": "VNC arată ecranul dispozitivului altcuiva din rețea și îl lasă să-l controleze. Are adesea "
                 "parole scurte sau deloc, iar ce se vede pe ecran poate trece necriptat.",
         "steps": [
@@ -43,6 +45,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "DB_EXPOSED": {
+        "harm": "Cineva din rețea poate citi, schimba sau șterge datele aplicației.",
         "text": "O bază de date ține informațiile unei aplicații și aici poate fi accesată direct din rețea. "
                 "Multe baze de date vin fără parolă, așa că oricine din rețea le-ar putea citi, schimba sau șterge.",
         "steps": [
@@ -53,6 +56,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "CAMERA_STREAM_EXPOSED": {
+        "harm": "Oricine din rețea poate vedea ce filmează camera.",
         "text": "Imaginile camerei video pot fi văzute direct din rețea, fără aplicația ei. Dacă parola lipsește "
                 "sau e cea din fabrică, oricine din rețea se poate uita la ce filmează camera.",
         "steps": [
@@ -63,15 +67,16 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "OUTDATED_SERVICE": {
-        "text": "Un program de pe acest dispozitiv e o versiune veche, cu greșeli de securitate pe care "
-                "atacatorii le cunosc deja. Pentru unele dintre ele există unelte gata făcute care intră singure.",
+        "harm": "Cineva poate folosi o unealtă gata făcută ca să intre în dispozitiv.",
+        "text": "Un program de pe acest dispozitiv e o versiune veche, cu greșeli pe care atacatorii le știu deja. Pentru unele există unelte gata făcute care intră singure.",
         "steps": [
             "Actualizează programul sau firmware-ul dispozitivului la ultima versiune.",
-            "Dacă nu mai există actualizări, oprește serviciul sau înlocuiește dispozitivul.",
-            "Pornește actualizările automate, dacă dispozitivul le are.",
+            "Dacă nu mai are actualizări, oprește serviciul sau schimbă dispozitivul.",
+            "Pornește actualizările automate, dacă există.",
         ],
     },
     "FTP_CLEARTEXT": {
+        "harm": "Cineva din rețea poate citi parola și fișierele pe care le trimiți.",
         "text": "FTP mută fișiere prin rețea, dar trimite parola și fișierele necriptate. Oricine ascultă "
                 "în aceeași rețea le poate citi.",
         "steps": [
@@ -82,6 +87,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "HTTP_ADMIN_CLEARTEXT": {
+        "harm": "Cineva din rețea îți poate fura parola și poate schimba setările dispozitivului.",
         "text": "Pagina de administrare a dispozitivului se deschide prin HTTP, fără criptare. Când te "
                 "autentifici, parola trece prin rețea la vedere și poate fi furată.",
         "steps": [
@@ -92,28 +98,28 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "SMB_EXPOSED": {
-        "text": "Partajarea de fișiere Windows (SMB) e deschisă în rețea. Prin ea, atacatorii pot încerca "
-                "să ajungă la fișiere, iar virușii de tip ransomware se pot răspândi de la un calculator la altul.",
+        "harm": "Cineva poate ajunge la fișierele tale sau poate răspândi un virus care cere bani.",
+        "text": "Partajarea de fișiere Windows (SMB) e deschisă în rețea. Prin ea, atacatorii pot ajunge la fișiere, iar virușii care cer bani se pot muta între calculatoare.",
         "steps": [
-            "Dacă nu partajezi fișiere, oprește partajarea din setările de rețea.",
-            "Dacă partajezi, cere parolă și dă acces doar persoanelor care au nevoie.",
+            "Dacă nu împarți fișiere cu alții, oprește partajarea din setările de rețea.",
+            "Dacă împarți, cere parolă și dă acces doar celor care au nevoie.",
             "Oprește versiunea veche SMBv1 (din „Activare sau dezactivare caracteristici Windows”).",
-            "Instalează toate actualizările sistemului.",
-            "Pe Windows, setează rețelele publice (cafenea, hotel) ca „Public”, ca partajarea să nu fie vizibilă acolo.",
+            "Instalează toate actualizările Windows.",
+            "Pe Windows, alege „Public” pentru rețelele din cafenele sau hoteluri, ca partajarea să nu se vadă acolo.",
         ],
     },
     "MQTT_EXPOSED": {
-        "text": "MQTT e sistemul prin care dispozitivele inteligente își trimit mesaje, de exemplu becuri, "
-                "senzori sau încuietori. Fără parolă, oricine din rețea poate citi mesajele sau poate trimite "
-                "comenzi, cum ar fi să aprindă luminile.",
+        "harm": "Cineva din rețea poate aprinde luminile sau poate da alte comenzi aparatelor tale smart.",
+        "text": "MQTT e felul în care becurile, senzorii sau încuietorile smart își trimit mesaje. Fără parolă, oricine din rețea le poate citi mesajele sau le poate da comenzi.",
         "steps": [
-            "Cere nume de utilizator și parolă pentru toți clienții (oprește accesul anonim).",
+            "Cere nume și parolă de la toate aparatele (oprește accesul fără cont).",
             "Pornește criptarea (TLS) pentru conexiuni.",
-            "Lasă brokerul să accepte conexiuni doar de la dispozitivele tale, din firewall.",
+            "Din firewall, lasă brokerul să primească doar aparatele tale.",
             "Actualizează brokerul MQTT la ultima versiune.",
         ],
     },
     "UPNP_EXPOSED": {
+        "harm": "Un virus de pe un dispozitiv poate deschide rețeaua ta spre internet.",
         "text": "UPnP le permite dispozitivelor să deschidă singure uși în router, fără să te întrebe. "
                 "Un virus de pe un dispozitiv poate folosi asta ca să deschidă rețeaua ta spre internet.",
         "steps": [
@@ -123,6 +129,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "SNMP_EXPOSED": {
+        "harm": "Cineva poate afla modelul și setările dispozitivului, ca să știe cum să-l atace.",
         "text": "SNMP spune oricui întreabă multe detalii despre dispozitiv, cum ar fi modelul, setările "
                 "și rețeaua. Adesea folosește parola din fabrică „public”, pe care o știe toată lumea.",
         "steps": [
@@ -133,8 +140,8 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "PRINTER_RAW_EXPOSED": {
-        "text": "Imprimanta primește lucrări de printare direct din rețea, fără nicio verificare. Oricine "
-                "din rețea poate printa pe ea sau îi poate trimite comenzi ciudate.",
+        "harm": "Cineva din rețea poate printa pe imprimanta ta fără voie sau o poate bloca.",
+        "text": "Imprimanta primește lucrări direct din rețea, fără nicio verificare. Oricine din rețea poate printa pe ea sau îi poate da comenzi ciudate.",
         "steps": [
             "Oprește printarea directă (RAW / JetDirect) din pagina de administrare a imprimantei, dacă nu o folosești.",
             "Lasă doar calculatoarele tale să printeze, din setările imprimantei.",
@@ -143,19 +150,20 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "UNKNOWN_DEVICE": {
+        "harm": "Un dispozitiv străin poate spiona ce se întâmplă în rețeaua ta.",
         "text": "În rețea e un dispozitiv cu servicii deschise, căruia scanarea nu i-a putut afla numele sau producătorul. "
                 "E bine să știi ce e fiecare dispozitiv din rețeaua ta, pentru că unul străin poate spiona sau ataca.",
         "steps": [
             "Caută dispozitivul în lista de dispozitive conectate din router.",
-            "Telefoanele și laptopurile noi își ascund adresa reală, deci verifică întâi dacă nu e unul de-al tău.",
+            "Verifică întâi dacă nu e un telefon sau un laptop de-al tău: cele noi își ascund adresa reală.",
             "Dacă nu e al tău, schimbă parola Wi-Fi.",
             "Dă-i un nume în router, ca să-l recunoști data viitoare.",
             "Mută dispozitivele inteligente și pe cele necunoscute în rețeaua pentru oaspeți.",
         ],
     },
     "SSH_OPEN": {
-        "text": "SSH e o cale sigură și criptată de a controla un dispozitiv de la distanță, deci nu e o "
-                "problemă în sine. Contează doar să fie protejat bine, pentru că atacatorii încearcă des parole pe el.",
+        "harm": "Cineva poate încerca mii de parole, iar dacă una merge, controlează dispozitivul.",
+        "text": "SSH e o cale criptată de a controla un dispozitiv de la distanță, deci nu e o problemă în sine. Trebuie doar protejat bine, pentru că atacatorii încearcă des parole pe el.",
         "steps": [
             "Dacă nu folosești SSH, oprește-l.",
             "Folosește chei SSH în loc de parole.",
