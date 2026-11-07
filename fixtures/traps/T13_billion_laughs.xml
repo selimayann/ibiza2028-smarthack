@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!DOCTYPE nmaprun [
+<!ENTITY a "AAAAAAAAAA">
+<!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">
+<!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">
+]>
+<nmaprun scanner="nmap" start="1762500000"><host><hostnames><hostname name="&c;"/></hostnames></host></nmaprun>

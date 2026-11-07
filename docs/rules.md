@@ -18,11 +18,14 @@
 |---|---|---|
 | OUTDATED_SERVICE apare **în plus** față de findingul serviciului (vsftpd 2.3.4 → FTP_CLEARTEXT + OUTDATED_SERVICE pe 21) | Așa cere V4 | Da (V4) |
 | Învechit: vsftpd 2.3.4; OpenSSH < 7.4; Apache httpd ≤ 2.2.x; IIS ≤ 7.5; Samba ≤ 3.x doar când versiunea e fără ambiguitate | Pragurile din brief | Parțial |
-| Samba cu interval (`3.X - 4.X`) **nu** se raportează învechit | E ambiguu | Nu → întrebarea 1 |
-| SMB: un singur finding per dispozitiv, pe 445, altfel pe 139 | Brief + V3 | Nu → întrebarea 2 |
-| HTTP_ADMIN_CLEARTEXT: titlul se caută ca subșir, fără diferență între litere mari/mici | Cel mai tolerant la variații | Nu → întrebarea 4 |
-| UNKNOWN_DEVICE: fără vendor, fără hostname și cu cel puțin un port deschis; `port` rămâne gol | Brief | Nu → întrebările 5 și 8 |
-| Doar fișierele `*.xml` din folder (fără subfoldere), în ordine alfabetică; `file` = numele fișierului | Determinism | Nu → întrebarea 7 |
+| Samba cu interval (`3.X - 4.X`) **nu** se raportează învechit | E ambiguu | **Da, mentori (întrebarea 1)** |
+| `SMB_EXPOSED` și `OUTDATED_SERVICE` (Samba) se raportează **o singură dată, împreună, pe portul 445** (dacă nu e deschis, pe 139). Celelalte servicii învechite (vsftpd, OpenSSH...) rămân pe portul lor | Răspunsul mentorilor | **Da, mentori (întrebarea 2)** |
+| HTTP_ADMIN_CLEARTEXT: titlul se caută ca subșir, fără diferență între litere mari/mici | Cel mai tolerant la variații | **Da, mentori (întrebarea 4)** |
+| Doar numele de serviciu `http` exact contează la HTTP_ADMIN_CLEARTEXT; `http-proxy`, `http-alt` și variațiile se ignoră | Răspunsul mentorilor | **Da, mentori (întrebarea 3)** |
+| `mosquitto version X` pe 1883 (nmap suprascrie numele serviciului) = MQTT_EXPOSED, ca `mqtt` | Răspunsul mentorilor | **Da, mentori (întrebarea 11)** |
+| Câmpul `method` din `<service>` se ignoră (`table` ca `probed`) | Răspunsul mentorilor | **Da, mentori (întrebarea 12)** |
+| UNKNOWN_DEVICE: fără vendor, fără hostname și cu cel puțin un port deschis; `port` rămâne gol | Brief | Întrebarea 5: **da, mentori**; întrebarea 8 încă fără răspuns |
+| Doar fișierele `*.xml` din folder (fără subfoldere), în ordine alfabetică; `file` = numele fișierului | Determinism | Întrebarea 7: coloana `file` = doar numele fișierului, **da, mentori**; fișierele non-`.xml` încă fără răspuns |
 | Fișier ilizibil → `INVALID_XML` (contractul nu are alt cod) | Contract v1 | Nu |
 | Același port pe TCP și UDP cu același cod se deduplică pe (ip, port, cod) | Un rând în CSV | Nu |
 
