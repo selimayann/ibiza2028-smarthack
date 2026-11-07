@@ -388,14 +388,23 @@ button:disabled { opacity: .6; cursor: progress; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 main > section > h2 { margin: 2.5rem 0 .25rem; padding-bottom: .75rem; border-bottom: 2px solid var(--ink); }
-.problem { padding: 1.5rem 0; border-bottom: 1px solid var(--line); }
+.problem { padding: 1.25rem 1.4rem 1.3rem; margin-top: 1rem; }
+.problem-head { display: flex; flex-direction: column; gap: .15rem; }
 .problem h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; font-size: 1.25rem; }
-.problem-text { margin-top: .6rem; max-width: 68ch; }
-.steps { margin: .4rem 0 0; padding-left: 1.4rem; max-width: 68ch; }
-.steps li { margin: .3rem 0; padding-left: .2rem; }
+.problem-name { color: var(--ink); }
+.problem-meta { color: var(--muted); }
+.problem-meta .code { font-size: 1rem; }
+.problem-text { margin-top: .75rem; max-width: 65ch; }
+.problem h4 { margin-top: 1rem; font-size: 1.0625rem; }
+.steps { margin: .4rem 0 0; padding-left: 1.6rem; max-width: 65ch; }
+.steps li { margin: .45rem 0; padding-left: .3rem; }
 .steps li:first-child { font-weight: 700; }
-.evidence { margin-top: .9rem; }
-.standards { margin-top: 1rem; }
+.steps li::marker { color: var(--brand); font-weight: 700; }
+.tech-details { margin-top: 1.1rem; border-top: 1px solid var(--line); padding-top: .4rem; }
+.tech-details summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; }
+.tech-details summary:hover { text-decoration: underline; }
+.evidence { margin-top: .75rem; }
+.standards { margin-top: .5rem; }
 .standards h4 { margin: 0 0 .3rem; font-size: 1rem; color: var(--muted); font-family: "Atkinson Next", system-ui, sans-serif; font-weight: 700; }
 .standards ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
 
@@ -629,3 +638,35 @@ body:has(.ai-fab) .foot { padding-bottom: 4.75rem; }
 .scan-bar .w-90 { width: 90%; }
 .scan-bar .w-95 { width: 95%; }
 .scan-bar .w-100 { width: 100%; }
+/* „Detalii tehnice”: săgeată care arată că se deschide (fără marcajul implicit, ascuns de display:flex) */
+.tech-details summary { list-style: none; }
+.tech-details summary::-webkit-details-marker { display: none; }
+.tech-details summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.tech-details[open] summary::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: no-preference) { .tech-details summary::before { transition: transform .15s ease; } }
+
+/* Istoric: cardurile din rândul de sus nu se mai întind la aceeași înălțime (fără spațiu alb gol) */
+.verdict-history { align-items: start; }
+/* Detaliile comparației și restul schimbărilor din Jurnal: la cerere, cu aceeași săgeată ca la „Detalii tehnice” */
+.compare-details, .journal-more { margin-top: 1rem; }
+.compare-details > summary, .journal-more > summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; list-style: none; }
+.compare-details > summary::-webkit-details-marker, .journal-more > summary::-webkit-details-marker { display: none; }
+.compare-details > summary::before, .journal-more > summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.compare-details[open] > summary::before, .journal-more[open] > summary::before { transform: rotate(45deg); }
+.compare-details > summary:hover, .journal-more > summary:hover { text-decoration: underline; }
+.compare-details .compare-grid { margin-top: .5rem; }
+.section-this { margin: 2.5rem 0 1rem; }
+/* Istoric pe telefon: cardurile din tabel au linkurile pe un rând separat */
+@media (max-width: 47.99rem) {
+  .hist-table td.rt-links { padding-top: .5rem; }
+  .hist-table td.rt-links::before { content: none; }
+}
+/* Graficul pe telefon: etichetele scorului (0, 50, 100) nu mai sunt tăiate la marginea din stânga */
+@media (max-width: 30rem) { .trend-chart { width: calc(100% - 1.75rem); margin-left: 1.75rem; } }
+/* Confirmarea ștergerii: spațiu sub antet, ca pe celelalte pagini */
+.panel-error { margin-top: 1.5rem; }
+/* „Problemă nouă”: iconița și eticheta după severitatea problemei */
+.alert-sev-high .icon, .alert-sev-high .alert-sev { color: var(--high); }
+.alert-sev-medium .icon, .alert-sev-medium .alert-sev { color: var(--medium); }
+.alert-sev-low .icon, .alert-sev-low .alert-sev { color: var(--low); }
+.alert-sev-info .icon, .alert-sev-info .alert-sev { color: var(--info); }
