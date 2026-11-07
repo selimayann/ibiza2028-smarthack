@@ -162,6 +162,85 @@ class ActionStep:
     done_count: int
 
 
+# ---------- D5: pași verificați pe date reale (nu doar bifați) ----------
+
+def verified_by_newer(scan: Scan, others) -> dict[tuple, str]:
+    """Pașii confirmați de o scanare mai nouă a aceleiași rețele: cheie -> fișierul scanării.
+    Pentru fiecare problemă se ia cea mai nouă scanare în care apare dispozitivul (același device_id);
+    dacă problema nu mai e acolo, pasul e verificat. Dispozitiv lipsă = nu știm (poate era oprit)."""
+    if scan.started_at is None:
+        return {}
+    newer = sorted((o for o in others if o.status == "ok" and o.started_at is not None
+                    and o.started_at > scan.started_at), key=lambda o: o.started_at, reverse=True)
+    out: dict[tuple, str] = {}
+    for f in scan.findings:
+        for o in newer:
+            if any(h.device_id == f.device_id for h in o.hosts):
+                if f.key() not in {g.key() for g in o.findings}:
+                    out[f.key()] = o.file
+                break
+    return out
+
+
+@dataclass
+class StepInfo:
+    finding: Finding
+    device: Host
+    number: int
+    status: str            # "todo" | "declared" (bifat, neconfirmat) | "verified"
+    verified_by: str | None = None   # "live" sau numele scanării mai noi
+
+
+@dataclass
+class StepsView:
+    steps: list[StepInfo]
+    index: int             # pasul afișat (0-based)
+    score_now: int         # scorul calculat de motor fără problemele verificate
+    verified_count: int
+    declared_count: int
+
+    @property
+    def current(self) -> StepInfo:
+        return self.steps[self.index]
+
+    @property
+    def total(self) -> int:
+        return len(self.steps)
+
+    @property
+    def all_resolved(self) -> bool:
+        return all(s.status != "todo" for s in self.steps)
+
+
+def steps_view(scan: Scan, declared: set, verified_live: set, by_scan: dict[tuple, str],
+               requested: int | None = None) -> StepsView | None:
+    """Toți pașii în ordinea riscului, cu starea fiecăruia. Pasul afișat: cel cerut (1-based, din
+    butoanele Înapoi/Înainte) sau primul încă de făcut. Scorul nou e al motorului, pe problemele rămase."""
+    from netscan.engine.scoring import compute_score
+
+    plan = action_plan(scan)
+    if not plan:
+        return None
+    hosts = {h.device_id: h for h in scan.hosts}
+    steps = []
+    for i, f in enumerate(plan, 1):
+        k = f.key()
+        if k in verified_live:
+            st, by = "verified", "live"
+        elif k in by_scan:
+            st, by = "verified", by_scan[k]
+        else:
+            st, by = ("declared" if k in declared else "todo"), None
+        steps.append(StepInfo(f, hosts.get(f.device_id, Host(ip=f.ip, device_id=f.device_id)), i, st, by))
+    if requested is not None and 1 <= requested <= len(steps):
+        index = requested - 1
+    else:
+        index = next((i for i, s in enumerate(steps) if s.status == "todo"), 0)
+    fixed = {s.finding.key() for s in steps if s.status == "verified"}
+    return StepsView(steps, index, compute_score(f for f in scan.findings if f.key() not in fixed),
+                     sum(1 for s in steps if s.status == "verified"), sum(1 for s in steps if s.status == "declared"))
+
+
 def current_action(scan: Scan, done: set) -> ActionStep | None:
     """Primul pas încă nebifat. None dacă nu există probleme sau dacă toate sunt bifate."""
     hosts = {h.device_id: h for h in scan.hosts}

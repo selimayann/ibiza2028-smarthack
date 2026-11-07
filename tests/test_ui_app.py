@@ -19,7 +19,9 @@ def sample() -> Scan:
 
 
 def make_client(tmp_path, scans):
-    app = create_app({"SCAN_LOADER": lambda: scans, "DB_PATH": tmp_path / "h.db", "TESTING": True})
+    # testele nu ating rețeaua: verificarea live a pașilor spune „nu e rețeaua mea”
+    app = create_app({"SCAN_LOADER": lambda: scans, "DB_PATH": tmp_path / "h.db", "TESTING": True,
+                      "NET_CHECK": lambda ip: False})
     return app.test_client(), app
 
 
@@ -378,11 +380,11 @@ def test_one_step_at_a_time(tmp_path):
     assert _done(client, app, plan[0]).status_code == 302
     html = client.get("/").get_data(as_text=True)
     assert "Următorul pas:" in html and "Pasul 2 din 5" in html
-    assert ">40<" in html                                   # bifa nu schimbă scorul
+    assert ">40<" in html                     # bifa neconfirmată (testele nu ating rețeaua) nu schimbă scorul
     for f in plan[1:]:
         _done(client, app, f)
     html = client.get("/").get_data(as_text=True)
-    assert "Ai bifat toți pașii" in html and "scanează din nou" in html
+    assert "Ai trecut prin toți pașii" in html and "scanare nouă" in html
     client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], "scan": 0})
     assert "Pasul 1 din 5" in client.get("/").get_data(as_text=True)
 
@@ -415,7 +417,7 @@ def test_pages_use_local_js_and_enhanced_forms(tmp_path):
     resp = client.get("/")
     html = resp.get_data(as_text=True)
     assert '<script src="/static/app.js" defer></script>' in html
-    assert 'data-swap="#worst"' in html and 'data-chat-form' in html and 'data-swap="#save-area"' in html
+    assert 'data-swap="#score, #worst"' in html and 'data-chat-form' in html and 'data-swap="#save-area"' in html
     assert 'class="ai-fab"' in html and 'aria-haspopup="dialog"' in html
     assert "script-src 'self'" in resp.headers["Content-Security-Policy"]
     js = client.get("/static/app.js").get_data(as_text=True)

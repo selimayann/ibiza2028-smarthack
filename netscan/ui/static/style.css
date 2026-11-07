@@ -200,7 +200,26 @@ button:disabled { opacity: .6; cursor: progress; }
 .do-first-actions { margin-top: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; }
 .steps-progress { display: flex; gap: 4px; margin-top: .75rem; }
 .steps-progress span { flex: 1; height: 6px; border-radius: 3px; background: var(--brand-line); }
-.steps-progress span.done { background: var(--brand); }
+.steps-progress span.verified { background: var(--good); }
+.steps-progress span.declared { background: repeating-linear-gradient(45deg, var(--brand) 0 3px, var(--brand-line) 3px 6px); }
+.steps-progress span.now { outline: 2px solid var(--ink); outline-offset: 1px; }
+.steps-tally { margin-top: .4rem; color: var(--muted); }
+.step-status { display: inline-flex; align-items: center; gap: .35rem; margin-top: .5rem; font-weight: 700; color: var(--ink); }
+.step-status-verified { color: var(--good); }
+.step-status-declared { color: var(--brand-dark); }
+.do-first-verified { background: var(--good-tint); border-left-color: var(--good); }
+.step-nav { display: flex; flex-wrap: wrap; gap: .5rem; }
+.icon-flip { transform: scaleX(-1); }
+.verify-note { margin-top: .8rem; color: var(--muted); max-width: 60ch; }
+.verify-msg { display: flex; align-items: flex-start; gap: .5rem; margin: .25rem 0 .75rem; padding: .75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--tint); color: var(--ink); }
+.verify-msg .icon { flex: none; margin-top: .2em; }
+.verify-good { background: var(--good-tint); border-color: var(--good); }
+.verify-good .icon { color: var(--good); }
+.verify-warn { border-color: var(--medium); }
+.verify-warn .icon { color: var(--medium); }
+.verify-info .icon { color: var(--brand); }
+.score-after { display: flex; align-items: flex-start; gap: .4rem; margin-top: .6rem; color: var(--good); font-weight: 700; }
+.score-after .icon { flex: none; margin-top: .2em; }
 .do-first-done { background: var(--good-tint); border-left-color: var(--good); }
 .do-first-done .do-first-label { color: var(--good); display: flex; align-items: center; gap: .4rem; }
 
