@@ -172,3 +172,14 @@ def test_validator_accepts_fallback_texts_without_extra_ports():
     text, _ = a.fallback_answer("Ce e la 192.168.1.41?", V2)
     first_line = text.splitlines()[0]
     assert check_llm_text(first_line, V2).ok
+
+
+def test_llm_changes_answer_checked_against_both_scans():
+    """Bug găsit cu modelul local: problemele rezolvate sunt doar în scanarea veche."""
+    good = ("Ai rezolvat 3 probleme: Telnet pe 192.168.1.30 portul 23, pagina de admin pe 192.168.1.1 portul 80 "
+            "și UPnP pe portul 1900. Scorul a crescut de la 60 la 100.")
+    r = a.answer("Ce s-a schimbat?", V6B, previous=V6A, llm=lambda ctx: good)
+    assert r.source == "llm", r.problems
+    bad = "Ai rezolvat Telnet pe portul 2323 de la 192.168.1.77."
+    r = a.answer("Ce s-a schimbat?", V6B, previous=V6A, llm=lambda ctx: bad)
+    assert r.source == "fallback" and "PORT:2323" in r.problems and "IP:192.168.1.77" in r.problems

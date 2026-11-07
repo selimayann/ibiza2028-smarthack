@@ -383,7 +383,12 @@ def answer(question: str, scan: Scan, lang: str = "ro", previous: Optional[Scan]
         generated = llm(context)
     except Exception:  # LLM indisponibil: rămâne răspunsul predefinit
         return Answer(text, "fallback", intent, ["LLM_ERROR"])
-    check = ai_check.check_llm_text(generated, scan)
+    # La „ce s-a schimbat”, faptele vin din ambele scanări (problemele rezolvate sunt doar în cea veche).
+    facts = scan
+    if intent == INTENT_CHANGES and previous is not None and previous.status == "ok":
+        facts = Scan(file=scan.file, status="ok", score=scan.score, hosts=[*scan.hosts, *previous.hosts],
+                     findings=[*scan.findings, *previous.findings])
+    check = ai_check.check_llm_text(generated, facts)
     if check.ok:
         return Answer(generated.strip(), "llm", intent)
     return Answer(text, "fallback", intent, check.problems)

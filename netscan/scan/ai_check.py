@@ -69,6 +69,8 @@ def _scan_facts(scan: Scan) -> tuple[set[str], set[int], set[str], str]:
 
 def mentioned_ports(text: str) -> set[int]:
     found: set[int] = set()
+    # IP-urile se înlocuiesc întâi, ca „porturile 1900 și 192.168.1.1” să nu dea portul 192.
+    text = _IPV4.sub("IP", text)
     for m in _PORT_WORD.finditer(text):
         found.update(int(x) for x in re.findall(r"\d{1,5}", m.group(1)))
     found.update(int(x) for x in _PORT_PROTO.findall(text))

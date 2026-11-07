@@ -119,3 +119,9 @@ def test_ip_at_end_of_sentence():
     assert check_llm_text("Camera de la 192.168.1.40.", SCAN, CAM).ok
     r = check_llm_text("Problema e la 192.168.1.99.", SCAN, CAM)
     assert "IP:192.168.1.99" in r.problems and "PHONE" not in r.problems
+
+
+def test_ip_after_port_list_is_not_a_port():
+    """Bug găsit cu modelul local: „porturile 1900 și 192.168.1.1” dădea portul 192."""
+    assert mentioned_ports("porturile 1900 și 192.168.1.1") == {1900}
+    assert mentioned_ports("Accesează 192.168.1.40:8000.") == {8000}
