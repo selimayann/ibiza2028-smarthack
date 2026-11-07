@@ -302,7 +302,7 @@ def test_every_glossary_key_exists_in_glossary_with_matching_english():
 ])
 def test_abuse_requests_are_refused(q):
     r = a.answer(q, V2)
-    assert r.intent == a.INTENT_SCOPE and ("ilegal" in r.text or "illegal" in r.text)
+    assert r.intent == a.INTENT_SCOPE and r.text.startswith(("Nu te pot ajuta", "I can't help"))
 
 
 @pytest.mark.parametrize("q", ["Cum schimb parola camerei?", "Ce fac întâi cu camera?", "Ce e telnet?"])

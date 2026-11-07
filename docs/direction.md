@@ -45,6 +45,7 @@
 | D10 | **Ușa-capcană (`trap`)**: Telnet fals pe laptop; alertă când cineva din hotspot încearcă să intre; doar IP, oră, port, fără conținut | Ayan | Inovație (10%) | După nucleu (**făcut**) |
 | D11 | **Ascultarea pasivă (`listen`)**: numele anunțate de dispozitive (mDNS/SSDP), fără să trimită nimic; inspirat din Wireshark | Ayan | FR-03 (nume) + FR-13 (dispozitiv nou) | După nucleu (**făcut**) |
 | D12 | **„Ce vede cineva care ascultă”**: exemplu inventat de logare în clar la FTP/Telnet/HTTP, lângă explicație | Ayan (date), RBRT (UI) | Explicații (15%) | După nucleu (**făcut** în asistent) |
+| D13 | **Baza de cunoștințe pentru asistent (RAG)**: 56 de întrebări RO/EN, căutare locală BM25; răspuns direct fără AI, context pentru modelul local | Ayan | FR-12 + Explicații (15%) | După nucleu (**făcut**) |
 | D8 | **Model AI local (Qwen, rulat cu Ollama pe laptop, fără internet)**: reformulează răspunsurile asistentului; validatorul respinge orice IP, port, cod, CVE sau telefon inventat și se revine la textul predefinit. Scopul: demonstrația live a validatorului anti-halucinații | Ayan | FR-12 + Inovație (10%; ghidul, secțiunea 6) | După nucleu; **confirmat de mentori** (întrebarea 14: da) |
 
 > **FR-10 (Istoric) e cerință Must**, deci face parte din nucleu, nu din direcție: dispozitive noi/dispărute, porturi deschise/închise, findings rezolvate (V6a → V6b: 3), trendul scorului. D1 (alertele, FR-13) se construiește peste el.
