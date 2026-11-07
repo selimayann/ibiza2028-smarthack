@@ -4,9 +4,14 @@
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
 a { color: var(--link); }
 :focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
-.report-actions { max-width: 52rem; margin: 1rem auto 0; padding: 0 1rem; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; }
-.report-actions a, .report-actions button { min-height: 2.75rem; display: inline-flex; align-items: center; }
-.report-actions button { font: inherit; padding: .4rem .9rem; border: 2px solid var(--brand); color: var(--brand); background: #fff; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.report-actions { max-width: 52rem; margin: 1rem auto 0; padding: 0 1rem; }
+.report-actions a, .report-actions button { min-height: 2.75rem; display: inline-flex; align-items: center; gap: .4rem; font: inherit; font-weight: 700; border-radius: 8px; text-decoration: none; cursor: pointer; }
+.r-back { padding: .4rem 1rem .4rem .7rem; border: 2px solid var(--brand); color: var(--brand); background: #fff; }
+.r-back:hover { background: var(--bg); }
+/* Tipărirea: buton fix în dreapta-jos, mereu la îndemână oricât de lung e raportul. */
+.r-print { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 5; padding: .6rem 1.1rem; border: 0; color: #fff; background: var(--brand); box-shadow: 0 4px 14px rgba(51, 51, 255, .35); }
+.r-print:hover { background: #2424d6; }
+body:has(.r-print) { padding-bottom: 4.5rem; }
 .report { max-width: 52rem; margin: 1rem auto 2rem; background: #fff; padding: 2rem 2.2rem; border-radius: 10px; }
 h1 { font-size: 1.75em; margin: 0; line-height: 1.2; }
 .r-logo { height: 2.25em; width: auto; display: block; margin-bottom: .6em; }
@@ -21,15 +26,27 @@ p { margin: .3rem 0; }
 .r-meta div { display: contents; }
 .r-meta dt { color: var(--muted); }
 .r-meta dd { margin: 0; overflow-wrap: anywhere; }
-.r-summary { display: grid; grid-template-columns: minmax(10rem, 14rem) 1fr; gap: 1.5rem; margin-top: 1.5rem; align-items: start; }
+.r-summary { margin-top: 1.5rem; display: grid; grid-template-columns: auto 1fr; gap: .8rem 1.2rem; align-items: start; }
+.r-tiles { display: grid; grid-template-columns: minmax(9rem, 12rem) repeat(2, minmax(5.5rem, 7.5rem)); gap: .8rem; align-items: stretch; }
 .r-score { border: 2px solid currentColor; border-radius: 10px; padding: .8rem 1rem; }
 .r-score p { color: var(--ink); }
 .r-good { color: var(--good); } .r-fair { color: var(--fair); } .r-poor { color: var(--high); }
 .r-score .r-band { color: inherit; font-weight: 700; font-size: 1.15em; }
 .r-label { font-weight: 700; }
 .r-num { font-size: 2.6em; font-weight: 800; line-height: 1; }
-.r-counts ul { margin: .3em 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: .1em 1.2em; }
-.r-first { margin-top: .6rem; padding: .6rem .8rem; border-left: 5px solid var(--brand); background: var(--bg); }
+.r-tile { border: 1px solid var(--line); border-radius: 10px; padding: .8rem 1rem; display: flex; flex-direction: column; justify-content: center; gap: .3rem; color: var(--muted); }
+.r-tile .r-num { color: var(--ink); }
+/* Severitățile: simbol + text + număr (lizibil și alb-negru), culoare ca în aplicație. */
+.r-high { --c: #b3261e; --t: #fbeae9; } .r-medium { --c: #8f4700; --t: #fbefe3; }
+.r-low { --c: #6e5a00; --t: #f6f1d9; } .r-info { --c: #5B6570; --t: #eceff2; }
+.r-chips { margin: 0 0 .4rem; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; }
+.r-chip { color: var(--c); background: var(--t); border: 1px solid var(--c); border-radius: 999px; padding: .1rem .7rem; font-weight: 600; }
+.r-chip strong { margin-left: .2em; }
+.r-bar { display: flex; height: .5rem; border-radius: 999px; overflow: hidden; gap: 2px; }
+.r-bar span { flex: 1; background: var(--c); }
+.r-side { display: grid; gap: .6rem; align-self: start; }
+.r-first { padding: .6rem .8rem; border-left: 5px solid var(--brand); background: var(--bg); }
+.r-where { color: var(--muted); }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: .4rem .5rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 th { color: var(--muted); }
@@ -39,8 +56,9 @@ th { color: var(--muted); }
 .r-box { padding: 1rem; border: 2px solid var(--high); border-radius: 10px; margin-top: 1.5rem; }
 .r-foot { margin-top: 1.6em; padding-top: .8em; border-top: 1px solid var(--line); color: var(--muted); }
 @media (max-width: 40rem) {
+  .r-print { left: 1rem; right: 1rem; justify-content: center; }
   .report { padding: 1.2rem 1rem; border-radius: 0; }
-  .r-summary { grid-template-columns: 1fr; }
+  .r-summary { grid-template-columns: 1fr; } .r-tiles { grid-template-columns: 1fr 1fr; } .r-score { grid-column: 1 / -1; }
   table, thead, tbody, tr, th, td { display: block; }
   thead { position: absolute; left: -9999px; }
   tr { border-bottom: 1px solid var(--line); padding: .4rem 0; }
@@ -51,13 +69,15 @@ th { color: var(--muted); }
   body { background: #fff; font-size: 9pt; line-height: 1.25; }
   .r-table th:nth-child(2) { width: 40%; } .r-table th:nth-child(3) { width: 22%; }
   h1 { font-size: 16pt; } h2 { font-size: 11.5pt; margin: 10pt 0 4pt; }
-  .r-summary { margin-top: 8pt; gap: 12pt; } .r-num { font-size: 22pt; } .r-logo { height: 18pt; margin-bottom: 4pt; }
+  .r-summary { margin-top: 8pt; gap: 6pt 10pt; } .r-tiles { grid-template-columns: 96pt 62pt 62pt; gap: 6pt; }
+  .r-tile { padding: 4pt 8pt; gap: 2pt; } .r-bar { height: 4pt; } .r-chips { gap: 3pt; margin-bottom: 4pt; } .r-chip { padding: 0 6pt; }
+  .r-summary, .r-chip, .r-bar span, .r-first { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .r-num { font-size: 22pt; } .r-logo { height: 18pt; margin-bottom: 4pt; }
   th, td { padding: 2pt 4pt; } .r-foot { margin-top: 6pt; padding-top: 4pt; }
-  .r-score { padding: 5pt 8pt; } .r-first { margin-top: 4pt; padding: 4pt 6pt; }
+  .r-score { padding: 5pt 8pt; } .r-first { padding: 4pt 6pt; }
   /* Numărul rândului (10, 11...) și antetele (Producător, Probleme) nu se mai rup pe două linii. */
   .r-table .r-n, th { white-space: nowrap; overflow-wrap: normal; } .r-table .r-n { width: 2em; }
   /* Doar pe hârtie (A4, o pagină): standardele se ascund (rămân în aplicație și în HTML), textul secundar e mai mic. */
-  .report-actions, .r-std { display: none; }
+  .report-actions, .r-std { display: none; } body { padding-bottom: 0 !important; }
   table { font-size: .95em; } .r-code, .r-small, .r-foot { font-size: .9em; }
   .report { max-width: none; margin: 0; padding: 0; border-radius: 0; }
   h2 { break-after: avoid; }

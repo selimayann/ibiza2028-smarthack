@@ -9,9 +9,8 @@
 <body>
 {% if not inline_css %}
   <nav class="report-actions" aria-label="{{ T('report_title') }}">
-    <a href="{{ back_url }}">{{ T('report_back') }}</a>
-    <button type="button" id="print-report">{{ T('report_print') }}</button>
-    <a href="{{ download_url }}">{{ T('report_download') }}</a>
+    <a class="r-back" href="{{ back_url }}"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('report_back') }}</a>
+    <button type="button" id="print-report" class="r-print"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>{{ T('report_print') }}</button>
   </nav>
 {% endif %}
 <main class="report">
@@ -32,22 +31,33 @@
     <section class="r-box r-error"><h2>{{ T('error_title') }}</h2><p>{{ error_message(scan.error_code) }}</p></section>
   {% else %}
     {% set band = score_band(scan.score) %}
+    {% set nd, nf = devices|length, scan.findings|length %}
     <section class="r-summary" aria-label="{{ T('report_summary') }}">
-      <div class="r-score r-{{ band }}">
-        <p class="r-label">{{ T('score_label') }}</p>
-        <p><span class="r-num">{{ scan.score }}</span> {{ T('score_of') }}</p>
-        <p class="r-band">{{ {'good': '●', 'fair': '◆', 'poor': '▲'}[band] }} {{ T('band_' ~ band) }}</p>
+      <div class="r-tiles">
+        <div class="r-score r-{{ band }}">
+          <p class="r-label">{{ T('score_label') }}</p>
+          <p><span class="r-num">{{ scan.score }}</span> {{ T('score_of') }}</p>
+          <p class="r-band">{{ {'good': '●', 'fair': '◆', 'poor': '▲'}[band] }} {{ T('band_' ~ band) }}</p>
+        </div>
+        <div class="r-tile"><span class="r-num">{{ nd }}</span><span>{{ T('report_device')|lower if nd == 1 else T('report_devices')|lower }}</span></div>
+        <div class="r-tile"><span class="r-num">{{ nf }}</span><span>{{ T('report_problem_one') if nf == 1 else T('report_problems')|lower }}</span></div>
       </div>
-      <div class="r-counts">
-        <p><strong>{{ devices|length }}</strong> {{ T('report_devices')|lower }}, <strong>{{ scan.findings|length }}</strong> {{ T('report_problems')|lower }}</p>
-        <ul>
-          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li>{{ T('sev_' ~ sev) }}: {{ counts[sev] }}</li>{% endif %}{% endfor %}
+      <div class="r-side">
+      {% if nf %}
+      <div class="r-sevs">
+        <ul class="r-chips">
+          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li class="r-chip r-{{ sev }}"><span aria-hidden="true">{{ {'high': '▲', 'medium': '◆', 'low': '●', 'info': '○'}[sev] }}</span> {{ T('sev_' ~ sev) }} <strong>{{ counts[sev] }}</strong></li>{% endif %}{% endfor %}
         </ul>
-        {% set worst = devices[0] if devices and devices[0].findings else none %}
-        {% if worst %}
-          <p class="r-first"><strong>{{ T('do_first') }}</strong> {{ explain(worst.worst.code).steps[0] }}
-            <span class="r-muted">({{ device_type_label(worst.host.device_type) }}, {{ worst.host.ip }})</span></p>
-        {% endif %}
+        <div class="r-bar" aria-hidden="true">{% for sev in ('high', 'medium', 'low', 'info') %}{% for _ in range(counts[sev]) %}<span class="r-{{ sev }}"></span>{% endfor %}{% endfor %}</div>
+      </div>
+      {% endif %}
+      {% set worst = devices[0] if devices and devices[0].findings else none %}
+      {% if worst %}
+        <div class="r-first">
+          <p><strong>{{ T('do_first') }}</strong> {{ explain(worst.worst.code).steps[0] }}</p>
+          <p class="r-where">{{ device_type_label(worst.host.device_type) }} · <span class="r-mono">{{ worst.host.ip }}{% if worst.worst.port is not none %}:{{ worst.worst.port }}{% endif %}</span></p>
+        </div>
+      {% endif %}
       </div>
     </section>
 
