@@ -280,9 +280,11 @@
     </ul>
     <div class="score-facts">
       <p>{{ T('facts_devices') }}<span class="count">{{ devices|length }}</span></p>
+      {# Sub „Probleme” sunt probleme pe severități, nu dispozitive: suma lor = totalul de pe acest rând #}
+      <p class="facts-problems">{{ T('facts_problems') }}<span class="count">{{ scan.findings|length }}</span></p>
       {% for sev_name in ('high', 'medium', 'low', 'info') %}
         {% set n = scan.findings|selectattr('severity', 'equalto', sev_name)|list|length %}
-        {% if n %}<p>{{ sev(sev_name) }}<span class="count">{{ n }}</span></p>{% endif %}
+        {% if n %}<p class="facts-sev">{{ sev(sev_name) }}<span class="count">{{ n }}</span></p>{% endif %}
       {% endfor %}
     </div>
   </section>

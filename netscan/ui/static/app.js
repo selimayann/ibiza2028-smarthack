@@ -8,6 +8,12 @@
   document.documentElement.classList.add("js");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Butonul asistentului: întreg sus pe pagină, doar Volt după ce derulezi (nu mai acoperă cardurile).
+  // Îl căutăm la fiecare eveniment, pentru că actualizările parțiale îl înlocuiesc.
+  const compactFab = () => document.querySelector(".ai-fab")?.classList.toggle("is-compact", window.scrollY > 120);
+  window.addEventListener("scroll", compactFab, { passive: true });
+  document.addEventListener("DOMContentLoaded", compactFab);
+
   async function swap(url, init, selectors, focusSel, keepUrl) {
     let res;
     try {
