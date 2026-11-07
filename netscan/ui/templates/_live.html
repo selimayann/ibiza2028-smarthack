@@ -1,0 +1,157 @@
+{# Protecția live (B, netscan/scan/live.py): ce se întâmplă ACUM în hotspot. app.js îl reîmprospătează din
+   /live/panel (HTML escapat de Jinja). Datele de la dispozitive (producător, servicii) sunt text nesigur: doar
+   autoescape, niciodată |safe. Fără JavaScript: reîncarci pagina. #}
+{% set sc = live.scan %}
+{% macro token_field() %}<input type="hidden" name="token" value="{{ token }}">{% endmacro %}
+<section class="live card live-{{ live.status }}" id="live" aria-labelledby="live-h"
+         data-poll="{{ live.poll_ms }}" data-panel="{{ url_for('live_panel') }}" data-version="{{ live.version }}"
+         data-latest="{{ live.latest }}">
+  <div class="live-head">
+    <div class="live-title">
+      <h2 id="live-h" tabindex="-1">{{ T('live_title') }}</h2>
+      {% if live.status == 'active' %}
+        <p class="live-badge"><span class="live-dot" aria-hidden="true"></span>{{ T('live_badge') }}</p>
+      {% elif live.status == 'paused' %}
+        <p class="live-badge live-badge-paused">{{ T('live_paused') }}</p>
+      {% endif %}
+    </div>
+    <div class="live-actions">
+      {% if live.status == 'off' %}
+        <form method="post" action="{{ url_for('live_start') }}" data-swap="#live" data-focus="#live-h">
+          {{ token_field() }}
+          <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('live_start') }}</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('live_stop') }}" data-swap="#live" data-focus="#live-h">
+          {{ token_field() }}
+          <button type="submit" class="button-secondary">{{ T('live_stop') }}</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if live.msg %}<p class="live-msg" role="status">{{ T('live_msg_' ~ live.msg) }}</p>{% endif %}
+
+  {% if live.status == 'off' %}
+    <p class="live-lead">{{ T('live_off_body') }}</p>
+    <ul class="live-explain">
+      <li>{{ T('live_explain_1') }}</li>
+      <li>{{ T('live_explain_2') }}</li>
+      <li>{{ T('live_explain_3') }}</li>
+    </ul>
+    <p class="live-safe"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{{ T('live_explain_safe') }}</p>
+  {% elif live.status == 'paused' %}
+    <p class="live-paused" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ live.reason or T('live_paused_starting') }}</p>
+    <p class="muted">{{ T('live_paused_hint') }}</p>
+  {% else %}
+    <p class="live-where">{{ T('live_where')|format(live.ssid or '?', live.cidr, live.own_ip) }}</p>
+    <dl class="live-stats">
+      <div><dt>{{ T('live_online') }}</dt><dd>{% if live.starting %}…{% else %}{{ live.online }}{% endif %}</dd></div>
+      <div><dt>{{ T('live_last_check') }}</dt><dd>{{ live.last_check or '…' }}</dd></div>
+      <div><dt>{{ T('live_trap') }}</dt>
+        <dd class="trap-{{ live.trap_state }}">
+          {% if live.trap_state == 'listening' %}{{ T('live_trap_listening')|format(live.trap_port) }}
+          {% elif live.trap_code == 'BUSY' %}{{ T('live_trap_busy')|format(live.trap_port) }}
+          {% elif live.trap_state == 'error' %}{{ T('live_trap_failed') }}
+          {% else %}{{ T('live_trap_off') }}{% endif %}
+        </dd></div>
+    </dl>
+
+    {% if live.starting %}
+      <p class="live-starting" role="status">{{ T('live_starting') }}</p>
+    {% else %}
+      <h3 class="live-sub">{{ T('live_devices') }}</h3>
+      {% if live.devices %}
+      <div class="table-wrap">
+        <table class="live-table">
+          <thead><tr>
+            <th scope="col">{{ T('live_col_device') }}</th><th scope="col">IP</th>
+            <th scope="col">{{ T('live_col_mac') }}</th><th scope="col">{{ T('live_col_ports') }}</th>
+            <th scope="col">{{ T('live_col_seen') }}</th>
+          </tr></thead>
+          <tbody>
+          {% for d in live.devices %}
+            <tr class="{{ 'is-gone' if not d.online }}{{ ' is-new' if d.new }}">
+              <td>
+                <span class="live-name">{{ d.name }}</span>
+                {% if d.new %}<span class="tag tag-urgent">{{ T('live_new') }}</span>{% endif %}
+                {% if d.not_in_scan %}<span class="tag">{{ T('live_not_in_scan') }}</span>{% endif %}
+                {% if not d.online %}<span class="tag">{{ T('live_gone') }}</span>{% endif %}
+              </td>
+              <td class="mono" translate="no">{{ d.ip }}</td>
+              <td class="mono" translate="no">{{ d.mac_masked or '—' }}</td>
+              <td>
+                {% if not d.online %}<span class="muted">—</span>
+                {% elif not d.pulsed %}<span class="muted">{{ T('live_ports_checking') }}</span>
+                {% elif d.open_ports %}{% for p in d.open_ports %}<span class="port-chip" translate="no">{{ p.port }}{% if p.label %} {{ p.label }}{% endif %}</span>{% endfor %}
+                {% else %}<span class="muted">{{ T('live_ports_none') }}</span>{% endif %}
+              </td>
+              <td class="mono">{{ d.since if d.online else T('live_left_at')|format(d.left) }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p class="muted">{{ T('live_no_devices') }}</p>
+      {% endif %}
+      <p class="live-note">{{ T('live_note_scan') }}</p>
+    {% endif %}
+
+    <h3 class="live-sub">{{ T('live_events') }}</h3>
+    {% if live.events %}
+      <ul class="live-events">
+        {% for e in live.events %}
+          <li class="ev-{{ e.tone }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'urgent': 'high', 'good': 'good'}.get(e.tone, 'info') }}"/></svg><span class="mono ev-time">{{ e.time }}</span><span>{{ e.text }}</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">{{ T('live_events_none') }}</p>
+    {% endif %}
+  {% endif %}
+
+  {# Scanarea completă (nmap): pasul de admin, pornit doar de aici, cu fereastra de permisiune a sistemului #}
+  <div class="live-scan scan-{{ sc.state }}" aria-labelledby="scan-h">
+    <h3 id="scan-h" class="live-sub" tabindex="-1">{{ T('scan_title') }}</h3>
+    {% if sc.state == 'running' %}
+      <p class="scan-line" role="status">{{ T('scan_running') }}{% if sc.phase %}: {{ T('scan_phase_' ~ sc.phase) }}{% endif %}{% if sc.eta %} · {{ T('scan_eta')|format(sc.eta) }}{% endif %}</p>
+      <div class="scan-bar" role="progressbar" aria-label="{{ T('scan_title') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ sc.percent }}"><span class="w-{{ (sc.percent // 5) * 5 }}"></span></div>
+      <p class="scan-pct mono">{{ sc.percent }}%</p>
+      {% if sc.found %}
+        <p class="muted">{{ T('scan_found')|format(sc.found_total) }}</p>
+        <ul class="scan-found">{% for f in sc.found %}<li class="mono" translate="no">{{ f.ip }} · {{ f.port }}/{{ f.proto }}</li>{% endfor %}</ul>
+      {% endif %}
+      <form method="post" action="{{ url_for('live_scan_stop') }}" data-swap="#live" data-focus="#scan-h">
+        {{ token_field() }}<button type="submit" class="button-link">{{ T('scan_stop') }}</button>
+      </form>
+    {% elif sc.state == 'waiting_permission' %}
+      <p class="scan-line" role="status">{{ T('scan_waiting') }}</p>
+      <p class="muted">{{ T('scan_waiting_hint') }}</p>
+    {% elif sc.state == 'waiting_next' %}
+      <p class="scan-line" role="status"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('scan_next')|format(sc.next) }}</p>
+      {% if sc.file %}<p><a href="{{ url_for('overview', file=sc.file) }}">{{ T('scan_see') }}</a></p>{% endif %}
+      <form method="post" action="{{ url_for('live_scan_stop') }}" data-swap="#live" data-focus="#scan-h">
+        {{ token_field() }}<button type="submit" class="button-link">{{ T('scan_auto_stop') }}</button>
+      </form>
+    {% else %}
+      {% if sc.state == 'done' %}
+        <p class="scan-line scan-ok" role="status"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('scan_done')|format(sc.finished) }} <a href="{{ url_for('overview', file=sc.file) }}">{{ T('scan_see') }}</a></p>
+      {% elif sc.state in ('denied', 'launch_failed', 'stopped', 'failed') %}
+        <p class="scan-line" role="status">{{ T('scan_' ~ sc.state) }}{% if sc.state == 'failed' and sc.message %} {{ sc.message }}{% endif %}</p>
+      {% elif sc.state == 'refused' %}
+        <p class="scan-line" role="status">{{ T('scan_refused') }} {{ sc.message }}</p>
+      {% endif %}
+      <p class="muted">{{ T('scan_hint') }}</p>
+      <div class="scan-actions">
+        <form method="post" action="{{ url_for('live_scan') }}" data-swap="#live" data-focus="#scan-h">
+          {{ token_field() }}<input type="hidden" name="job" value="scan">
+          <button type="submit" class="button-quiet"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('scan_now') }}</button>
+        </form>
+        <form method="post" action="{{ url_for('live_scan') }}" data-swap="#live" data-focus="#scan-h">
+          {{ token_field() }}<input type="hidden" name="job" value="auto">
+          <button type="submit" class="button-secondary">{{ T('scan_auto') }}</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</section>

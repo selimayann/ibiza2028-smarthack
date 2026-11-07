@@ -14,6 +14,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -277,28 +278,80 @@ def prepare_scan(
                     service_probes=str(probes), versiondb=versiondb)
 
 
-def execute(plan: ScanPlan, nmap_path: Optional[str] = None) -> ScanPlan:
-    """Rulează nmap doar pentru un plan acceptat. Apelat doar cu --confirm."""
+def _ready(plan: ScanPlan, nmap_path: Optional[str]) -> tuple[Optional[str], Optional[ScanPlan]]:
+    """Verificările de dinaintea lui nmap: (calea nmap, None) sau (None, refuzul)."""
     if not plan.ok:
-        return plan
+        return None, plan
     if not is_admin():
-        return _refuse(NOT_ADMIN, plan.network, plan.target)
+        return None, _refuse(NOT_ADMIN, plan.network, plan.target)
     nmap_path = nmap_path or find_nmap()
     if not nmap_path:
-        return _refuse(NMAP_NOT_FOUND, plan.network, plan.target)
-
+        return None, _refuse(NMAP_NOT_FOUND, plan.network, plan.target)
     Path(plan.out_path).parent.mkdir(parents=True, exist_ok=True)
     if plan.versiondb:
         try:
             write_versiondb(Path(plan.service_probes), Path(plan.versiondb))
         except OSError:
-            return _refuse(NO_SERVICE_PROBES, plan.network, plan.target)
+            return None, _refuse(NO_SERVICE_PROBES, plan.network, plan.target)
+    return nmap_path, None
+
+
+def execute(plan: ScanPlan, nmap_path: Optional[str] = None) -> ScanPlan:
+    """Rulează nmap doar pentru un plan acceptat. Apelat doar cu --confirm."""
+    nmap_path, refused = _ready(plan, nmap_path)
+    if refused is not None:
+        return refused
     args = [nmap_path, *plan.args[1:]]
     try:
         result = subprocess.run(args, shell=False, check=False)
     except OSError:
         return _refuse(NMAP_FAILED, plan.network, plan.target)
     if result.returncode != 0 or not Path(plan.out_path).is_file():
+        return _refuse(NMAP_FAILED, plan.network, plan.target)
+    return plan
+
+
+# --- execuția cu progres (scanarea pornită din aplicație, vezi scan_job.py) ---------------------
+# `-v` afișează porturile deschise pe măsură ce sunt găsite, `--stats-every` afișează procentul. Ambele schimbă
+# doar ce scrie nmap pe ecran, nu și ce trimite în rețea: restul comenzii rămâne exact cea de la `scan --confirm`.
+PROGRESS_ARGS = ["-v", "--stats-every", "5s"]
+STOPPED = "STOPPED"
+MAX_LINE = 500
+
+
+def execute_streaming(plan: ScanPlan, on_line: Callable[[str], None],
+                      should_stop: Callable[[], bool] = lambda: False, nmap_path: Optional[str] = None,
+                      popen: Callable = subprocess.Popen, poll_s: float = 1.0) -> ScanPlan:
+    """Ca execute(), dar citește ieșirea lui nmap linie cu linie (pentru progresul din aplicație).
+    `should_stop()` adevărat -> nmap e oprit, iar rezultatul e un refuz STOPPED."""
+    nmap_path, refused = _ready(plan, nmap_path)
+    if refused is not None:
+        return refused
+    args = [nmap_path, *PROGRESS_ARGS, *plan.args[1:]]
+    kwargs = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if sys.platform == "win32" else {}
+    try:
+        proc = popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                     text=True, encoding="utf-8", errors="replace", shell=False, **kwargs)
+    except OSError:
+        return _refuse(NMAP_FAILED, plan.network, plan.target)
+
+    stopped = threading.Event()
+
+    def watchdog() -> None:
+        while proc.poll() is None:
+            if should_stop():
+                stopped.set()
+                proc.terminate()
+                return
+            time.sleep(poll_s)
+
+    threading.Thread(target=watchdog, daemon=True).start()
+    for line in proc.stdout:
+        on_line(line.rstrip("\r\n")[:MAX_LINE])
+    rc = proc.wait()
+    if stopped.is_set():
+        return _refuse(STOPPED, plan.network, plan.target, "Scanarea a fost oprită.", "The scan was stopped.")
+    if rc != 0 or not Path(plan.out_path).is_file():
         return _refuse(NMAP_FAILED, plan.network, plan.target)
     return plan
 

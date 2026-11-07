@@ -68,6 +68,13 @@ După instalare (secțiunea Setup), interfața pornește dintr-un **dublu-click*
 
 Scriptul folosește mediul virtual `.venv` dacă există, pornește `python -m netscan ui --port 5055` și deschide browserul pe `http://127.0.0.1:5055/`. Ascultă doar pe 127.0.0.1, fără drepturi de administrator, fără scanare și fără instalări. Portul 5055 (nu 5000), pentru că pe macOS portul 5000 e folosit de AirPlay Receiver. Oprire: închide fereastra.
 
+### Dashboard: rețeaua ta, live
+
+Prima pagină (**Dashboard**) arată sus **„Rețeaua ta acum”**:
+- **„Pornește protecția live”**: cât timp laptopul e pe hotspotul echipei, vezi pe loc cine e conectat (la ~20 s), ce porturi riscante sunt deschise (în fiecare minut), cine a venit sau a plecat și dacă cineva încearcă să intre pe ușa-capcană. Când laptopul pleacă de pe hotspot, totul intră în pauză singur (nici capcana nu mai ascultă) și repornește când revii. Rămâne pornită și la următoarea deschidere a aplicației.
+- **„Scanează acum”** / **„Scanează automat la 15 minute”**: scanarea completă cu nmap, pornită din aplicație. Sistemul cere permisiunea de administrator (UAC pe Windows, parola pe macOS); vezi faza, procentul și porturile găsite pe măsură ce apar. La final scanarea intră în istoric, alertele față de scanarea anterioară intră în Jurnal, iar Dashboard-ul arată rezultatul (problemele și scorul, de la motor).
+- Sub panou rămân scanările tale (`scans/`, cea mai nouă prima); fără nicio scanare proprie, exemplele din Validation Set. `NETSCAN_SCANS_DIR` alege alt folder (de ex. `fixtures/lab`).
+
 ## Setup
 
 Necesită Python 3.11+ și nmap (pe Windows, cu Npcap).
@@ -111,6 +118,7 @@ python -m netscan listen --confirm                # ascultare pasivă: numele an
 - **`trap`**: un Telnet fals (implicit portul 2323) pe IP-ul laptopului din hotspot. Nimeni legitim nu se conectează acolo, deci orice încercare e o alertă: „cineva din rețea (IP) a încercat să intre”. Nu execută nimic, citește și aruncă ce primește, păstrează **doar IP, ora și portul** (`data/trap_attempts.jsonl`, șterse automat după 7 zile și de „Șterge istoricul”). Ignoră IP-urile din `NETSCAN_TRAP_IGNORE` (de ex. laptopul care scanează). Pe Windows trebuie permis portul în firewall doar pe rețeaua Private (comanda apare la dry-run).
 - **`listen`**: ascultă doar anunțurile pe care dispozitivele le trimit singure (mDNS, SSDP) pe interfața hotspotului, ca să afle nume ca „Chromecast Sufragerie” sau „HP LaserJet”. Nu trimite cereri și nu deschide link-urile din anunțuri; păstrează local doar IP, nume, serviciu (`data/device_names.jsonl`, șterse de „Șterge istoricul”).
 - **„Ce vede cineva care ascultă”**: la FTP, Telnet și HTTP fără HTTPS, asistentul (și UI-ul) arată cum arată o logare pentru cineva care ascultă rețeaua (`PASS parola-ta`). E un **exemplu inventat**; nu capturăm traficul nimănui.
+- **Protecția live** (din Dashboard): aceleași verificări de rețea ca la `scan`, refăcute la ~10 s. Prezența: câte o datagramă UDP goală spre fiecare adresă din hotspot (cel mult 25/s), apoi tabela ARP a sistemului; porturile riscante: câte o conexiune TCP închisă imediat (cel mult 10/s), fără să trimitem sau să citim date. Capcana ascultă doar pe IP-ul din hotspot. MAC-urile rămân mascate, nimic nu iese din hotspot. Programele, versiunile, problemele și scorul le dă doar scanarea completă.
 - Niciuna nu instalează nimic pe alte dispozitive și nu citește log-uri: vedem din rețea ce uși sunt deschise și cine încearcă să intre, nu ce e înăuntru.
 
 ### Utilizare responsabilă
