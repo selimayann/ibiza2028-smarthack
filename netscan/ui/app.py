@@ -229,6 +229,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
         return {
             "lang": lang,
+            "from_devices": request.args.get("from") == "devices",   # pagina dispozitivului deschisă din „Dispozitive”
             "other_lang": other,
             "lang_url": lang_url,
             "T": lambda key: i18n.t(lang, key),

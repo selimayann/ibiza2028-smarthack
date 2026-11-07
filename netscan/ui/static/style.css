@@ -225,7 +225,8 @@ button:disabled { opacity: .6; cursor: progress; }
 .do-first-done .do-first-label { color: var(--good); display: flex; align-items: center; gap: .4rem; }
 
 /* ---------- severitate ---------- */
-.sev { display: inline-flex; align-items: center; gap: .3rem; font-weight: 700; white-space: nowrap; }
+.sev { display: inline-flex; align-items: baseline; gap: .3rem; font-weight: 700; white-space: nowrap; }
+.sev .icon { align-self: center; }
 .sev-high { color: var(--high); }
 .sev-medium { color: var(--medium); }
 .sev-low { color: var(--low); }
@@ -356,14 +357,23 @@ button:disabled { opacity: .6; cursor: progress; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 main > section > h2 { margin: 2.5rem 0 .25rem; padding-bottom: .75rem; border-bottom: 2px solid var(--ink); }
-.problem { padding: 1.5rem 0; border-bottom: 1px solid var(--line); }
+.problem { padding: 1.25rem 1.4rem 1.3rem; margin-top: 1rem; }
+.problem-head { display: flex; flex-direction: column; gap: .15rem; }
 .problem h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; font-size: 1.25rem; }
-.problem-text { margin-top: .6rem; max-width: 68ch; }
-.steps { margin: .4rem 0 0; padding-left: 1.4rem; max-width: 68ch; }
-.steps li { margin: .3rem 0; padding-left: .2rem; }
+.problem-name { color: var(--ink); }
+.problem-meta { color: var(--muted); }
+.problem-meta .code { font-size: 1rem; }
+.problem-text { margin-top: .75rem; max-width: 65ch; }
+.problem h4 { margin-top: 1rem; font-size: 1.0625rem; }
+.steps { margin: .4rem 0 0; padding-left: 1.6rem; max-width: 65ch; }
+.steps li { margin: .45rem 0; padding-left: .3rem; }
 .steps li:first-child { font-weight: 700; }
-.evidence { margin-top: .9rem; }
-.standards { margin-top: 1rem; }
+.steps li::marker { color: var(--brand); font-weight: 700; }
+.tech-details { margin-top: 1.1rem; border-top: 1px solid var(--line); padding-top: .4rem; }
+.tech-details summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; }
+.tech-details summary:hover { text-decoration: underline; }
+.evidence { margin-top: .75rem; }
+.standards { margin-top: .5rem; }
 .standards h4 { margin: 0 0 .3rem; font-size: 1rem; color: var(--muted); font-family: "Atkinson Next", system-ui, sans-serif; font-weight: 700; }
 .standards ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
 
@@ -594,3 +604,9 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .scan-bar .w-90 { width: 90%; }
 .scan-bar .w-95 { width: 95%; }
 .scan-bar .w-100 { width: 100%; }
+/* „Detalii tehnice”: săgeată care arată că se deschide (fără marcajul implicit, ascuns de display:flex) */
+.tech-details summary { list-style: none; }
+.tech-details summary::-webkit-details-marker { display: none; }
+.tech-details summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.tech-details[open] summary::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: no-preference) { .tech-details summary::before { transition: transform .15s ease; } }

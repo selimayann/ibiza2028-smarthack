@@ -2,7 +2,12 @@
 {% from "_macros.html" import sev, port_label, device_name, device_title, announced_sub, eavesdrop_block with context %}
 {% block title %}{{ device_name(d.host) }} {{ d.host.ip }} · SafeEel{% endblock %}
 {% block content %}
+{# Înapoi de unde ai venit: din „Dispozitive” sau din Dashboard #}
+{% if from_devices %}
+<p class="back"><a href="{{ url_for('inventory', scan=selected) }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back_devices') }}</a></p>
+{% else %}
 <p class="back"><a href="{{ url_for('overview', scan=selected) }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back') }}</a></p>
+{% endif %}
 
 <header class="device-page-head">
   <h1>{{ device_title(d.host) }} <span class="mono ip" translate="no">{{ d.host.ip }}</span></h1>
@@ -18,12 +23,18 @@
   <h2 id="f-h">{{ T('findings_title') }}</h2>
   {% for f in d.findings %}
     {% set ex = explain(f.code) %}
-    <article class="problem">
-      <h3>{{ sev(f.severity) }} {{ code_name(f.code) }} <span class="code" translate="no">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
+    <article class="problem card">
+      <div class="problem-head">
+        <h3>{{ sev(f.severity) }}<span class="problem-name">{{ code_name(f.code) }}</span></h3>
+        <p class="problem-meta"><span class="code" translate="no">{{ f.code }}</span> · {{ port_label(f) }}</p>
+      </div>
       <p class="problem-text">{{ ex.text }}</p>
       {% set ev = eavesdrop(f.code) %}{% if ev %}{{ eavesdrop_block(ev) }}{% endif %}
       <h4>{{ T('how_to_fix') }}</h4>
       <ol class="steps">{% for s in ex.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+      {# Pentru cine te ajută cu rețeaua: standardele și dovada, ascunse până le deschizi #}
+      <details class="tech-details">
+      <summary>{{ T('tech_details') }}</summary>
       {% set std = standards(f.code) %}
       {% if std.groups %}
         <div class="standards">
@@ -37,6 +48,7 @@
         </div>
       {% endif %}
       <p class="evidence"><span class="muted">{{ T('evidence') }}:</span> <code>{{ f.evidence }}</code></p>
+      </details>
     </article>
   {% else %}
     <p class="notice">{{ T('no_findings') }}</p>
