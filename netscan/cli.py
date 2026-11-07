@@ -68,6 +68,10 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--port", type=int, default=2323, help="portul capcanei (1024–65535)")
     t.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
     t.add_argument("--lang", choices=["ro", "en"], default="ro")
+
+    li = sub.add_parser("listen", help="ascultare pasivă: numele anunțate de dispozitive (mDNS/SSDP), fără să trimită nimic")
+    li.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
+    li.add_argument("--lang", choices=["ro", "en"], default="ro")
     return p
 
 
@@ -241,6 +245,13 @@ def cmd_trap(args) -> int:
     return run_trap(args.confirm, port=args.port, lang=args.lang)
 
 
+def cmd_listen(args) -> int:
+    """B: ascultare pasivă mDNS/SSDP doar pe interfața hotspotului; nu trimite cereri, nu deschide link-uri."""
+    from netscan.scan.passive import run_listen
+
+    return run_listen(args.confirm, lang=args.lang)
+
+
 COMMANDS = {
     "analyze": cmd_analyze,
     "network": cmd_network,
@@ -251,6 +262,7 @@ COMMANDS = {
     "ask": cmd_ask,
     "watch": cmd_watch,
     "trap": cmd_trap,
+    "listen": cmd_listen,
 }
 
 

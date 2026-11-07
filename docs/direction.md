@@ -43,6 +43,8 @@
 | D7 | **Raportul de o pagină pentru furnizorul IT** (HTML/PDF): scor, dispozitive, findings, pașii de reparare | RBRT | FR-14 (Should/Could) | După nucleu (în ghid: orele 16–20) |
 | D9 | **Monitorul periodic (`watch`)**: scanare la interval doar pe hotspot, alerte la dispozitiv sau port nou, probleme noi sau rezolvate, scor; varianta fără agenți a supravegherii continue | Ayan | FR-13 | După nucleu (**făcut**) |
 | D10 | **Ușa-capcană (`trap`)**: Telnet fals pe laptop; alertă când cineva din hotspot încearcă să intre; doar IP, oră, port, fără conținut | Ayan | Inovație (10%) | După nucleu (**făcut**) |
+| D11 | **Ascultarea pasivă (`listen`)**: numele anunțate de dispozitive (mDNS/SSDP), fără să trimită nimic; inspirat din Wireshark | Ayan | FR-03 (nume) + FR-13 (dispozitiv nou) | După nucleu (**făcut**) |
+| D12 | **„Ce vede cineva care ascultă”**: exemplu inventat de logare în clar la FTP/Telnet/HTTP, lângă explicație | Ayan (date), RBRT (UI) | Explicații (15%) | După nucleu (**făcut** în asistent) |
 | D8 | **Model AI local (Qwen, rulat cu Ollama pe laptop, fără internet)**: reformulează răspunsurile asistentului; validatorul respinge orice IP, port, cod, CVE sau telefon inventat și se revine la textul predefinit. Scopul: demonstrația live a validatorului anti-halucinații | Ayan | FR-12 + Inovație (10%; ghidul, secțiunea 6) | După nucleu; **confirmat de mentori** (întrebarea 14: da) |
 
 > **FR-10 (Istoric) e cerință Must**, deci face parte din nucleu, nu din direcție: dispozitive noi/dispărute, porturi deschise/închise, findings rezolvate (V6a → V6b: 3), trendul scorului. D1 (alertele, FR-13) se construiește peste el.

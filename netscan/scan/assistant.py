@@ -497,7 +497,12 @@ def _answer_code(scan: Scan, lang: str, code: str) -> str:
     else:
         head = t["code_absent"].format(code=code)
     steps = " ".join(f"{i}. {s}" for i, s in enumerate(ex["steps"], 1))
-    return "\n".join([head, ex["text"], t["code_steps"].format(steps=steps)])
+    parts = [head, ex["text"], t["code_steps"].format(steps=steps)]
+    from netscan.scan.eavesdrop import as_text   # „ce vede cineva care ascultă” (exemplu inventat)
+    sample = as_text(code, lang)
+    if sample:
+        parts.append(sample)
+    return "\n".join(parts)
 
 
 def _answer_device(scan: Scan, lang: str, ip: str) -> str:

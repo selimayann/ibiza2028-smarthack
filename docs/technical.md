@@ -44,6 +44,8 @@ Doar `state="open"`; decizia după numele serviciului, nu după port; `upnp`/`sn
 ## Supraveghere fără agenți
 - **Monitorul (`watch`, FR-13):** scanare periodică a hotspotului (minimum 10 min), cu verificarea rețelei și a țintei la fiecare ciclu, salvare în istoric și alerte RO/EN la dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat (din `diff()`).
 - **Ușa-capcană (`trap`):** Telnet fals pe IP-ul din hotspot (idee de honeypot, ca OpenCanary): orice conexiune e o alertă. Păstrează doar IP, oră, port, local, 7 zile; nu păstrează nimic din ce s-a scris; nu răspunde spre cine a încercat.
+- **Ascultarea pasivă (`listen`):** abonare la anunțurile mDNS/SSDP doar pe interfața hotspotului (permisă de ghid), parser cu limite stricte pentru pachete ostile, fără cereri și fără deschiderea link-urilor din anunțuri.
+- **„Ce vede cineva care ascultă”:** pentru codurile necriptate, un exemplu inventat de logare la vedere (momentul „aha” din Wireshark), fără captură reală de trafic.
 - Față de o platformă cu agenți (de ex. Wazuh): vedem toate dispozitivele, inclusiv camere și telefoane pe care nu se poate instala nimic, dar nu vedem ce e în interiorul lor (log-uri, fișiere, viruși).
 
 ## Limitări

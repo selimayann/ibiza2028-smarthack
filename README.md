@@ -90,12 +90,15 @@ python -m netscan ask <fișier.xml> "Ce fac întâi?" --local-ai          # + re
 python -m netscan ask <fișier.xml> x --verify-text "<text inventat>"   # demo: validatorul respinge datele inventate
 python -m netscan watch --every 15 --confirm      # monitorul: scanează periodic doar hotspotul, alerte la schimbări
 python -m netscan trap --confirm                  # ușa-capcană: alertă când cineva din hotspot încearcă să intre
+python -m netscan listen --confirm                # ascultare pasivă: numele anunțate de dispozitive (mDNS/SSDP)
 ```
 
 ### Supraveghere fără agenți: monitorul și ușa-capcană
 
 - **`watch`** (FR-13): la fiecare ciclu (minimum 10 minute) reverifică rețeaua și ținta ca la `scan`, rulează aceeași comandă nmap, salvează în istoric și anunță în RO/EN: dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat. Dacă laptopul nu mai e pe hotspot, ciclul se sare fără scanare. Alertele se scriu local în `data/alerts.jsonl`; se păstrează doar ultimele 5 XML-uri ale monitorului. Terminal de Administrator; fără `--confirm`, doar dry-run.
 - **`trap`**: un Telnet fals (implicit portul 2323) pe IP-ul laptopului din hotspot. Nimeni legitim nu se conectează acolo, deci orice încercare e o alertă: „cineva din rețea (IP) a încercat să intre”. Nu execută nimic, citește și aruncă ce primește, păstrează **doar IP, ora și portul** (`data/trap_attempts.jsonl`, șterse automat după 7 zile și de „Șterge istoricul”). Ignoră IP-urile din `NETSCAN_TRAP_IGNORE` (de ex. laptopul care scanează). Pe Windows trebuie permis portul în firewall doar pe rețeaua Private (comanda apare la dry-run).
+- **`listen`**: ascultă doar anunțurile pe care dispozitivele le trimit singure (mDNS, SSDP) pe interfața hotspotului, ca să afle nume ca „Chromecast Sufragerie” sau „HP LaserJet”. Nu trimite cereri și nu deschide link-urile din anunțuri; păstrează local doar IP, nume, serviciu (`data/device_names.jsonl`, șterse de „Șterge istoricul”).
+- **„Ce vede cineva care ascultă”**: la FTP, Telnet și HTTP fără HTTPS, asistentul (și UI-ul) arată cum arată o logare pentru cineva care ascultă rețeaua (`PASS parola-ta`). E un **exemplu inventat**; nu capturăm traficul nimănui.
 - Niciuna nu instalează nimic pe alte dispozitive și nu citește log-uri: vedem din rețea ce uși sunt deschise și cine încearcă să intre, nu ce e înăuntru.
 
 ### Utilizare responsabilă

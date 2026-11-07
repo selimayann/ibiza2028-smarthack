@@ -71,8 +71,8 @@ def purge_old(path: Path, days: int = RETENTION_DAYS, now: Optional[float] = Non
 
 
 def delete_local_data(db_path=None) -> None:
-    """Șterge alertele și încercările de la capcană (butonul „Șterge istoricul”)."""
-    for p in (alerts_path(db_path), trap_path(db_path)):
+    """Șterge alertele, încercările de la capcană și numele anunțate (butonul „Șterge istoricul”)."""
+    for p in (alerts_path(db_path), trap_path(db_path), data_dir(db_path) / "device_names.jsonl"):
         try:
             p.unlink()
         except FileNotFoundError:
