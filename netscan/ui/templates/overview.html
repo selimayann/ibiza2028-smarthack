@@ -20,6 +20,18 @@
 
 <p class="meta">{{ T('scan_file') }}: <strong>{{ scan.file }}</strong> · {{ T('scan_date') }}: {{ fmt_time(scan.started_at) }}</p>
 
+{% if history_id is none %}
+  {% if saved_id %}
+    <p class="meta">✅ {{ T('saved_history') }} · <a href="{{ url_for('history_scan', scan_id=saved_id) }}">{{ T('see_in_history') }}</a></p>
+  {% else %}
+    <form method="post" action="{{ url_for('history_save') }}" class="save-form">
+      <input type="hidden" name="token" value="{{ token }}">
+      <input type="hidden" name="scan" value="{{ selected }}">
+      <button type="submit">💾 {{ T('save_history') }}</button>
+    </form>
+  {% endif %}
+{% endif %}
+
 {% if scan.status == 'error' %}
   <section class="card card-error" role="alert">
     <h1>⚠️ {{ T('error_title') }}</h1>

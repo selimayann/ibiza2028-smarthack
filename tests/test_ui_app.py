@@ -124,7 +124,7 @@ def test_delete_history_needs_token(tmp_path):
     storage.save_scan(sample(), db)
     assert client.post("/history/delete", data={"token": "gresit"}).status_code == 400
     assert len(storage.list_scans(db)) == 1
-    resp = client.post("/history/delete", data={"token": app.config["DELETE_TOKEN"]})
+    resp = client.post("/history/delete", data={"token": app.config["FORM_TOKEN"]})
     assert resp.status_code == 302
     assert storage.list_scans(db) == []
 
@@ -163,3 +163,23 @@ def test_history_v6a_to_v6b(tmp_path):
     client, _ = make_client(tmp_path, [])
     html = client.get(f"/scan/{b_id}").get_data(as_text=True)
     assert "60 → 100" in html and "Probleme rezolvate (3)" in html
+
+
+def test_save_to_history_from_ui(tmp_path):
+    from netscan.ui.app import load_scans
+
+    scans = load_scans()
+    i_a = next(i for i, s in enumerate(scans) if s.file == "V6a_before.xml")
+    i_b = next(i for i, s in enumerate(scans) if s.file == "V6b_after.xml")
+    client, app = make_client(tmp_path, scans)
+    token = app.config["FORM_TOKEN"]
+    assert "Salvează în istoric" in client.get(f"/?scan={i_a}").get_data(as_text=True)
+    assert client.post("/history/save", data={"token": "gresit", "scan": i_a}).status_code == 400
+    client.post("/history/save", data={"token": token, "scan": i_a})
+    resp = client.post("/history/save", data={"token": token, "scan": i_b})
+    html = client.get(resp.headers["Location"]).get_data(as_text=True)
+    assert "60 → 100" in html and "Probleme rezolvate (3)" in html
+    # a doua salvare a aceleiași scanări nu o dublează
+    client.post("/history/save", data={"token": token, "scan": i_a})
+    assert len(storage.list_scans(app.config["DB_PATH"])) == 2
+    assert "Salvată în istoric" in client.get(f"/?scan={i_a}").get_data(as_text=True)

@@ -29,13 +29,19 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
     s.add_argument("--lang", choices=["ro", "en"], default="ro")
 
-    sub.add_parser("ui", help="pornește interfața web locală")
+    u = sub.add_parser("ui", help="pornește interfața web locală")
+    u.add_argument("--port", type=int, default=5000)
+    u.add_argument("--lang", choices=["ro", "en"], default="ro")
 
     d = sub.add_parser("diff", help="diferența dintre două scanări")
-    d.add_argument("old")
-    d.add_argument("new")
+    d.add_argument("old", help="fișierul nmap XML de înainte")
+    d.add_argument("new", help="fișierul nmap XML de după")
+    d.add_argument("--save", action="store_true", help="salvează ambele scanări în istoric")
+    d.add_argument("--lang", choices=["ro", "en"], default="ro")
 
-    sub.add_parser("delete-history", help="șterge istoricul local")
+    h = sub.add_parser("delete-history", help="șterge istoricul local")
+    h.add_argument("--yes", action="store_true", help="fără întrebarea de confirmare")
+    h.add_argument("--lang", choices=["ro", "en"], default="ro")
     return p
 
 
@@ -131,10 +137,33 @@ def cmd_scan(args) -> int:
     return 0
 
 
+# --- RBRT: ui, diff, delete-history -------------------------------------------------------------
+
+def cmd_ui(args) -> int:
+    from netscan.ui.commands import cmd_ui as run_ui
+
+    return run_ui(port=args.port, lang=args.lang)
+
+
+def cmd_diff(args) -> int:
+    from netscan.ui.commands import cmd_diff as run_diff
+
+    return run_diff(args.old, args.new, lang=args.lang, save=args.save)
+
+
+def cmd_delete_history(args) -> int:
+    from netscan.ui.commands import cmd_delete_history as run_delete
+
+    return run_delete(lang=args.lang, yes=args.yes)
+
+
 COMMANDS = {
     "analyze": cmd_analyze,
     "network": cmd_network,
     "scan": cmd_scan,
+    "ui": cmd_ui,
+    "diff": cmd_diff,
+    "delete-history": cmd_delete_history,
 }
 
 

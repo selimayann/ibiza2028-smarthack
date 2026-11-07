@@ -67,6 +67,7 @@ select, button, .button {
 }
 .button-danger, button.button-danger { background: var(--poor); color: #fff; border-color: var(--poor); }
 @media (prefers-color-scheme: dark) { .button-danger, button.button-danger { color: #1b1f24; } }
+.save-form { margin: 0 0 1rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 
 /* Scor */
