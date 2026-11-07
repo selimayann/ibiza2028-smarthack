@@ -462,7 +462,7 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .eaves-caption { margin-top: .5rem; color: var(--muted); }
 .eaves-fix { margin-top: .35rem; }
 .eaves-details { margin-top: .75rem; }
-.eaves-details summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; }
+.eaves-details summary { list-style: none; width: fit-content; cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; }
 .eaves-details .eaves { margin-top: .25rem; }
 
 /* ---------- nume anunțate de dispozitive ---------- */
@@ -499,8 +499,12 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .proof-files { margin: 1rem 0 0; overflow-wrap: anywhere; }
 
 /* ---------- numele dat dispozitivului (pagina dispozitivului) ---------- */
-.name-box { padding: 1.1rem 1.4rem; margin: 0 0 1.5rem; }
-.name-box h2 { font-size: 1.25rem; margin: 0 0 .5rem; }
+/* Numele dispozitivului: la cerere, sub antet (un link cu iconiță; se deschide ca un card mic) */
+.name-box { margin: .25rem 0 1.5rem; }
+.name-box > summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: inline-flex; align-items: center; gap: .45rem; list-style: none; }
+.name-box > summary::-webkit-details-marker { display: none; }
+.name-box > summary:hover { text-decoration: underline; }
+.name-box[open] { padding: .4rem 1.4rem 1.1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .name-box .muted { margin: 0 0 .75rem; max-width: 62ch; }
 .name-form label { display: block; font-weight: 700; margin-bottom: .3rem; }
 .name-row { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -708,14 +712,15 @@ body:has(.ai-fab) .foot { padding-bottom: 4.75rem; }
 .verdict-history { align-items: start; }
 /* Detaliile comparației și restul schimbărilor din Jurnal: la cerere, cu aceeași săgeată ca la „Detalii tehnice” */
 .compare-details, .journal-more { margin-top: 1rem; }
-.live-more > summary, .step-more > summary { width: fit-content; }
-.step-more { margin-top: .25rem; } .step-more[open] { display: flex; flex-direction: column; gap: .4rem; }
+.live-more > summary, .step-more > summary, .steps-more > summary { width: fit-content; }
+.step-more { margin-top: .25rem; }
+.steps-more { margin-top: .1rem; } .step-more[open] { display: flex; flex-direction: column; gap: .4rem; }
 .live-more[open] { display: flex; flex-direction: column; gap: .6rem; }
-.compare-details > summary, .journal-more > summary, .live-more > summary, .step-more > summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; list-style: none; }
-.compare-details > summary::-webkit-details-marker, .journal-more > summary::-webkit-details-marker, .live-more > summary::-webkit-details-marker, .step-more > summary::-webkit-details-marker { display: none; }
-.compare-details > summary::before, .journal-more > summary::before, .live-more > summary::before, .step-more > summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
-.compare-details[open] > summary::before, .journal-more[open] > summary::before, .live-more[open] > summary::before, .step-more[open] > summary::before { transform: rotate(45deg); }
-.compare-details > summary:hover, .journal-more > summary:hover, .live-more > summary:hover, .step-more > summary:hover { text-decoration: underline; }
+.compare-details > summary, .journal-more > summary, .live-more > summary, .step-more > summary, .steps-more > summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; list-style: none; }
+.compare-details > summary::-webkit-details-marker, .journal-more > summary::-webkit-details-marker, .live-more > summary::-webkit-details-marker, .step-more > summary::-webkit-details-marker, .steps-more > summary::-webkit-details-marker, .eaves-details > summary::-webkit-details-marker { display: none; }
+.compare-details > summary::before, .journal-more > summary::before, .live-more > summary::before, .step-more > summary::before, .steps-more > summary::before, .eaves-details > summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.compare-details[open] > summary::before, .journal-more[open] > summary::before, .live-more[open] > summary::before, .step-more[open] > summary::before, .steps-more[open] > summary::before, .eaves-details[open] > summary::before { transform: rotate(45deg); }
+.compare-details > summary:hover, .journal-more > summary:hover, .live-more > summary:hover, .step-more > summary:hover, .steps-more > summary:hover { text-decoration: underline; }
 .compare-details .compare-grid { margin-top: .5rem; }
 .section-this { margin: 2.5rem 0 1rem; }
 /* Istoric pe telefon: cardurile din tabel au linkurile pe un rând separat */

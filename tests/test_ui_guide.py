@@ -161,7 +161,7 @@ def test_guide_uses_the_users_own_device_name_escaped(tmp_path):
     s = sample()
     client, app = make_client(tmp_path, [s])
     page = client.get("/").get_data(as_text=True)
-    dev = re.search(r'<a class="[^"]*guide-open"[^>]*href="/device/([^"?]+)"', page).group(1)
+    dev = re.search(r'<a class="[^"]*guide-open"[^>]*href="/device/([^"?]+)[^"]*"', page).group(1)
     storage.set_device_name(dev, "<script>x</script>Camera mea", app.config["DB_PATH"])
     page = client.get("/").get_data(as_text=True)
     dlg = page[page.index('<dialog class="guide"'):page.index("</dialog>")]

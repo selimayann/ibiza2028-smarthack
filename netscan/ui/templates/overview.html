@@ -36,7 +36,7 @@
           {% if steps.verified_count or steps.declared_count %}<p class="steps-tally">{{ T('steps_tally')|format(steps.verified_count, steps.declared_count, steps.total) }}</p>{% endif %}
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
-            <a class="button button-primary guide-open" href="{{ url_for('device', device_id=st.finding.device_id) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
+            <a class="button button-primary guide-open" href="{{ url_for('device', device_id=st.finding.device_id, scan=selected) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
             <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .verify-msg, #step-now">
               {{ hidden }}
               <input type="hidden" name="device_id" value="{{ st.finding.device_id }}">

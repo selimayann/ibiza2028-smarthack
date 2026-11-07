@@ -169,7 +169,7 @@ def test_name_in_english(tmp_path):
     client, app = make_client(tmp_path, [sample()])
     save(client, app, "Living room camera")
     device = page(client, f"/device/{CAM}?scan=0&name=saved&lang=en")
-    assert "Name saved." in device and "Remove name" in device and "Device name" in device
+    assert "Name saved." in device and "Remove name" in device and "Rename" in device
 
 
 # ---------- text nesigur ----------

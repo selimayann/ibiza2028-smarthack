@@ -19,9 +19,10 @@
   </dl>
 </header>
 
-{# Numele dat de utilizator: salvat local, pe device_id. Fără JavaScript merge la fel (formular obișnuit). #}
-<section class="name-box card" aria-labelledby="name-h">
-  <h2 id="name-h">{{ T('name_title') }}</h2>
+{# Numele dat de utilizator: salvat local, pe device_id. La cerere (se deschide singur după salvare / eroare).
+   Fără JavaScript merge la fel (formular obișnuit, <details> nativ). #}
+<details class="name-box"{% if name_status %} open{% endif %}>
+  <summary><svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>{{ T('name_change') if custom_name(d.host.device_id) else T('name_give') }}</summary>
   {% if name_status %}
     <p class="name-msg name-msg-{{ 'bad' if name_status == 'too_long' else 'good' }}" role="{{ 'alert' if name_status == 'too_long' else 'status' }}">
       <svg class="icon" aria-hidden="true"><use href="#i-{{ 'medium' if name_status == 'too_long' else 'good' }}"/></svg>{{ T('name_' ~ name_status) }}
@@ -39,7 +40,7 @@
       {% if custom_name(d.host.device_id) %}<button type="submit" name="action" value="clear">{{ T('name_clear') }}</button>{% endif %}
     </div>
   </form>
-</section>
+</details>
 
 <section aria-labelledby="f-h">
   <h2 id="f-h">{{ T('findings_title') }}</h2>
@@ -48,12 +49,19 @@
     <article class="problem card">
       <div class="problem-head">
         <h3>{{ sev(f.severity) }}<span class="problem-name">{{ code_name(f.code) }}</span></h3>
-        <p class="problem-meta"><span class="code" translate="no">{{ f.code }}</span> · {{ port_label(f) }}</p>
+        <p class="problem-meta">{{ port_label(f) }}</p>
       </div>
       <p class="problem-text">{{ ex.text }}</p>
-      {% set ev = eavesdrop(f.code) %}{% if ev %}{{ eavesdrop_block(ev) }}{% endif %}
       <h4>{{ T('how_to_fix') }}</h4>
-      <ol class="steps">{% for s in ex.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+      {# Primul pas vizibil; restul la cerere (mentor: mai puțin text) #}
+      <ol class="steps"><li>{{ ex.steps[0] }}</li></ol>
+      {% if ex.steps|length > 1 %}
+      <details class="steps-more">
+        <summary>{{ T('steps_more_one') if ex.steps|length == 2 else T('steps_more')|format(ex.steps|length - 1) }}</summary>
+        <ol class="steps" start="2">{% for s in ex.steps[1:] %}<li>{{ s }}</li>{% endfor %}</ol>
+      </details>
+      {% endif %}
+      {% set ev = eavesdrop(f.code) %}{% if ev %}<details class="eaves-details"><summary>{{ T('eaves_title') }}</summary>{{ eavesdrop_block(ev) }}</details>{% endif %}
       {# Pentru cine te ajută cu rețeaua: standardele și dovada, ascunse până le deschizi #}
       <details class="tech-details">
       <summary>{{ T('tech_details') }}</summary>
@@ -69,6 +77,7 @@
           </ul>
         </div>
       {% endif %}
+      <p class="evidence"><span class="muted">{{ T('code_label') }}:</span> <code translate="no">{{ f.code }}</code></p>
       <p class="evidence"><span class="muted">{{ T('evidence') }}:</span> <code>{{ f.evidence }}</code></p>
       </details>
     </article>
