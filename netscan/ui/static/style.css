@@ -422,6 +422,11 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 /* ---------- nume anunțate de dispozitive ---------- */
 .announced, .custom-name { overflow-wrap: anywhere; }
 
+/* ---------- al cui e istoricul ---------- */
+.history-owner { display: flex; align-items: center; gap: .45rem; margin: .5rem 0 0; color: var(--muted); font-weight: 700; overflow-wrap: anywhere; }
+.history-owner-note { margin-top: 1.25rem; max-width: 70ch; }
+.history-file { overflow-wrap: anywhere; font-family: "Atkinson Mono", ui-monospace, monospace; font-size: 1rem; }
+
 /* ---------- „Verifică din nou” și dovada înainte/după ---------- */
 .recheck { margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--line); }
 .recheck h3 { font-size: 1.15rem; margin: 0 0 .4rem; }

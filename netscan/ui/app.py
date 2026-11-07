@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import base64
+import getpass
 import hmac
 import json
 import os
@@ -65,6 +66,15 @@ UPLOAD_ERRORS = frozenset(set(i18n.ERROR_MESSAGES["ro"]) - {"_default"}) | {"NO_
 UPLOAD_SLACK = 1024 * 1024   # peste limita fișierului: câmpurile formularului (jeton etc.)
 _ASK_LOCK = threading.Lock()
 _VERIFY_LOCK = threading.Lock()   # o singură verificare live odată   # modelul local răspunde la o singură întrebare odată (altfel se poate bloca placa video)
+
+
+def current_user() -> str | None:
+    """Utilizatorul de sistem sub care rulează aplicația (istoricul e al lui, pe acest calculator). None dacă
+    sistemul nu îl spune. Text de la sistem: se escapează în template, ca orice altceva."""
+    try:
+        return getpass.getuser().strip()[:60] or None
+    except Exception:  # fără nume de utilizator în mediu (ex. cont de serviciu): pagina merge și fără
+        return None
 
 
 def same_site_request() -> bool:
@@ -505,6 +515,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         return render_template(
             "history.html", items=items, rows=rows, trend=score_trend(items),
             deleted=request.args.get("deleted") == "1",
+            owner=current_user(),   # al cui e istoricul; când e gol, poate fi alt utilizator sau alt folder
+            db_file=str(Path(app.config["DB_PATH"] or storage.db_path()).resolve()),
         )
 
     def render_report(scan: Scan, back_url: str, download_url: str, download: bool):
