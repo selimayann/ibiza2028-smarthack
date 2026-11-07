@@ -81,6 +81,8 @@ python -m netscan delete-history       # șterge istoricul local
 python -m netscan ask <fișier.xml> "Ce fac întâi?"   # asistentul: răspunde doar din scanare, fără rețea
 ```
 
+**Demo istoric înainte/după (lab-ul nostru):** pune `NETSCAN_SCANS_DIR=<folderul cu scanările din lab>` în `.env`, pornește `python -m netscan ui`, apasă „Salvează” pe `scan_01_before.xml`, apoi pe `scan_03_after.xml`: pagina arată scorul 0 → 30 și cele 2 probleme rezolvate. Varianta din linia de comandă: `python -m netscan diff <scan_01_before.xml> <scan_03_after.xml>`.
+
 ### Scanarea live, pas cu pas (`network`, `scan`)
 
 ```
