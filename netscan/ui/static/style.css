@@ -81,7 +81,7 @@ p { margin: 0; }
 a { color: var(--link); text-underline-offset: .18em; }
 a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
-.mono, code { font-family: "Atkinson Mono", ui-monospace, monospace; font-size: .95em; overflow-wrap: anywhere; }
+.mono, code { font-family: "Atkinson Mono", ui-monospace, monospace; font-size: max(1rem, .95em); overflow-wrap: anywhere; }
 .muted { color: var(--muted); }
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

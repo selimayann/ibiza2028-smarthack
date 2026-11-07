@@ -14,7 +14,7 @@ h3 { font-size: 1.05em; margin: 0 0 .25rem; }
 p { margin: .3rem 0; }
 .r-muted { color: var(--muted); }
 .r-mono, .r-code { font-family: ui-monospace, Consolas, "Courier New", monospace; overflow-wrap: anywhere; }
-.r-code { color: var(--muted); font-size: .9em; font-weight: 400; }
+.r-code { color: var(--muted); font-weight: 400; }
 .r-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem 2rem; align-items: flex-start; }
 .r-meta { margin: 0; display: grid; grid-template-columns: auto auto; gap: .1rem .8rem; }
 .r-meta div { display: contents; }
@@ -29,15 +29,14 @@ p { margin: .3rem 0; }
 .r-num { font-size: 2.6em; font-weight: 800; line-height: 1; }
 .r-counts ul { margin: .3em 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: .1em 1.2em; }
 .r-first { margin-top: .6rem; padding: .6rem .8rem; border-left: 5px solid var(--ink); background: #f3f5f7; }
-table { width: 100%; border-collapse: collapse; font-size: .95em; }
+table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: .4rem .5rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 th { color: var(--muted); }
-.r-small { font-size: .875em; }
 .r-nowrap { white-space: nowrap; overflow-wrap: normal; }
 .r-table tr { break-inside: avoid; }
 .r-table .r-n { width: 1.5em; }
 .r-box { padding: 1rem; border: 2px solid var(--high); border-radius: 10px; margin-top: 1.5rem; }
-.r-foot { margin-top: 1.6em; padding-top: .8em; border-top: 1px solid var(--line); color: var(--muted); font-size: .9em; }
+.r-foot { margin-top: 1.6em; padding-top: .8em; border-top: 1px solid var(--line); color: var(--muted); }
 @media (max-width: 40rem) {
   .report { padding: 1.2rem 1rem; border-radius: 0; }
   .r-summary { grid-template-columns: 1fr; }
@@ -53,7 +52,9 @@ th { color: var(--muted); }
   h1 { font-size: 16pt; } h2 { font-size: 11.5pt; margin: 10pt 0 4pt; }
   .r-summary { margin-top: 8pt; gap: 12pt; } .r-num { font-size: 22pt; }
   th, td { padding: 2.5pt 4pt; } .r-foot { margin-top: 8pt; }
-  .report-actions, .r-std { display: none; }  /* standardele rămân în aplicație și în HTML; pe hârtie, o pagină */
+  /* Doar pe hârtie (A4, o pagină): standardele se ascund (rămân în aplicație și în HTML), textul secundar e mai mic. */
+  .report-actions, .r-std { display: none; }
+  table { font-size: .95em; } .r-code, .r-small, .r-foot { font-size: .9em; }
   .report { max-width: none; margin: 0; padding: 0; border-radius: 0; }
   h2 { break-after: avoid; }
   a { color: inherit; text-decoration: none; }
