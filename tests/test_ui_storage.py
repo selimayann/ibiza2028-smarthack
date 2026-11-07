@@ -100,3 +100,82 @@ def test_diff_same_code_other_port_is_different_finding():
     new = Scan(file="b", status="ok", score=90, findings=[_f("d1", 8080, "HTTP_ADMIN_CLEARTEXT")])
     d = storage.diff(old, new)
     assert len(d.resolved_findings) == 1 and len(d.new_findings) == 1
+
+
+# ---------- potrivirea dispozitivelor când MAC-ul se schimbă (acord cu Radu) ----------
+
+VAL = Path(__file__).parent.parent / "fixtures" / "validation"
+
+
+def test_v6a_to_v6b_real_files():
+    """V6a și V6b au MAC-uri diferite pentru aceleași dispozitive: potrivire după IP + vendor."""
+    from netscan.engine import analyze_file
+
+    d = storage.diff(analyze_file(VAL / "V6a_before.xml"), analyze_file(VAL / "V6b_after.xml"))
+    assert len(d.resolved_findings) == 3
+    assert d.new_findings == [] and d.persistent_findings == []
+    assert d.new_devices == [] and d.removed_devices == []
+    assert (d.score_before, d.score_after) == (60, 100)
+
+
+def _h(dev, ip, vendor, ports=()):
+    return Host(ip=ip, device_id=dev, vendor=vendor,
+                ports=[Port(port=p, proto="udp" if p == 1900 else "tcp", state="open") for p in ports])
+
+
+def _fd(dev, ip, port, code, sev, pts):
+    return Finding(file="x.xml", ip=ip, device_id=dev, port=port, code=code,
+                   severity=sev, points=pts, evidence="e")
+
+
+def test_one_problem_remains_after_repair():
+    """MAC-uri schimbate; după reparare rămâne TELNET: 2 rezolvate, 1 persistentă, 0 noi, scor < 100."""
+    old = Scan(file="before.xml", status="ok", score=60,
+               hosts=[_h("aaa111", "192.168.1.1", "TP-Link", (80, 1900)), _h("bbb222", "192.168.1.30", "Espressif", (23,))],
+               findings=[_fd("aaa111", "192.168.1.1", 80, "HTTP_ADMIN_CLEARTEXT", "medium", 10),
+                         _fd("aaa111", "192.168.1.1", 1900, "UPNP_EXPOSED", "medium", 10),
+                         _fd("bbb222", "192.168.1.30", 23, "TELNET_OPEN", "high", 20)])
+    new = Scan(file="after.xml", status="ok", score=80,
+               hosts=[_h("ccc333", "192.168.1.1", "TP-Link", (443,)), _h("ddd444", "192.168.1.30", "Espressif", (23,))],
+               findings=[_fd("ddd444", "192.168.1.30", 23, "TELNET_OPEN", "high", 20)])
+    d = storage.diff(old, new)
+    assert sorted(f.code for f in d.resolved_findings) == ["HTTP_ADMIN_CLEARTEXT", "UPNP_EXPOSED"]
+    assert [f.code for f in d.persistent_findings] == ["TELNET_OPEN"]
+    assert d.new_findings == []
+    assert d.new_devices == [] and d.removed_devices == []
+    assert d.score_after != 100 and (d.score_before, d.score_after) == (60, 80)
+    assert d.closed_ports == [("ccc333", 80, "tcp"), ("ccc333", 1900, "udp")]
+    assert d.opened_ports == [("ccc333", 443, "tcp")]
+
+
+def test_ip_fallback_needs_same_vendor():
+    old = Scan(file="a", status="ok", score=100, hosts=[_h("aaa", "10.0.0.5", "TP-Link")])
+    new = Scan(file="b", status="ok", score=100, hosts=[_h("bbb", "10.0.0.5", "Samsung")])
+    d = storage.diff(old, new)
+    assert [h.device_id for h in d.removed_devices] == ["aaa"]
+    assert [h.device_id for h in d.new_devices] == ["bbb"]
+
+
+def test_ip_fallback_vendor_missing_on_one_side_still_matches():
+    old = Scan(file="a", status="ok", score=100, hosts=[_h("aaa", "10.0.0.5", None)])
+    new = Scan(file="b", status="ok", score=100, hosts=[_h("bbb", "10.0.0.5", "TP-Link")])
+    d = storage.diff(old, new)
+    assert d.new_devices == [] and d.removed_devices == []
+
+
+def test_ip_fallback_only_one_to_one():
+    """Două dispozitive noi pe același IP: nu se potrivește niciunul."""
+    old = Scan(file="a", status="ok", score=100, hosts=[_h("aaa", "10.0.0.5", "TP-Link")])
+    new = Scan(file="b", status="ok", score=100,
+               hosts=[_h("bbb", "10.0.0.5", "TP-Link"), _h("ccc", "10.0.0.5", "TP-Link")])
+    d = storage.diff(old, new)
+    assert [h.device_id for h in d.removed_devices] == ["aaa"]
+    assert sorted(h.device_id for h in d.new_devices) == ["bbb", "ccc"]
+
+
+def test_same_device_id_wins_over_ip():
+    """Același MAC, IP schimbat: e același dispozitiv; IP-ul liber nu se mai folosește."""
+    old = Scan(file="a", status="ok", score=100, hosts=[_h("aaa", "10.0.0.5", "X"), _h("bbb", "10.0.0.6", "X")])
+    new = Scan(file="b", status="ok", score=100, hosts=[_h("aaa", "10.0.0.9", "X"), _h("ccc", "10.0.0.6", "X")])
+    d = storage.diff(old, new)
+    assert d.new_devices == [] and d.removed_devices == []

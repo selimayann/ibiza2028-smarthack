@@ -196,29 +196,67 @@ class ScanDiff:
     closed_ports: list[tuple[str, int, str]] = field(default_factory=list)
     resolved_findings: list[Finding] = field(default_factory=list)
     new_findings: list[Finding] = field(default_factory=list)
+    persistent_findings: list[Finding] = field(default_factory=list)          # din scanarea nouă
     score_before: int | None = None
     score_after: int | None = None
 
 
-def _open_ports(scan: Scan) -> set[tuple[str, int, str]]:
-    return {(h.device_id, p.port, p.proto) for h in scan.hosts for p in h.ports if p.state == "open"}
+def match_devices(old: Scan, new: Scan) -> dict[str, str]:
+    """Potrivește dispozitivele dintre două scanări: device_id vechi -> device_id nou.
+
+    1. Întâi după device_id (același MAC).
+    2. Doar pentru ce rămâne nepotrivit: după IP, dacă
+       - vendorul e același când ambele scanări îl au;
+       - potrivirea e 1 la 1 (un IP cu mai mulți candidați, de oricare parte, nu se potrivește).
+    Ce rămâne nepotrivit e „nou” sau „dispărut”. (MAC-ul se poate schimba între scanări, ex. V6a/V6b.)
+    """
+    old_ids = {h.device_id for h in old.hosts}
+    new_ids = {h.device_id for h in new.hosts}
+    mapping = {d: d for d in old_ids & new_ids}
+
+    def by_ip(hosts: list[Host], taken: set[str]) -> dict[str, list[Host]]:
+        groups: dict[str, list[Host]] = {}
+        for h in hosts:
+            if h.device_id not in taken:
+                groups.setdefault(h.ip, []).append(h)
+        return groups
+
+    old_left = by_ip(old.hosts, set(mapping))
+    new_left = by_ip(new.hosts, set(mapping.values()))
+    for ip, olds in old_left.items():
+        news = new_left.get(ip, [])
+        if len(olds) != 1 or len(news) != 1:
+            continue
+        o, n = olds[0], news[0]
+        if o.vendor and n.vendor and o.vendor.strip().lower() != n.vendor.strip().lower():
+            continue
+        mapping[o.device_id] = n.device_id
+    return mapping
+
+
+def _open_ports(scan: Scan, rename: dict[str, str] | None = None) -> set[tuple[str, int, str]]:
+    rename = rename or {}
+    return {(rename.get(h.device_id, h.device_id), p.port, p.proto)
+            for h in scan.hosts for p in h.ports if p.state == "open"}
 
 
 def diff(old: Scan, new: Scan) -> ScanDiff:
-    """Diferența dintre două scanări. Dispozitive după device_id, findings după (device_id, port, code)."""
-    old_hosts = {h.device_id: h for h in old.hosts}
-    new_hosts = {h.device_id: h for h in new.hosts}
-    old_ports, new_ports = _open_ports(old), _open_ports(new)
-    old_f = {f.key(): f for f in old.findings}
+    """Diferența dintre două scanări. Dispozitivele se potrivesc cu match_devices(),
+    findings după (device_id, port, code), cu device_id-ul vechi tradus în cel nou."""
+    mapping = match_devices(old, new)
+    matched_new = set(mapping.values())
+    old_ports, new_ports = _open_ports(old, mapping), _open_ports(new)
+    old_f = {(mapping.get(f.device_id, f.device_id), f.port, f.code): f for f in old.findings}
     new_f = {f.key(): f for f in new.findings}
     port_sort = lambda k: (k[0], k[1], k[2])  # noqa: E731
     return ScanDiff(
-        new_devices=[h for d, h in new_hosts.items() if d not in old_hosts],
-        removed_devices=[h for d, h in old_hosts.items() if d not in new_hosts],
+        new_devices=[h for h in new.hosts if h.device_id not in matched_new],
+        removed_devices=[h for h in old.hosts if h.device_id not in mapping],
         opened_ports=sorted(new_ports - old_ports, key=port_sort),
         closed_ports=sorted(old_ports - new_ports, key=port_sort),
         resolved_findings=[f for k, f in old_f.items() if k not in new_f],
         new_findings=[f for k, f in new_f.items() if k not in old_f],
+        persistent_findings=[f for k, f in new_f.items() if k in old_f],
         score_before=old.score,
         score_after=new.score,
     )
