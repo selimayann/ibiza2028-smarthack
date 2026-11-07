@@ -33,13 +33,19 @@
   {% if live.msg %}<p class="live-msg" role="status">{{ T('live_msg_' ~ live.msg) }}</p>{% endif %}
 
   {% if live.status == 'off' %}
-    <p class="live-lead">{{ T('live_off_body') }}</p>
-    <ul class="live-explain">
-      <li>{{ T('live_explain_1') }}</li>
-      <li>{{ T('live_explain_2') }}</li>
-      <li>{{ T('live_explain_3') }}</li>
-    </ul>
-    <p class="live-safe"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{{ T('live_explain_safe') }}</p>
+    {# Oprită: o frază și butoanele; restul explicației la cerere (mentor: mai puțin text, lucruri expandabile) #}
+    <p class="live-lead">{{ T('live_off_short') }}</p>
+    <details class="live-more">
+      <summary>{{ T('live_how') }}</summary>
+      <p>{{ T('live_off_when') }}</p>
+      <ul class="live-explain">
+        <li>{{ T('live_explain_1') }}</li>
+        <li>{{ T('live_explain_2') }}</li>
+        <li>{{ T('live_explain_3') }}</li>
+      </ul>
+      <p class="live-safe"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{{ T('live_explain_safe') }}</p>
+      <p><strong>{{ T('scan_title') }}:</strong> {{ T('scan_hint') }}</p>
+    </details>
   {% elif live.status == 'paused' %}
     <p class="live-paused" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ live.reason or T('live_paused_starting') }}</p>
     <p class="muted">{{ T('live_paused_hint') }}</p>
@@ -141,7 +147,7 @@
       {% elif sc.state == 'refused' %}
         <p class="scan-line" role="status">{{ T('scan_refused') }} {{ sc.message }}</p>
       {% endif %}
-      <p class="muted">{{ T('scan_hint') }}</p>
+      {% if live.status != 'off' %}<p class="muted">{{ T('scan_hint') }}</p>{% endif %}
       <div class="scan-actions">
         <form method="post" action="{{ url_for('live_scan') }}" data-swap="#live" data-focus="#scan-h">
           {{ token_field() }}<input type="hidden" name="job" value="scan">

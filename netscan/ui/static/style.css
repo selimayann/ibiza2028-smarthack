@@ -708,11 +708,13 @@ body:has(.ai-fab) .foot { padding-bottom: 4.75rem; }
 .verdict-history { align-items: start; }
 /* Detaliile comparației și restul schimbărilor din Jurnal: la cerere, cu aceeași săgeată ca la „Detalii tehnice” */
 .compare-details, .journal-more { margin-top: 1rem; }
-.compare-details > summary, .journal-more > summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; list-style: none; }
-.compare-details > summary::-webkit-details-marker, .journal-more > summary::-webkit-details-marker { display: none; }
-.compare-details > summary::before, .journal-more > summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
-.compare-details[open] > summary::before, .journal-more[open] > summary::before { transform: rotate(45deg); }
-.compare-details > summary:hover, .journal-more > summary:hover { text-decoration: underline; }
+.live-more > summary { width: fit-content; }
+.live-more[open] { display: flex; flex-direction: column; gap: .6rem; }
+.compare-details > summary, .journal-more > summary, .live-more > summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; list-style: none; }
+.compare-details > summary::-webkit-details-marker, .journal-more > summary::-webkit-details-marker, .live-more > summary::-webkit-details-marker { display: none; }
+.compare-details > summary::before, .journal-more > summary::before, .live-more > summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.compare-details[open] > summary::before, .journal-more[open] > summary::before, .live-more[open] > summary::before { transform: rotate(45deg); }
+.compare-details > summary:hover, .journal-more > summary:hover, .live-more > summary:hover { text-decoration: underline; }
 .compare-details .compare-grid { margin-top: .5rem; }
 .section-this { margin: 2.5rem 0 1rem; }
 /* Istoric pe telefon: cardurile din tabel au linkurile pe un rând separat */
@@ -898,3 +900,6 @@ dialog.guide .mono { font-family: ui-monospace, Consolas, monospace; }
 }
 @keyframes g-cfgold { 0% { text-decoration-color: transparent; } 40% { text-decoration-color: currentColor; opacity: 1; } 80% { opacity: .4; width: auto; } 100% { opacity: 0; width: 0; } }
 @keyframes g-cfgnew { from { width: 0; } to { width: 22ch; } }
+/* Protecția live oprită și nicio scanare în curs: „Scanarea completă” și butoanele ei pe un singur rând */
+.live-off .live-scan:not(:has(.scan-line)) { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; }
+.live-off .live-scan:not(:has(.scan-line)) .live-sub { margin: 0; }
