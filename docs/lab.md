@@ -1,6 +1,6 @@
 # Lab-ul (hotspot)
 
-> Responsabil: **Ayan**. Pașii compleți sunt în [roles/C_Ayan_Lab_Explicatii.md](roles/C_Ayan_Lab_Explicatii.md).
+> Responsabil: **Oneata** (rolul C). Pașii compleți sunt în [roles/C_Ayan_Lab_Explicatii.md](roles/C_Ayan_Lab_Explicatii.md).
 > Fără parole în acest fișier.
 
 Regula de aur: **simulăm, nu expunem.** Fără shell-uri, date sau parole reale în spatele serviciilor slabe.
@@ -59,8 +59,9 @@ Fără `LAB_BIND`, totul ascultă doar pe `127.0.0.1` (sigur pe Wi-Fi-ul venue, 
 
 ### Verificare înainte de capturi (de pe laptopul-scanner)
 ```
-sudo nmap -sV --script http-title -p 22,1883,2121,2323,6379,8080 <IP-laptop-țintă>
+nmap -Pn -sV --script http-title -p 22,1883,2121,2323,6379,8080 --max-rate 100 <IP-laptop-țintă>
 ```
+Pe Windows, din PowerShell sau CMD pornit ca administrator (nu există `sudo`). `--max-rate 100` e obligatoriu la orice scanare.
 Trebuie să apară: `ssh`, `mqtt`, `ftp` cu `vsftpd 2.3.4`, `telnet`, `redis`, `http` cu titlul „Admin Login”.
 
 ### Între scanarea 2 și scanarea 3 („reparăm” două probleme)
@@ -72,8 +73,8 @@ docker compose -f lab/docker-compose.yml stop redis   # dispare DB_EXPOSED
 ## Findings așteptate per scanare (așteptare de test, nu rezultat)
 
 > **Nu sunt rezultate**: rezultatele le produce doar tool-ul (`python -m netscan analyze fixtures/lab/`).
-> Tabelul e ce ne așteptăm să vadă motorul, ca Radu să-l poată verifica. L-am confirmat local cu motorul
-> de pe branch-ul `engine` (commit `2efe22d`), la 14:30, pe 7 nov.
+> Tabelul e ce ne așteptăm să vadă motorul, ca Radu să-l poată verifica. `tests/test_lab_scans.py` verifică
+> la fiecare rulare că motorul de pe `main` dă exact aceste findings și scoruri pe fișierele din `fixtures/lab/`.
 
 Rețeaua: `RSH-Ibiza2028`, `172.20.10.0/28`. Gateway (iPhone) `172.20.10.1`, laptop-țintă `172.20.10.14`,
 laptop-scanner `172.20.10.10` (nu apare: nmap pe Windows nu se scanează pe sine).
@@ -107,7 +108,7 @@ XML-urile sunt în repo, în `fixtures/lab/`, neatinse (NFR-10: scanările din l
 - Pe laptopul-țintă rulau alte containere Docker (alt proiect) publicate pe `0.0.0.0`, inclusiv pe portul 6379. Le oprim înainte de lab; altfel apar ca findings în plus și blochează portul redis.
 - Docker ocolește firewall-ul Fedora (firewalld) când publică porturi. De aceea porturile se publică explicit doar pe `LAB_BIND`, nu pe toate interfețele.
 - **nmap a raportat portul 1883 ca `mosquitto version 1.6.15`, nu `mqtt`** (găsit de B la prima verificare). Cauza: scriptul `mqtt-subscribe` (categoria `version`, rulează automat la `-sV`) citește subiectul `$SYS/broker/version` și înlocuiește numele serviciului (`port.version.name = ver` în `mqtt-subscribe.nse`). Reparat în configurarea lab-ului, nu în motor și nu în XML: `sys_interval 0` în `lab/mosquitto/mosquitto.conf` oprește subiectele `$SYS`. Bun și pentru pitch: un broker real n-ar trebui să-și anunțe versiunea.
-  După răspunsul mentorilor la întrebarea 11, și `mosquitto version X` pe 1883 se raportează MQTT_EXPOSED (motorul trebuie să-l accepte). Pentru reguli `sys_interval 0` nu mai e necesar, dar îl păstrăm: scanările din lab au fost făcute cu el și dau `mqtt`.
+  După răspunsul mentorilor la întrebarea 11, și `mosquitto version X` pe 1883 se raportează MQTT_EXPOSED (motorul face asta din commit-ul `eb48038`, Radu). Pentru reguli `sys_interval 0` nu mai e necesar, dar îl păstrăm: scanările din lab au fost făcute cu el și dau `mqtt`.
 - Laptopul-țintă și iPhone-ul apar cu MAC randomizat (fără vendor) și fără hostname, deci motorul raportează **UNKNOWN_DEVICE** pentru amândouă.
 - Porturile 1883 (mqtt), 6379 (redis) și 27017 (mongodb) nu sunt în top 1000 TCP al nmap. Prima scanare 1 nu le-a verificat deloc; B le-a adăugat la `-p` în `runner.py` și scanarea s-a refăcut.
 - iPhone-ul (gateway) are 21/tcp deschis, pe care nmap îl numește `ftp` doar din tabelul de porturi (`method="table"`). Întrebarea 12.

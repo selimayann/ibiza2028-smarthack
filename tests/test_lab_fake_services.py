@@ -1,4 +1,4 @@
-"""Teste pentru serviciile false din lab (Ayan). Rulează doar pe 127.0.0.1, fără rețea."""
+"""Teste pentru serviciile false din lab (Oneata). Rulează doar pe 127.0.0.1, fără rețea."""
 
 from __future__ import annotations
 
