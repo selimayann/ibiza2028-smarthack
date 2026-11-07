@@ -38,6 +38,7 @@ MULTIPLE_NETWORKS = "MULTIPLE_NETWORKS"
 WRONG_SSID = "WRONG_SSID"
 PSUTIL_MISSING = "PSUTIL_MISSING"
 SSID_NOT_CONFIGURED = "SSID_NOT_CONFIGURED"   # fără NETSCAN_EXPECTED_SSID nu știm dacă e hotspotul nostru
+SSID_UNREADABLE = "SSID_UNREADABLE"           # doar cu NETSCAN_REQUIRE_SSID=1: numele Wi-Fi nu a putut fi citit
 
 W_SSID_UNKNOWN = "SSID_UNKNOWN"
 W_NO_GATEWAY = "NO_GATEWAY"
@@ -69,6 +70,10 @@ MESSAGES: dict[str, tuple[str, str]] = {
     SSID_NOT_CONFIGURED: (
         "Nu știu numele hotspotului echipei, deci nu scanez. Setează NETSCAN_EXPECTED_SSID în .env.",
         "I don't know the team hotspot name, so I won't scan. Set NETSCAN_EXPECTED_SSID in .env.",
+    ),
+    SSID_UNREADABLE: (
+        "Nu am putut citi numele rețelei Wi-Fi și NETSCAN_REQUIRE_SSID=1 e setat, deci nu scanez.",
+        "I couldn't read the Wi-Fi network name and NETSCAN_REQUIRE_SSID=1 is set, so I won't scan.",
     ),
     W_NO_GATEWAY: (
         "Rețeaua nu are gateway (router).",
@@ -414,7 +419,13 @@ def detect_network(
         if info.status == OK:
             info.status = SSID_NOT_CONFIGURED
     elif info.ssid is None:
-        info.warnings.append(W_SSID_UNKNOWN)
+        # Implicit doar avertisment (pe unele sisteme Windows numele Wi-Fi nu se poate citi fără permisiunea
+        # de locație). Cu NETSCAN_REQUIRE_SSID=1 refuzăm: sigur înainte de comod.
+        if (env.get("NETSCAN_REQUIRE_SSID") or "").strip() == "1":
+            if info.status == OK:
+                info.status = SSID_UNREADABLE
+        else:
+            info.warnings.append(W_SSID_UNKNOWN)
     elif info.ssid != expected and info.status == OK:
         info.status = WRONG_SSID
 

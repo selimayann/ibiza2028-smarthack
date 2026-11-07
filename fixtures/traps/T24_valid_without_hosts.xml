@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94 scan initiated (sintetic) -->
+<!-- fisier nmap valid fara niciun host (toate down): niciun finding, scor 100 -->
+<nmaprun scanner="nmap" args="nmap -sS -sU -sV --script http-title -oX x.xml 192.168.1.0/24" start="1762500000" version="7.94">
+<runstats>
+<finished time="1762500100"/>
+<hosts up="0" down="256" total="256"/>
+</runstats>
+</nmaprun>

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94 scan initiated (sintetic) -->
+<!-- versiuni la limita: IIS 7.5 vs 8.0, Apache httpd 2.2.34 vs 2.4.0, OpenSSH 7.3 vs 7.4 -->
+<nmaprun scanner="nmap" args="nmap -sS -sU -sV --script http-title -oX x.xml 192.168.1.0/24" start="1762500000" version="7.94">
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.10" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0A" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" product="Microsoft IIS httpd" version="7.5" method="probed" conf="10"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.11" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0B" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" product="Microsoft IIS httpd" version="8.0" method="probed" conf="10"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.12" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0C" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" product="Apache httpd" version="2.2.34" method="probed" conf="10"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.13" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0D" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" product="Apache httpd" version="2.4.0" method="probed" conf="10"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.14" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0E" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="22">
+<state state="open" reason="syn-ack"/>
+<service name="ssh" product="OpenSSH" version="7.3" method="probed" conf="10"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.15" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0F" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="22">
+<state state="open" reason="syn-ack"/>
+<service name="ssh" product="OpenSSH" version="7.4" method="probed" conf="10"/>
+</port>
+</ports>
+</host>
+<runstats>
+<finished time="1762500100"/>
+<hosts up="6" down="250" total="256"/>
+</runstats>
+</nmaprun>

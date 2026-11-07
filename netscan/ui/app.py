@@ -14,6 +14,7 @@ import re
 import secrets
 import threading
 import time
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -23,10 +24,11 @@ from markupsafe import Markup
 from netscan.cli import load_env_file
 from netscan.engine import analyze_folder
 from netscan.model import Scan
-from netscan.ui import extras, i18n, storage
+from netscan.ui import extras, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
-from netscan.ui.view import action_plan, current_action, ip_key, most_dangerous, rank_devices, score_band, score_trend
+from netscan.ui.view import (action_plan, ip_key, most_dangerous, rank_devices, score_band, score_trend, steps_view,
+                             verified_by_newer)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
@@ -56,7 +58,8 @@ def load_scans() -> list[Scan]:
 
 
 MAX_QUESTION_LEN = 500
-_ASK_LOCK = threading.Lock()   # modelul local răspunde la o singură întrebare odată (altfel se poate bloca placa video)
+_ASK_LOCK = threading.Lock()
+_VERIFY_LOCK = threading.Lock()   # o singură verificare live odată   # modelul local răspunde la o singură întrebare odată (altfel se poate bloca placa video)
 
 
 def same_site_request() -> bool:
@@ -102,6 +105,20 @@ def ask_assistant(question: str, scan: Scan | None, lang: str, previous: Scan | 
         return None
 
 
+# Starea lui Volt (mascota) după răspuns -> (stare, cheia textului, iconița). Starea e scrisă mereu și în text.
+REPLY_STATES = {
+    "verificat": ("ask_src_llm", "eel"),        # textul AI-ului a trecut validatorul
+    "prins": ("ask_src_caught", "shield"),      # validatorul a oprit textul AI-ului: arătăm răspunsul sigur
+    "fara-ai": ("ask_src_fallback", "info"),    # AI-ul local e oprit: răspuns construit direct din scanare
+}
+
+
+def reply_state(reply) -> str:
+    if getattr(reply, "source", None) == "llm":
+        return "verificat"
+    return "prins" if getattr(reply, "problems", None) else "fara-ai"
+
+
 def assistant_ctx(action: str, api: str, scan: Scan | None, scan_index: int | None, question: str, reply,
                   show_changes: bool) -> dict | None:
     """Datele pentru fereastra asistentului (templates/_assistant.html)."""
@@ -109,7 +126,8 @@ def assistant_ctx(action: str, api: str, scan: Scan | None, scan_index: int | No
         return None
     return {"action": action, "api": api, "scan_index": scan_index, "question": question, "reply": reply,
             "open": bool(request.args.get("ask")) or bool(question), "llm_on": local_ai_enabled(),
-            "file": scan.file, "show_changes": show_changes}
+            "file": scan.file, "show_changes": show_changes,
+            "state": reply_state(reply) if reply is not None else None}
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -123,9 +141,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         # DNS rebinding: o pagină rea poate face ca numele ei să ducă la 127.0.0.1. Acceptăm doar cereri adresate
         # explicit calculatorului local; orice alt Host primește 400 (portul nu contează).
         TRUSTED_HOSTS=list(LOCAL_HOSTS),   # Flask >= 3.1; verificarea proprie only_local_host() acoperă versiunile vechi
+        # verificarea pașilor (verify.py): o conexiune TCP, doar spre adrese din rețeaua mea; înlocuibile în teste
+        PORT_PROBE=verify.tcp_probe,
+        NET_CHECK=verify.target_in_my_network,
     )
     if test_config:
         app.config.update(test_config)
+        if app.config.get("TESTING") and "NET_CHECK" not in test_config:
+            app.config["NET_CHECK"] = lambda ip: False   # testele nu ating niciodată rețeaua
 
     # ---------- limbă și helperi pentru template-uri ----------
 
@@ -154,6 +177,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Referrer-Policy"] = "no-referrer"
         return resp
+
+    app.jinja_env.globals["REPLY_STATES"] = REPLY_STATES
 
     @app.context_processor
     def helpers() -> dict:
@@ -210,19 +235,43 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan, idx = pick(scan_list)
         saved_id = storage.find_scan(scan.file, scan.started_at, app.config["DB_PATH"]) if scan else None
         question = request.args.get("q", "")[:MAX_QUESTION_LEN] if same_site_request() else ""
-        step, plan_total, all_done = None, 0, False
+        steps = None
         if scan is not None and scan.status == "ok" and scan.findings:
-            done = storage.done_keys(scan, app.config["DB_PATH"])
-            step, plan_total = current_action(scan, done), len(action_plan(scan))
-            all_done = step is None
+            db = app.config["DB_PATH"]
+            steps = steps_view(scan, storage.done_keys(scan, db), storage.verified_keys(scan, db),
+                               verified_by_newer(scan, newer_scans(scan, scan_list)),
+                               request.args.get("step", type=int))
+        # cardul „Cel mai periculos dispozitiv” nu mai arată problemele verificate ca rezolvate
+        remaining = scan
+        if steps is not None and steps.fixed_keys:
+            remaining = replace(scan, findings=[f for f in scan.findings if f.key() not in steps.fixed_keys])
+        check = request.args.get("check")
+        checked = request.args.get("checked", type=int)
+        if check not in verify.RESULTS or steps is None or not (checked and 1 <= checked <= steps.total):
+            check, checked = None, None
         reply = ask_assistant(question, scan, g.lang)
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx,
-            step=step, plan_total=plan_total, all_done=all_done,
+            steps=steps, check=check, checked=steps.steps[checked - 1] if checked else None,
+            show_steps=steps is not None and (request.args.get("step") is not None or not steps.all_resolved),
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", scan=idx), scan, idx, question, reply, False),
-            devices=rank_devices(scan) if scan else [], worst=most_dangerous(scan) if scan else None,
+            devices=rank_devices(scan) if scan else [], worst=most_dangerous(remaining) if remaining else None,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
         )
+
+    def newer_scans(scan: Scan, scan_list: list[Scan]) -> list[Scan]:
+        """Scanările mai noi decât `scan` (din folder și din istoric), pentru verificarea pașilor."""
+        if scan.started_at is None:
+            return []
+        out = [s for s in scan_list if s is not scan and (s.started_at or 0) > scan.started_at]
+        seen = {(s.file, s.started_at) for s in out}
+        db = app.config["DB_PATH"]
+        for item in storage.list_scans(db):
+            if item.status == "ok" and (item.started_at or 0) > scan.started_at and (item.file, item.started_at) not in seen:
+                saved = storage.get_scan(item.id, db)
+                if saved is not None:
+                    out.append(saved)
+        return out
 
     def _form_scan() -> tuple[Scan, int]:
         if not hmac.compare_digest(request.form.get("token", ""), app.config["FORM_TOKEN"]):
@@ -235,15 +284,28 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.post("/action/done")
     def action_done():
-        """D5: bifează pasul curent. Cheia trebuie să fie a unei probleme din scanare; scorul nu se schimbă."""
+        """D5: „Am făcut asta” = verifică pasul pe date reale (verify.py). Portul închis -> verificat, iar scorul
+        îl recalculează motorul. Portul încă deschis -> rămâne de făcut. Altfel: bifat, dar neconfirmat."""
+        if not same_site_request():
+            abort(403)
         scan, idx = _form_scan()
         port_raw = request.form.get("port", "")
         key = (request.form.get("device_id", ""), int(port_raw) if port_raw.lstrip("-").isdigit() else None,
                request.form.get("code", ""))
-        if key not in {f.key() for f in scan.findings}:
+        finding = next((f for f in scan.findings if f.key() == key), None)
+        if finding is None:
             abort(400)
-        storage.mark_done(scan, key, app.config["DB_PATH"])
-        return redirect(url_for("overview", scan=idx) + "#worst-h")
+        db = app.config["DB_PATH"]
+        with _VERIFY_LOCK:
+            result = verify.check_finding(scan, finding, app.config["PORT_PROBE"], app.config["NET_CHECK"])
+        if result.verified:   # portul e închis: toate problemele de pe acel port al dispozitivului au dispărut
+            storage.mark_verified(scan, [f.key() for f in scan.findings
+                                         if f.device_id == finding.device_id and f.port == finding.port], db)
+        elif result.result not in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION):
+            storage.mark_done(scan, key, db)
+        number = [f.key() for f in action_plan(scan)].index(key) + 1
+        stay = {"step": number} if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION) else {}
+        return redirect(url_for("overview", scan=idx, checked=number, check=result.result, **stay) + "#worst-h")
 
     @app.post("/action/reset")
     def action_reset():
@@ -403,9 +465,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         reply = ask_assistant(question, scan, g.lang, previous=prev)
         if reply is None:
             return {"ok": False, "text": i18n.t(g.lang, "ai_error")}, 200
+        state = reply_state(reply)
+        key, icon = REPLY_STATES[state]
         return {
-            "ok": True, "text": reply.text, "source": reply.source,
-            "source_label": i18n.t(g.lang, "ask_src_llm" if reply.source == "llm" else "ask_src_fallback"),
+            "ok": True, "text": reply.text, "source": reply.source, "state": state,
+            "source_label": i18n.t(g.lang, key), "source_icon": icon,
         }
 
     @app.errorhandler(400)

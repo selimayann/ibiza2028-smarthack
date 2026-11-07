@@ -249,6 +249,7 @@ T["ro"].update({
     "fix_all_item": "{n}. {dev} {ip}{port}: {step}",
     "fix_all_more": "…și încă {n}. După ce le repari pe acestea, fă o scanare nouă.",
     "fix_all_info": "Mai sunt {n} lucruri doar de știut (fără puncte), de exemplu SSH deschis.",
+    "fix_all_info_one": "Mai e un lucru doar de știut (fără puncte), de exemplu SSH deschis.",
     "list_head": "Am găsit {n} probleme în total:",
     "list_item": "- {dev} {ip}: {items}",
     "ports_head": "Porturile deschise (ușile prin care se poate intra):",
@@ -295,6 +296,7 @@ T["en"].update({
     "fix_all_item": "{n}. {dev} {ip}{port}: {step}",
     "fix_all_more": "…and {n} more. After you fix these, run a new scan.",
     "fix_all_info": "There are also {n} things just to know (no points), for example SSH being open.",
+    "fix_all_info_one": "There is also one thing just to know (no points), for example SSH being open.",
     "list_head": "I found {n} problems in total:",
     "list_item": "- {dev} {ip}: {items}",
     "ports_head": "Open ports (the doors someone could come in through):",
@@ -602,7 +604,7 @@ def _answer_fix_all(scan: Scan, lang: str, limit: int = 8) -> str:
         lines.append(t["fix_all_more"].format(n=len(plan) - limit))
     info = sum(1 for f in scan.findings if f.points == 0)
     if info:
-        lines.append(t["fix_all_info"].format(n=info))
+        lines.append(t["fix_all_info_one" if info == 1 else "fix_all_info"].format(n=info))
     return "\n".join(lines)
 
 

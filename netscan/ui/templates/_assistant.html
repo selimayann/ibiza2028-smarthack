@@ -1,15 +1,16 @@
 {# FR-12 + D8: asistentul AI, ca buton fix + fereastră de chat (<dialog> nativ).
    Fără JavaScript: butonul reîncarcă pagina cu fereastra deschisă, iar formularele sunt GET obișnuite.
    Întrebarea și răspunsul sunt text simplu (autoescape); în JS se pun doar cu textContent. #}
+{% from "_volt.html" import volt %}
 {% set a = assistant %}
 {% set base_q = ('scan=' ~ a.scan_index ~ '&') if a.scan_index is not none else '' %}
 <a class="ai-fab" href="{{ a.action }}?{{ base_q }}ask=1#chat" data-chat-open aria-haspopup="dialog" aria-controls="chat">
-  <svg class="icon eel" aria-hidden="true"><use href="#i-eel"/></svg><span class="fab-text">{{ T('ai_open') }}</span>
+  {{ volt("asteapta", "fab-volt") }}<span class="fab-text">{{ T('ai_open') }}</span>
 </a>
 
 <dialog class="chat" id="chat" aria-labelledby="chat-h"{% if a.open %} open{% endif %} data-api="{{ a.api }}" data-thinking="{{ T('ai_thinking') }}" data-error="{{ T('ai_error') }}" data-you="{{ T('ask_you') }}">
   <div class="chat-head">
-    <div class="chat-avatar" aria-hidden="true"><svg class="icon eel"><use href="#i-eel"/></svg></div>
+    <div class="chat-avatar" aria-hidden="true">{{ volt("asteapta") }}</div>
     <div class="chat-title">
       <h2 id="chat-h">{{ T('ai_title') }}</h2>
       <p class="chat-badge{% if not a.llm_on %} off{% endif %}"><span class="dot" aria-hidden="true"></span>{{ T('ai_badge_on') if a.llm_on else T('ai_badge_off') }}</p>
@@ -20,15 +21,20 @@
   </div>
 
   <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="{{ T('ai_log') }}" tabindex="-1">
-    <p class="msg msg-bot">{{ T('ai_welcome')|format(a.file) }}</p>
+    <div class="msg-row"><span class="msg-volt">{{ volt("asteapta") }}</span><p class="msg msg-bot">{{ T('ai_welcome')|format(a.file) }}</p></div>
     {% if a.question and a.reply %}
       <p class="msg msg-user"><span class="sr-only">{{ T('ask_you') }} </span>{{ a.question }}</p>
+      {% set src_key, src_icon = REPLY_STATES[a.state] %}
+      <div class="msg-row msg-row-{{ a.state }}"><span class="msg-volt">{{ volt(a.state) }}</span>
       <div class="msg msg-bot" id="ask-answer" tabindex="-1">
         <p class="ask-a">{{ a.reply.text }}</p>
-        <p class="msg-src"><svg class="icon" aria-hidden="true"><use href="#i-{{ 'eel' if a.reply.source == 'llm' else 'info' }}"/></svg>{{ T('ask_src_llm') if a.reply.source == 'llm' else T('ask_src_fallback') }}</p>
-      </div>
+        <p class="msg-src"><svg class="icon" aria-hidden="true"><use href="#i-{{ src_icon }}"/></svg>{{ T(src_key) }}</p>
+      </div></div>
     {% endif %}
   </div>
+
+  {# Pentru app.js: Volt în fiecare stare, clonat lângă bula de răspuns (nu se afișează singur). #}
+  <template id="volt-tpl">{% for st in ('gandeste', 'verificat', 'prins', 'fara-ai') %}{{ volt(st) }}{% endfor %}</template>
 
   <form class="chat-suggest" method="get" action="{{ a.action }}#chat" data-chat-form aria-label="{{ T('ask_examples') }}">
     {% if a.scan_index is not none %}<input type="hidden" name="scan" value="{{ a.scan_index }}">{% endif %}

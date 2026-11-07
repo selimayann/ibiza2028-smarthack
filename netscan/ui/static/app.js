@@ -89,15 +89,30 @@
     s.appendChild(u);
     return s;
   };
-  const bubble = (log, cls, text) => {
+  // Volt (mascota): copie din <template id="volt-tpl">, doar decor (aria-hidden); starea e scrisă și în text.
+  const volt = (chat, state) => {
+    const tpl = chat.querySelector("#volt-tpl");
+    const s = tpl && tpl.content.querySelector("svg.s-" + state);
+    return s ? s.cloneNode(true) : null;
+  };
+  const bubble = (log, cls, text, mascot) => {
     const el = document.createElement("div");
     el.className = "msg " + cls;
     const p = document.createElement("p");
     p.textContent = text;
     el.appendChild(p);
-    log.appendChild(el);
+    let node = el;
+    if (mascot) {
+      node = document.createElement("div");
+      node.className = "msg-row";
+      const face = document.createElement("span");
+      face.className = "msg-volt";
+      face.appendChild(mascot);
+      node.append(face, el);
+    }
+    log.appendChild(node);
     log.scrollTop = log.scrollHeight;
-    return el;
+    return { el, node };
   };
   const openChat = (chat) => {
     if (chat.open) chat.close();
@@ -130,10 +145,10 @@
     const input = chat.querySelector("#q");
     const q = ((e.submitter && e.submitter.name === "q" ? e.submitter.value : input && input.value) || "").trim().slice(0, 500);
     if (!q) { if (input) input.focus(); return; }
-    const you = bubble(log, "msg-user", q);
+    const you = bubble(log, "msg-user", q).el;
     you.setAttribute("aria-label", (chat.dataset.you || "") + " " + q);
     if (input) input.value = "";
-    const wait = bubble(log, "msg-bot msg-thinking", chat.dataset.thinking || "…");
+    const wait = bubble(log, "msg-bot msg-thinking", chat.dataset.thinking || "…", volt(chat, "gandeste")).node;
     const buttons = chat.querySelectorAll("form[data-chat-form] button");
     buttons.forEach((b) => { b.disabled = true; });
     let data = null;
@@ -144,11 +159,13 @@
       if (res.ok) data = await res.json();
     } catch (_) { data = null; }
     wait.remove();
-    const answer = bubble(log, "msg-bot", data && data.text ? data.text : (chat.dataset.error || ""));
+    const states = ["verificat", "prins", "fara-ai"];
+    const state = data && data.ok && states.includes(data.state) ? data.state : "fara-ai";
+    const answer = bubble(log, "msg-bot", data && data.text ? data.text : (chat.dataset.error || ""), volt(chat, state)).el;
     if (data && data.ok && data.source_label) {
       const src = document.createElement("p");
       src.className = "msg-src";
-      src.appendChild(svg(data.source === "llm" ? "eel" : "info"));
+      src.appendChild(svg(["eel", "shield", "info"].includes(data.source_icon) ? data.source_icon : "info"));
       src.appendChild(document.createTextNode(data.source_label));
       answer.appendChild(src);
     }
