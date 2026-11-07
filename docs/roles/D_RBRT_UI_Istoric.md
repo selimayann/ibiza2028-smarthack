@@ -280,3 +280,49 @@ Istoricul se ordonează după `started_at`. Teste acum pe date sintetice; după 
 - `netscan/ui/app.py`, `templates/`, `static/` cu pagina principală funcțională.
 - `netscan/ui/storage.py` și `diff()` cu teste.
 - Comanda `ui` în `cli.py`, după ce anunți echipa.
+
+---
+
+# Partea 3 · Direcția produsului
+
+> **Începi doar după ce nucleul trece verificarea mentorului** (cerințele Must FR-01…FR-11 și FR-15 merg, iar `pytest` trece pe `main`). Până atunci, Partea 2 și repararea nucleului au prioritate.
+>
+> Direcția: un „centru de securitate” pentru oameni netehnici. Arată ce e conectat la rețea, ce s-a schimbat de la ultima scanare și o singură reparație pe rând, explicată simplu. Detalii, toate funcțiile și propunerile de contract sunt în [docs/direction.md](../direction.md); ordinea de lucru e în [docs/workflow.md](../workflow.md), la „Direcția”.
+
+**Ce nu se schimbă, pentru nimeni:**
+- Motorul de reguli, catalogul, scorul, `findings.csv` și `scores.csv`. Findings, severități și scoruri vin doar din cod, niciodată din LLM.
+- Fără agenți pe dispozitive, fără colectare de log-uri, fără reparații automate. Doar scanarea hotspotului echipei.
+- Nimic nu iese din hotspot. Un LLM se folosește doar dacă mentorii confirmă că e permis; altfel, texte predefinite.
+- `docs/contract.md`, `netscan/model.py` și `fixtures/sample.json` nu se schimbă pe tăcute. Un câmp sau tip nou se propune în `docs/direction.md`, la „Propuneri de contract”.
+- Produsul nu folosește numele sau logo-ul altui produs de securitate (UI, README, texte).
+
+## 3.1 Ce îți revine
+
+**D1 · Jurnalul de securitate și alertele la schimbări (FR-13, primul, după nucleu)**
+- Derivate din `diff()`-ul existent (`netscan/ui/storage.py`): dispozitiv nou sau dispărut, port nou deschis sau închis, problemă nouă sau rezolvată.
+- Fiecare intrare e o propoziție simplă, RO și EN, din dicționarul de texte UI, de exemplu: „Un dispozitiv nou a apărut în rețea: 192.168.1.50 (cameră).” / „Problema «Telnet deschis» a fost rezolvată pe 192.168.1.30.”
+- Forma alertei e propunerea P1 din `docs/direction.md` (`Alert`). Varianta minimă: o ții intern în `netscan/ui/`, fără să schimbi contractul.
+- Ordinea: cele mai noi întâi; în aceeași scanare, problemele noi primele.
+- **Teste:** V6a → V6b dă exact 3 alerte „problemă rezolvată” și nicio alertă „problemă nouă”.
+
+**D4 · Inventarul „ce e conectat la mine?”**
+- Toate dispozitivele, inclusiv cele fără probleme: tip, producător, MAC mascat, porturi deschise. Tipul și producătorul vin din FR-03 (`netscan/scan/device_info.py` de la Ayan: lista IEEE offline, „adresă privată” pentru MAC aleatoriu); `DeviceView.info` le are deja.
+- Mare parte există deja; completează doar ce lipsește.
+
+**D5 · O singură acțiune pe rând**
+- Cardul „Fă asta acum” arată un singur pas, ordonat după risc (ordinea din contract). După ce utilizatorul îl bifează, apare următorul.
+- Bifa e doar în UI și în istoric; nu schimbă findings sau scorul (scorul se schimbă doar la o scanare nouă).
+
+**D7 · Raportul de o pagină pentru furnizorul IT (FR-14, Should/Could)**
+- HTML (și PDF, dacă rămâne timp): scorul standard, dispozitivele în ordinea de risc, findings cu dovada, pașii de reparare. Doar date din motor, MAC mascat.
+- În ghid e la orele 16–20, după UI-ul complet.
+
+**Afișezi și ce fac ceilalți:**
+- maparea pe standarde de la Oneata (`netscan/explain/standards.py`, `get_standards()`), lângă explicație;
+- răspunsurile asistentului de la Ayan (`netscan/scan/assistant.py`), cu sursa marcată („răspuns predefinit” / „generat și verificat”).
+
+## 3.2 Ce NU faci
+- Nu calculezi în UI severități, puncte sau scoruri; le iei din motor.
+- Tot ce vine din scanare rămâne text nesigur: autoescape, niciodată `|safe`. La fel și întrebările puse asistentului.
+- Nu folosești numele sau logo-ul altui produs de securitate în UI.
+- Nu schimbi `docs/contract.md`, `model.py` sau `sample.json` pentru `Alert` fără acordul echipei.

@@ -17,6 +17,12 @@ Un tool care scanează **doar** rețeaua echipei (hotspotul nostru), aplică exa
 
 **Radu și RBRT lucrează în pereche** (UI-ul afișează exact ce produce motorul). Oneata ajută la lab până merge rețeaua.
 
+## Direcția produsului
+
+Un „centru de securitate” pentru oameni netehnici: **ce e conectat la mine**, **ce s-a schimbat** de la ultima scanare (jurnal de securitate în limbaj simplu) și **o singură reparație pe rând**, ordonată după risc, cu fiecare problemă legată de CIS Controls v8 și OWASP IoT Top 10. Fără agenți pe dispozitive, fără log-uri, fără reparații automate. Se lucrează la ea doar după ce nucleul (cerințele Must) trece verificarea mentorului.
+
+Detalii, funcții, responsabili și propuneri de contract: [docs/direction.md](docs/direction.md).
+
 ## Cum începe fiecare
 
 1. Clonează repo-ul și creează-ți branch-ul (vezi tabelul).
@@ -33,6 +39,7 @@ ibiza2028-smarthack/
 │   ├── rules.md           catalogul + capcane (Radu)
 │   ├── lab.md             lab-ul (Ayan)
 │   ├── questions.md       întrebări pentru mentori + răspunsuri (Oneata)
+│   ├── direction.md       direcția produsului, după nucleu (toți)
 │   └── roles/             instrucțiunile pentru Claude-ul fiecăruia
 ├── fixtures/
 │   ├── sample.json        exemplu în forma contractului (toți)

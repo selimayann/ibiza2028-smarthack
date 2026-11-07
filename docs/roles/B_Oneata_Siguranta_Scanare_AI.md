@@ -303,3 +303,53 @@ Gitleaks pe repo, README complet, pagina tehnică, FR-03 (vendor din OUI offline
 - Comenzile `network` și `scan` (dry-run) în `cli.py`, după ce anunți echipa.
 - `netscan/scan/top1000_tcp.txt` (dat lui C la ~1:45).
 - `docs/questions.md` cu răspunsurile primite.
+
+---
+
+# Partea 3 · Direcția produsului
+
+> **Începi doar după ce nucleul trece verificarea mentorului** (cerințele Must FR-01…FR-11 și FR-15 merg, iar `pytest` trece pe `main`). Până atunci, Partea 2 și repararea nucleului au prioritate.
+>
+> Direcția: un „centru de securitate” pentru oameni netehnici. Arată ce e conectat la rețea, ce s-a schimbat de la ultima scanare și o singură reparație pe rând, explicată simplu. Detalii, toate funcțiile și propunerile de contract sunt în [docs/direction.md](../direction.md); ordinea de lucru e în [docs/workflow.md](../workflow.md), la „Direcția”.
+
+**Ce nu se schimbă, pentru nimeni:**
+- Motorul de reguli, catalogul, scorul, `findings.csv` și `scores.csv`. Findings, severități și scoruri vin doar din cod, niciodată din LLM.
+- Fără agenți pe dispozitive, fără colectare de log-uri, fără reparații automate. Doar scanarea hotspotului echipei.
+- Nimic nu iese din hotspot. Un LLM se folosește doar dacă mentorii confirmă că e permis; altfel, texte predefinite.
+- `docs/contract.md`, `netscan/model.py` și `fixtures/sample.json` nu se schimbă pe tăcute. Un câmp sau tip nou se propune în `docs/direction.md`, la „Propuneri de contract”.
+- Produsul nu folosește numele sau logo-ul altui produs de securitate (UI, README, texte).
+
+## 3.1 Ce îți revine: D2 · AI și siguranță: asistentul care răspunde doar din scanare, cu validatorul (FR-12, după nucleu)
+
+> În direcție, partea de AI și siguranță e a lui **Ayan** (cel care a lucrat pe acest rol, branch `scan`).
+
+Utilizatorul pune o întrebare simplă („Care e cel mai periculos dispozitiv?”, „Ce înseamnă telnet?”, „Ce fac întâi?”, „Ce s-a schimbat?”), iar asistentul răspunde **doar din scanare**, pe înțelesul unui copil de 12 ani, în RO sau EN.
+
+**Asistentul**
+- **Fișier nou:** `netscan/scan/assistant.py`, cu `answer(question, scan, lang="ro") -> Answer(text, source, problems)`.
+- **Întâi fără internet:** răspunsuri predefinite construite din scanare și din `get_explanation()` (textele din `netscan/explain/`), pentru întrebările cele mai frecvente. Asta trebuie să meargă oricum, cu `LLM_API_KEY` gol.
+- **LLM doar dacă mentorii confirmă** că e permis internetul. Contextul trimis modelului vine din `ai_check.prompt_context()` (fără MAC, titlurile marcate ca date nesigure); întrebarea utilizatorului e și ea text nesigur.
+
+**Validatorul** (`netscan/scan/ai_check.py`, există deja)
+- `check_llm_text()` respinge orice IP, port, cod de finding sau CVE care nu există în scanare (plus MAC-uri, link-uri, texte prea lungi); `choose_text()` folosește atunci textul predefinit.
+- Tot răspunsul asistentului trece prin el. Dacă pică, se afișează textul predefinit, iar `Answer.problems` spune de ce.
+- Dacă îl extinzi (de ex. nume de dispozitive sau versiuni care nu sunt în scanare), adaugi și teste în `tests/test_ai_check.py`.
+
+**Teste** (`tests/test_assistant.py`): un răspuns cu un port, IP, cod sau CVE care nu e în scanare e respins; întrebarea cu „Ignore previous instructions” nu schimbă nimic; fără `LLM_API_KEY` totul merge, fără nicio cerere de rețea.
+
+**D8 · Model AI local (Qwen, fără internet), după nucleu; permis de mentori (întrebarea 14)**
+- Scopul e demonstrația live a guvernanței: modelul reformulează răspunsul asistentului, validatorul prinde orice IP, port, cod, CVE sau telefon inventat, iar tool-ul revine singur la textul predefinit (ghidul, secțiunea 6: idee bună pentru Inovație).
+- Model mic (Qwen) rulat cu Ollama pe laptopul de demo, descărcat **înainte** (nu în timpul demo-ului). Verifică licența modelului ales.
+- Fișier nou `netscan/scan/local_llm.py`: funcția `llm(context)` pentru `assistant.answer()`, cerere HTTP doar spre `127.0.0.1` (Ollama), cu timeout; orice eroare → textul predefinit.
+- Oprit implicit; pornit doar cu `NETSCAN_LOCAL_LLM=1`. Textele predefinite rămân sursa principală pentru explicații (calitatea în română a unui model mic e mai slabă).
+- **Teste:** fără Ollama pornit totul merge; o adresă diferită de `127.0.0.1` e refuzată; un răspuns cu date inventate e respins de validator.
+
+## 3.2 Cum îi ajuți pe ceilalți
+- RBRT afișează asistentul în UI; stabiliți împreună forma lui `Answer` (în `docs/direction.md`, P4).
+- Garda de rețea rămâne a ta: tot ce face direcția trebuie să respecte „Nimic nu iese din hotspot” din README.
+
+## 3.3 Ce NU faci
+- Asistentul nu calculează și nu schimbă findings, severități sau scoruri; doar le explică.
+- Nu slăbești validatorul ca să treacă un răspuns: mai bine textul predefinit.
+- Nu trimiți întrebarea sau datele scanării nicăieri fără confirmarea mentorilor.
+- Nu promiți reparații automate („Am închis portul pentru tine”): omul repară, tool-ul explică.
