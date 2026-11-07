@@ -41,6 +41,7 @@ ibiza2028-smarthack/
 │   ├── questions.md       întrebări pentru mentori + răspunsuri (Oneata)
 │   ├── direction.md       direcția produsului, după nucleu (toți)
 │   ├── demo.md            pregătirea demo-ului și cele 7 verificări live
+│   ├── live_checks.md     comenzile exacte pentru verificările live + rezultatele locale
 │   └── roles/             instrucțiunile pentru Claude-ul fiecăruia
 ├── fixtures/
 │   ├── sample.json        exemplu în forma contractului (toți)
