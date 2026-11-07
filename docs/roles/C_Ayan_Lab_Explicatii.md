@@ -317,3 +317,37 @@ Trebuie să vezi, în coloana de serviciu: `redis`, `mqtt`, `http` (cu titlul �
 - `fixtures/lab/scan_01_before.xml`, `scan_02.xml`, `scan_03_after.xml`.
 - `lab/docker-compose.yml`, `lab/nginx/index.html`, `lab/fake_services/`.
 - `docs/lab.md`.
+
+---
+
+# Partea 3 · Direcția produsului
+
+> **Începi doar după ce nucleul trece verificarea mentorului** (cerințele Must FR-01…FR-11 și FR-15 merg, iar `pytest` trece pe `main`). Până atunci, Partea 2 și repararea nucleului au prioritate.
+>
+> Direcția: un „centru de securitate” pentru oameni netehnici. Arată ce e conectat la rețea, ce s-a schimbat de la ultima scanare și o singură reparație pe rând, explicată simplu. Detalii, toate funcțiile și propunerile de contract sunt în [docs/direction.md](../direction.md); ordinea de lucru e în [docs/workflow.md](../workflow.md), la „Direcția”.
+
+**Ce nu se schimbă, pentru nimeni:**
+- Motorul de reguli, catalogul, scorul, `findings.csv` și `scores.csv`. Findings, severități și scoruri vin doar din cod, niciodată din LLM.
+- Fără agenți pe dispozitive, fără colectare de log-uri, fără reparații automate. Doar scanarea hotspotului echipei.
+- Nimic nu iese din hotspot. Un LLM se folosește doar dacă mentorii confirmă că e permis; altfel, texte predefinite.
+- `docs/contract.md`, `netscan/model.py` și `fixtures/sample.json` nu se schimbă pe tăcute. Un câmp sau tip nou se propune în `docs/direction.md`, la „Propuneri de contract”.
+- Produsul nu folosește numele sau logo-ul altui produs de securitate (UI, README, texte).
+
+## 3.1 Ce îți revine: D3 · explicații: maparea pe CIS Controls v8 și OWASP IoT Top 10 (bonus, dacă rămâne timp)
+
+> În direcție, partea de explicații e a lui **Oneata** (cea care a lucrat pe acest rol, branch `explain`).
+
+Fiecare dintre cele 15 coduri din catalog primește trimiterile la cele două standarde, afișate în UI lângă explicație.
+- **Fișier nou:** `netscan/explain/standards.py`, cu un dicționar static `cod → {"cis": [...], "owasp_iot": [...]}` (cu numele scurte în RO și EN) și o funcție `get_standards(code, lang="ro") -> dict`, citită de RBRT.
+- `get_explanation()` rămâne compatibil: dacă vrei să adaugi trimiterile și acolo, o faci doar cu chei noi, fără să schimbi `text` și `steps`, și îl anunți pe RBRT.
+- **Trimiterile se verifică în sursele oficiale** (CIS Controls v8 pe cisecurity.org, OWASP IoT Top 10 2018 pe owasp.org). Nu le scrie din memorie fără verificare.
+- **Teste** (`tests/test_standards.py`): toate cele 15 coduri au cel puțin o trimitere în fiecare standard; ID-urile sunt doar din listele oficiale (CIS 1–18, OWASP I1–I10); codurile necunoscute întorc un rezultat gol, fără crash.
+- Maparea e informativă: **nu** schimbă severitatea, punctele sau ordinea.
+
+## 3.2 Cum îi ajuți pe ceilalți
+- Ayan construiește asistentul (D2) pe textele tale din `get_explanation()`; păstrează-le scurte și corecte, pentru că sunt răspunsul predefinit când LLM-ul lipsește sau e respins.
+- RBRT afișează „o singură acțiune pe rând” (D5) cu primul pas din `get_explanation()`; pașii trebuie să fie în ordinea în care se fac.
+
+## 3.3 Ce NU faci
+- Nu inventezi trimiteri la standarde și nu le prezinți ca „certificare” sau „conformitate”.
+- Nu schimbi severitățile sau ordinea; vin doar din motor.

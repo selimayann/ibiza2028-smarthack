@@ -331,3 +331,34 @@ Aceste valori vin din brief. Verifică numele exacte ale fișierelor când primi
 - Comanda `analyze` în `cli.py`.
 - `tests/test_validation_set.py` și raportul cu ce trece / ce nu.
 - `docs/rules.md` cu ce ai găsit în XML-uri și deciziile luate.
+
+---
+
+# Partea 3 · Direcția produsului
+
+> **Începi doar după ce nucleul trece verificarea mentorului** (cerințele Must FR-01…FR-11 și FR-15 merg, iar `pytest` trece pe `main`). Până atunci, Partea 2 și repararea nucleului au prioritate.
+>
+> Direcția: un „centru de securitate” pentru oameni netehnici. Arată ce e conectat la rețea, ce s-a schimbat de la ultima scanare și o singură reparație pe rând, explicată simplu. Detalii, toate funcțiile și propunerile de contract sunt în [docs/direction.md](../direction.md); ordinea de lucru e în [docs/workflow.md](../workflow.md), la „Direcția”.
+
+**Ce nu se schimbă, pentru nimeni:**
+- Motorul de reguli, catalogul, scorul, `findings.csv` și `scores.csv`. Findings, severități și scoruri vin doar din cod, niciodată din LLM.
+- Fără agenți pe dispozitive, fără colectare de log-uri, fără reparații automate. Doar scanarea hotspotului echipei.
+- Nimic nu iese din hotspot. Un LLM se folosește doar dacă mentorii confirmă că e permis; altfel, texte predefinite.
+- `docs/contract.md`, `netscan/model.py` și `fixtures/sample.json` nu se schimbă pe tăcute. Un câmp sau tip nou se propune în `docs/direction.md`, la „Propuneri de contract”.
+- Produsul nu folosește numele sau logo-ul altui produs de securitate (UI, README, texte).
+
+## 3.1 Ce îți revine: D6 · raportul „servicii văzute care nu sunt în catalog” (dacă rămâne timp)
+
+**Nicio funcție nouă în motor.** Regulile, scorul și CSV-urile standard rămân exact cum sunt. Singurul lucru opțional e un raport care te ajută să verifici Test Set-ul:
+- Ce servicii **deschise** a văzut parserul și n-au dat niciun finding (ex. `domain`, `ipp`, `http` fără titlu de admin), ca să vezi rapid dacă îți scapă o regulă sau dacă e o capcană corectă.
+- Se scrie **doar la cerere**, de exemplu `python -m netscan analyze <folder> --unmatched`, într-un fișier separat `unmatched_services.csv` (`file,ip,port,proto,service`).
+- **Nu** modifică `findings.csv` și `scores.csv`. Test obligatoriu: cu și fără opțiune, cele două CSV-uri sunt identice byte cu byte.
+- Opțiunea nouă din `cli.py` se anunță înainte (fișier comun).
+
+## 3.2 Cum îi ajuți pe ceilalți
+- RBRT folosește `netscan/engine/devices.py` (tipul dispozitivului, FR-03) pentru inventar. Dacă îți cere câmpuri noi, discutați întâi propunerea în `docs/direction.md`.
+- Răspunsurile mentorilor din `docs/questions.md` (mai ales 2 și 11) au prioritate față de orice funcție din direcție.
+
+## 3.3 Ce NU faci
+- Nu adaugi coduri, severități sau puncte noi și nu schimbi regulile ca să „ajute” direcția.
+- Nu atingi `analyze` în ultima oră dinaintea upload-ului Test Set-ului.
