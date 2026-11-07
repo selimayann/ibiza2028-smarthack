@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import hmac
 import json
 import os
@@ -24,6 +25,7 @@ from markupsafe import Markup
 from netscan.cli import load_env_file
 from netscan.engine import analyze_folder
 from netscan.model import Scan
+from netscan.scan import live as live_mod
 from netscan.ui import extras, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
@@ -55,6 +57,21 @@ def load_scans() -> list[Scan]:
         return analyze_folder(scans_dir())
     except NotADirectoryError:
         return []
+
+
+USER_SCANS_DIR = REPO_ROOT / "scans"   # scanările tale (din aplicație sau `scan --confirm`)
+
+
+def load_dashboard_scans() -> list[Scan]:
+    """Dashboard-ul arată scanările TALE, cea mai nouă prima. NETSCAN_SCANS_DIR alege alt folder (de ex. lab-ul);
+    fără nicio scanare proprie, rămân exemplele (Validation Set)."""
+    if os.environ.get("NETSCAN_SCANS_DIR") or not any(USER_SCANS_DIR.glob("*.xml")):
+        return load_scans()
+    try:
+        found = analyze_folder(USER_SCANS_DIR)
+    except NotADirectoryError:
+        return load_scans()
+    return sorted(found, key=lambda s: (s.started_at is not None, s.started_at or 0, s.file), reverse=True)
 
 
 MAX_QUESTION_LEN = 500
@@ -134,7 +151,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     load_env_file(REPO_ROOT / ".env")  # NETSCAN_SALT, NETSCAN_DB_PATH; nu suprascrie ce e deja setat
     app = Flask(__name__)
     app.config.update(
-        SCAN_LOADER=load_scans,
+        SCAN_LOADER=load_dashboard_scans,
         DB_PATH=None,  # None = NETSCAN_DB_PATH sau data/netscan.db
         FORM_TOKEN=secrets.token_urlsafe(32),
         MAX_CONTENT_LENGTH=1024 * 1024,
@@ -149,6 +166,17 @@ def create_app(test_config: dict | None = None) -> Flask:
         app.config.update(test_config)
         if app.config.get("TESTING") and "NET_CHECK" not in test_config:
             app.config["NET_CHECK"] = lambda ip: False   # testele nu ating niciodată rețeaua
+
+    # Protecția live (B, netscan/scan/live.py): pornește doar la cererea utilizatorului (sau dacă a lăsat-o pornită,
+    # la `run()`), niciodată în teste. În teste, fără LIVE dat explicit: un monitor care „nu e pe hotspot”.
+    if app.config.get("LIVE") is None:
+        if app.config.get("TESTING"):
+            app.config["LIVE"] = live_mod.LiveMonitor(
+                scans_dir=Path(app.config["DB_PATH"] or "data/netscan.db").parent / "no-scans",
+                db_path=app.config["DB_PATH"], detect=lambda: live_mod.network.NetworkInfo(status="NO_NETWORK"),
+                trap_server=None, persist=False, launcher=lambda job: live_mod.elevate.Launch(False, "FAILED"))
+        else:
+            app.config["LIVE"] = live_mod.LiveMonitor(scans_dir=USER_SCANS_DIR, db_path=app.config["DB_PATH"])
 
     # ---------- limbă și helperi pentru template-uri ----------
 
@@ -227,6 +255,9 @@ def create_app(test_config: dict | None = None) -> Flask:
             return None, 0
         idx = request.args.get("scan", default=0, type=int)
         idx = idx if 0 <= idx < len(scan_list) else 0
+        name = request.args.get("file", "")[:120]           # „Vezi rezultatul” după o scanare din aplicație
+        if name:
+            idx = next((i for i, s in enumerate(scan_list) if s.file == name), idx)
         return scan_list[idx], idx
 
     @app.get("/")
@@ -251,7 +282,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             check, checked = None, None
         reply = ask_assistant(question, scan, g.lang)
         return render_template(
-            "overview.html", scan=scan, scan_list=scan_list, selected=idx,
+            "overview.html", scan=scan, scan_list=scan_list, selected=idx, live=live_ctx(),
             steps=steps, check=check, checked=steps.steps[checked - 1] if checked else None,
             show_steps=steps is not None and (request.args.get("step") is not None or not steps.all_resolved),
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", scan=idx), scan, idx, question, reply, False),
@@ -312,6 +343,105 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan, idx = _form_scan()
         storage.reset_done(scan, app.config["DB_PATH"])
         return redirect(url_for("overview", scan=idx) + "#worst-h")
+
+    # ---------- protecția live (B): ce se întâmplă acum în hotspot ----------
+
+    LIVE_MESSAGES = ("NOT_ON_HOTSPOT", "BUSY")
+
+    def live_ctx() -> dict:
+        """Datele panoului „Rețeaua ta acum”, gata de afișat. Tot ce vine de la dispozitive sau din fișiere e text
+        nesigur: îl afișează doar Jinja, cu autoescape."""
+        mon = app.config["LIVE"]
+        snap, full = mon.snapshot(), mon.full_scan_status()
+        lang = g.get("lang", i18n.DEFAULT_LANG)
+        en = lang == "en"
+        clock = lambda ts: time.strftime("%H:%M:%S", time.localtime(ts)) if ts else ""  # noqa: E731
+        devices = []
+        for d in snap["devices"]:
+            if d["in_scan"] and d["device_type"]:
+                name = i18n.device_type_label(lang, d["device_type"])
+            elif d["private_mac"]:
+                name = i18n.t(lang, "live_private")
+            else:
+                name = d["vendor"] or i18n.t(lang, "live_unknown_device")
+            devices.append({**d, "name": name, "since": clock(d["first_seen"]), "left": clock(d["last_seen"]),
+                            "not_in_scan": bool(snap["known_file"]) and not d["in_scan"]})
+        events = [{"tone": e["tone"], "time": clock(e["ts"]), "text": e["text_en"] if en else e["text_ro"],
+                   "kind": e["kind"]} for e in snap["events"][:12]]
+        state = full["state"]
+        eta = full.get("eta_s")
+        found = list(full.get("discovered") or [])
+        scan_ctx = {
+            "state": state, "job": full.get("job"), "percent": int(full.get("percent") or 0),
+            "phase": full.get("phase"), "eta": (f"{int(eta // 60)} min" if eta and eta >= 60 else
+                                                f"{int(eta)} s" if eta else ""),
+            "found": found[-12:], "found_total": len(found), "file": full.get("file"),
+            "message": full.get("msg_en") if en else full.get("msg_ro"),
+            "next": clock(full.get("next_at")), "finished": clock(full.get("updated")),
+        }
+        msg = request.args.get("live_msg", "")
+        status = snap["status"]
+        active_scan = state in ("waiting_permission", "running", "waiting_next")
+        ctx = {
+            "status": status, "starting": status == "active" and not snap["baseline_done"],
+            "reason": snap["reason_en"] if en else snap["reason_ro"], "ssid": snap["ssid"], "cidr": snap["cidr"],
+            "own_ip": snap["own_ip"], "online": snap["online"], "devices": devices, "events": events,
+            "last_check": clock(snap["last_sweep"]), "trap_state": snap["trap_state"],
+            "trap_code": snap["trap_code"], "trap_port": snap["trap_port"], "known_file": snap["known_file"],
+            "scan": scan_ctx, "msg": msg if msg in LIVE_MESSAGES else None,
+            "poll_ms": 2000 if (status != "off" or active_scan) else 0,
+            "latest": events[0]["text"] if events else "",
+        }
+        ctx["version"] = hashlib.sha1(json.dumps(ctx, sort_keys=True, default=str).encode()).hexdigest()[:16]
+        return ctx
+
+    def _live_form() -> None:
+        if not same_site_request():
+            abort(403)
+        if not hmac.compare_digest(request.form.get("token", ""), app.config["FORM_TOKEN"]):
+            abort(400)
+
+    def _live_back(msg: str | None = None):
+        args = {"live_msg": msg} if msg else {}
+        if request.headers.get("X-Requested-With") == "fetch":
+            return redirect(url_for("live_panel", **args))
+        return redirect(url_for("overview", **args) + "#live")
+
+    @app.get("/live/panel")
+    def live_panel():
+        """Doar panoul live (pentru reîmprospătarea din app.js)."""
+        resp = app.make_response(render_template("_live_panel.html", live=live_ctx(),
+                                                 token=app.config["FORM_TOKEN"]))
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    @app.post("/live/start")
+    def live_start():
+        _live_form()
+        app.config["LIVE"].start()
+        return _live_back()
+
+    @app.post("/live/stop")
+    def live_stop():
+        _live_form()
+        app.config["LIVE"].stop()
+        return _live_back()
+
+    @app.post("/live/scan")
+    def live_scan():
+        """Scanarea completă: pornește pasul de admin prin fereastra de permisiune a sistemului (elevate.py)."""
+        _live_form()
+        job = request.form.get("job", "scan")
+        if job not in live_mod.elevate.JOBS:
+            abort(400)
+        code = app.config["LIVE"].request_full_scan(job)
+        return _live_back(None if code == "OK" else code)
+
+    @app.post("/live/scan/stop")
+    def live_scan_stop():
+        _live_form()
+        app.config["LIVE"].stop_full_scan()
+        return _live_back()
 
     @app.post("/history/save")
     def history_save():
@@ -496,5 +626,8 @@ def _fmt_time(epoch: int | None, lang: str = "ro") -> str:
 
 
 def run(port: int = 5000) -> None:
-    """Pornește UI-ul local. Doar 127.0.0.1, fără debug."""
-    create_app().run(host="127.0.0.1", port=port, debug=False)
+    """Pornește UI-ul local. Doar 127.0.0.1, fără debug. Dacă utilizatorul a lăsat protecția live pornită, o reia
+    (ea însăși așteaptă hotspotul echipei înainte să atingă rețeaua)."""
+    app = create_app()
+    app.config["LIVE"].autostart()
+    app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

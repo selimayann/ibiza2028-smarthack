@@ -65,6 +65,46 @@
     if (!ok) window.location.href = a.href;
   });
 
+  // ---------- protecția live: panoul „Rețeaua ta acum” se reîmprospătează singur ----------
+  // Aduce /live/panel (HTML de la același server, escapat de Jinja), îl parsează cu DOMParser ca swap() și
+  // înlocuiește panoul doar dacă s-a schimbat ceva (data-version). Focusul rămâne pe același buton/titlu, iar
+  // ultimul eveniment e anunțat o singură dată cititorului de ecran (#live-announce, în afara panoului).
+  const liveEl = () => document.getElementById("live");
+  const focusKey = (a, panel) => {
+    if (!a || !panel.contains(a)) return null;
+    if (a.id) return "#" + a.id;
+    const form = a.closest("form");
+    return form ? 'form[action="' + form.getAttribute("action") + '"] [type=submit]' : null;
+  };
+  let liveBusy = false;
+  let liveNext = 0;
+  window.setInterval(async () => {
+    const el = liveEl();
+    if (!el || liveBusy || document.visibilityState !== "visible") return;
+    const ms = parseInt(el.dataset.poll || "0", 10);
+    if (!ms || Date.now() < liveNext) return;
+    liveBusy = true;
+    try {
+      const res = await fetch(el.dataset.panel, { credentials: "same-origin", headers: { "X-Requested-With": "fetch" } });
+      if (res.ok) {
+        const next = new DOMParser().parseFromString(await res.text(), "text/html").getElementById("live");
+        const now = liveEl();
+        if (next && now && next.dataset.version !== now.dataset.version) {
+          const key = focusKey(document.activeElement, now);
+          const before = now.dataset.latest || "";
+          now.replaceWith(next);
+          const f = key && document.querySelector(key);
+          if (f) f.focus({ preventScroll: true });
+          const say = document.getElementById("live-announce");
+          if (say && next.dataset.latest && next.dataset.latest !== before) say.textContent = next.dataset.latest;
+        }
+      }
+    } catch (_) { /* serverul s-a oprit: încercăm din nou la tura următoare */ }
+    const cur = liveEl();
+    liveNext = Date.now() + ((cur && parseInt(cur.dataset.poll || "0", 10)) || 2000);
+    liveBusy = false;
+  }, 1000);
+
   // Alegerea scanării: se schimbă direct când alegi din listă (butonul „Arată” rămâne pentru tastatură și fără JS).
   document.addEventListener("change", (e) => {
     const sel = e.target.closest("select[data-autosubmit]");

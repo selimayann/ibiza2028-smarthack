@@ -63,6 +63,11 @@
         {% endif %}
 {% endmacro %}
 
+{# Rețeaua ta acum (protecția live) #}
+{% if live %}
+  {% include "_live.html" %}
+  <p id="live-announce" class="sr-only" aria-live="polite"></p>
+{% endif %}
 
 {% if scan is none %}
   <p class="notice">{{ T('no_data') }}</p>
