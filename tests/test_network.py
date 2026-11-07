@@ -272,6 +272,19 @@ def test_ssid_unreadable_is_warning():
     assert info.status == n.OK and n.W_SSID_UNKNOWN in info.warnings
 
 
+def test_ssid_unreadable_refused_when_required():
+    env = dict(ENV, NETSCAN_REQUIRE_SSID="1")
+    info = n.detect_network(windows_runner(netsh=None), FakePsutil(WIN_IFACES), "windows", env)
+    assert info.status == n.SSID_UNREADABLE and not info.scan_allowed
+    assert n.SSID_UNREADABLE in n.MESSAGES
+
+
+def test_require_ssid_does_not_block_when_ssid_is_readable():
+    env = dict(ENV, NETSCAN_REQUIRE_SSID="1")
+    info = n.detect_network(windows_runner(), FakePsutil(WIN_IFACES), "windows", env)
+    assert info.status == n.OK and info.scan_allowed
+
+
 @pytest.mark.parametrize("env", [{}, {"NETSCAN_EXPECTED_SSID": ""}, {"NETSCAN_EXPECTED_SSID": "   "}])
 def test_expected_ssid_not_configured_refuses(env):
     """Fără numele hotspotului, nu putem deosebi hotspotul de Wi-Fi-ul venue: refuz, nu avertisment."""
