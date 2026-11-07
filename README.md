@@ -88,7 +88,21 @@ python -m netscan delete-history       # șterge istoricul local
 python -m netscan ask <fișier.xml> "Ce fac întâi?"   # asistentul: răspunde doar din scanare, fără rețea
 python -m netscan ask <fișier.xml> "Ce fac întâi?" --local-ai          # + reformulare cu AI local (Ollama), verificată
 python -m netscan ask <fișier.xml> x --verify-text "<text inventat>"   # demo: validatorul respinge datele inventate
+python -m netscan watch --every 15 --confirm      # monitorul: scanează periodic doar hotspotul, alerte la schimbări
+python -m netscan trap --confirm                  # ușa-capcană: alertă când cineva din hotspot încearcă să intre
 ```
+
+### Supraveghere fără agenți: monitorul și ușa-capcană
+
+- **`watch`** (FR-13): la fiecare ciclu (minimum 10 minute) reverifică rețeaua și ținta ca la `scan`, rulează aceeași comandă nmap, salvează în istoric și anunță în RO/EN: dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat. Dacă laptopul nu mai e pe hotspot, ciclul se sare fără scanare. Alertele se scriu local în `data/alerts.jsonl`; se păstrează doar ultimele 5 XML-uri ale monitorului. Terminal de Administrator; fără `--confirm`, doar dry-run.
+- **`trap`**: un Telnet fals (implicit portul 2323) pe IP-ul laptopului din hotspot. Nimeni legitim nu se conectează acolo, deci orice încercare e o alertă: „cineva din rețea (IP) a încercat să intre”. Nu execută nimic, citește și aruncă ce primește, păstrează **doar IP, ora și portul** (`data/trap_attempts.jsonl`, șterse automat după 7 zile și de „Șterge istoricul”). Ignoră IP-urile din `NETSCAN_TRAP_IGNORE` (de ex. laptopul care scanează). Pe Windows trebuie permis portul în firewall doar pe rețeaua Private (comanda apare la dry-run).
+- Niciuna nu instalează nimic pe alte dispozitive și nu citește log-uri: vedem din rețea ce uși sunt deschise și cine încearcă să intre, nu ce e înăuntru.
+
+### Utilizare responsabilă
+
+- Scanează doar dispozitivele tale. Pentru musafiri, folosește o rețea separată pentru oaspeți.
+- Aplicația e **doar defensivă**: comanda nmap e fixă (fără scripturi de atac sau brute force), nu testează parole, nu exploatează nimic, capcana nu păstrează parole sau ce scrie cineva și nu răspunde înapoi spre cine a încercat, iar asistentul refuză cererile de atac.
+- Guardrail-ul refuză orice țintă din afara hotspotului propriu.
 
 **AI local (opțional, D8):** [Ollama](https://ollama.com) instalat și modelul descărcat **înainte** (`ollama pull qwen2.5:7b`, 4,7 GB, licență Apache 2.0). Ollama ascultă doar pe `127.0.0.1`. Prima cerere încarcă modelul în placa video (poate dura peste 30 s), deci înainte de demo rulează o dată `ollama run qwen2.5:7b "salut"`; după aceea un răspuns durează câteva secunde. Validatorul verifică faptele (IP, porturi, coduri), nu gramatica: textele predefinite rămân sursa principală.
 

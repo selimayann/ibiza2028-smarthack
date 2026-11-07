@@ -57,6 +57,17 @@ def build_parser() -> argparse.ArgumentParser:
                    help="reformulează cu modelul AI local (Ollama pe 127.0.0.1), verificat de validator")
     q.add_argument("--verify-text", metavar="TEXT",
                    help="demo: verifică un text (ex. un răspuns inventat) cu validatorul anti-halucinații")
+
+    w = sub.add_parser("watch", help="monitorul: scanează periodic doar hotspotul și anunță schimbările (FR-13)")
+    w.add_argument("target", nargs="?", help="IP sau subnet; implicit subnetul curent")
+    w.add_argument("--every", type=float, default=15, help="minute între scanări (minimum 10)")
+    w.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
+    w.add_argument("--lang", choices=["ro", "en"], default="ro")
+
+    t = sub.add_parser("trap", help="ușa-capcană: alertă când cineva din hotspot încearcă să intre (Telnet fals)")
+    t.add_argument("--port", type=int, default=2323, help="portul capcanei (1024–65535)")
+    t.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
+    t.add_argument("--lang", choices=["ro", "en"], default="ro")
     return p
 
 
@@ -216,6 +227,20 @@ def cmd_ask(args) -> int:
     return 0 if scan.status == "ok" else 2
 
 
+def cmd_watch(args) -> int:
+    """B: monitorul periodic (fără agenți). Aceleași verificări ca `scan`, la fiecare ciclu."""
+    from netscan.scan.watch import watch
+
+    return watch(args.every, args.confirm, lang=args.lang, target=args.target)
+
+
+def cmd_trap(args) -> int:
+    """B: ușa-capcană (Telnet fals) doar pe IP-ul din hotspot; păstrează doar IP, oră, port."""
+    from netscan.scan.trap import run_trap
+
+    return run_trap(args.confirm, port=args.port, lang=args.lang)
+
+
 COMMANDS = {
     "analyze": cmd_analyze,
     "network": cmd_network,
@@ -224,6 +249,8 @@ COMMANDS = {
     "diff": cmd_diff,
     "delete-history": cmd_delete_history,
     "ask": cmd_ask,
+    "watch": cmd_watch,
+    "trap": cmd_trap,
 }
 
 

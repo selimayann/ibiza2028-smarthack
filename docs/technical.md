@@ -41,6 +41,11 @@ Hotspot iPhone `RSH-Ibiza2028` (`172.20.10.0/28`), laptop-scanner (Windows, nmap
 ## Presupuneri (confirmate de mentori, vezi questions.md)
 Doar `state="open"`; decizia după numele serviciului, nu după port; `upnp`/`snmp` doar pe UDP; HTTP_ADMIN = `http` exact, fără `tunnel="ssl"`, titlu cu cuvintele cheie ca subșir, fără diferență de litere. `mosquitto version X` = MQTT_EXPOSED. `method="table"` contează ca `probed`. Samba `3.X - 4.X` nu e învechit; Samba învechit → SMB_EXPOSED + OUTDATED_SERVICE o singură dată, pe 445 (altfel 139). MAC fără producător = „fără producător” la UNKNOWN_DEVICE. Coloana `file` = doar numele fișierului.
 
+## Supraveghere fără agenți
+- **Monitorul (`watch`, FR-13):** scanare periodică a hotspotului (minimum 10 min), cu verificarea rețelei și a țintei la fiecare ciclu, salvare în istoric și alerte RO/EN la dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat (din `diff()`).
+- **Ușa-capcană (`trap`):** Telnet fals pe IP-ul din hotspot (idee de honeypot, ca OpenCanary): orice conexiune e o alertă. Păstrează doar IP, oră, port, local, 7 zile; nu păstrează nimic din ce s-a scris; nu răspunde spre cine a încercat.
+- Față de o platformă cu agenți (de ex. Wazuh): vedem toate dispozitivele, inclusiv camere și telefoane pe care nu se poate instala nimic, dar nu vedem ce e în interiorul lor (log-uri, fișiere, viruși).
+
 ## Limitări
 - Porturile UDP `open|filtered` nu sunt raportate: nmap nu poate deosebi un port deschis de unul filtrat.
 - Telefoanele și laptopurile moderne au **MAC aleatoriu** (fără producător), deci ies UNKNOWN_DEVICE după regula exactă; UI-ul le arată ca „adresă privată”.

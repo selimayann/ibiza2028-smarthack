@@ -236,3 +236,21 @@ def test_execute_refused_plan_does_nothing(monkeypatch):
     monkeypatch.setattr(runner.subprocess, "run", lambda *a, **k: pytest.fail("nu trebuia rulat"))
     p = plan("8.8.8.8")
     assert runner.execute(p) is p
+
+
+# --- utilizare responsabilă: comanda nmap e fixă ---------------------------------------------------
+
+ALLOWED_FLAGS = {"-n", "-sS", "-sU", "-sV", "--script", "-p", "--max-rate", "-e", "--versiondb", "-oX"}
+
+
+def test_nmap_command_is_fixed_and_defensive_only(monkeypatch):
+    """Utilizatorul nu poate adăuga scripturi de atac, brute force sau alte opțiuni: doar ținta trece prin guardrail."""
+    monkeypatch.setattr(runner.sys, "platform", "win32")
+    for target in [None, "172.20.10.5", "172.20.10.0/28"]:
+        args = plan(target).args
+        flags = {a for a in args if a.startswith("-")}
+        assert flags <= ALLOWED_FLAGS, flags
+        assert args[args.index("--script") + 1] == "http-title"
+        assert args[args.index("--max-rate") + 1] == "100"
+    for evil in ["172.20.10.5 --script brute", "--script=vuln", "172.20.10.5 -sC", "-iL x", "172.20.10.5 -T5"]:
+        assert not plan(evil).ok

@@ -103,7 +103,11 @@ DEVICE_WORDS = ("dispozitiv", "dispozitive", "conectat", "conectate", "device", 
 SCOPE_WORDS = ("vecin", "vecinul", "vecinului", "vecini", "neighbor", "neighbour", "neighbors", "alta retea",
                "alte retele", "other network", "other networks", "parola wifi", "parola de la wifi",
                "parola wi-fi", "wifi password", "wi-fi password", "sparg", "sparge", "hack", "hackuiesc",
-               "hackuiesti", "ataca", "attack", "spionez", "spy on", "break into")
+               "hackuiesti", "ataca", "attack", "spionez", "spy on", "break into",
+               # abuz: atacarea dispozitivelor altora sau spargerea parolelor (aplicația e doar defensivă)
+               "altcuiva", "camera vecinului", "ghicesc parola", "aflu parola", "sparg parola", "crack",
+               "brute force", "bruteforce", "exploit", "exploatez", "exploateaza", "ddos", "someone else's",
+               "guess the password", "steal")
 ABOUT_WORDS = ("ce face aplicatia", "ce face programul", "cum functioneaza", "cum functionezi", "cum lucrezi",
                "ce esti", "cine esti", "ce e netscan", "ce este netscan", "how does it work", "how does this work",
                "what does this app", "what does this tool", "what do you do", "who are you", "what are you")

@@ -199,6 +199,9 @@ def delete_history(path: str | Path | None = None) -> None:
             conn.execute(f"DELETE FROM {table}")  # nume fixe din cod, nu date din scanare
     with closing(connect(path)) as conn:
         conn.execute("VACUUM")
+    # B: și alertele monitorului și încercările de la ușa-capcană (fișiere locale lângă baza de date).
+    from netscan.scan.local_data import delete_local_data
+    delete_local_data(path or db_path())
 
 
 @dataclass
