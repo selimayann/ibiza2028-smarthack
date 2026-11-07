@@ -137,8 +137,14 @@
     {{ meter(score_shown) }}
     <p class="score-band"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-{{ band_icon }}"/></svg>{{ T('band_' ~ band) }}</p>
     {% if steps and steps.verified_count %}
-      <div class="score-after">
-        <p><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg><span>{{ T('score_after')|format(steps.verified_count) }} <strong class="mono">{{ steps.score_now }}</strong> {{ T('score_of') }}</span></p>
+      {# Progresul după reparațiile confirmate: culoarea urmează eticheta scorului NOU (verde doar când e „Bun”),
+         ca o casetă verde să nu sugereze „gata” când rețeaua e încă în risc. #}
+      {% set band_after = score_band(steps.score_now) %}
+      {% set left = steps.total - steps.verified_count %}
+      <div class="score-after after-{{ band_after }}">
+        <p class="after-label"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-7M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('score_after')|format(steps.verified_count) }}</p>
+        <p class="after-value"><span class="mono">{{ scan.score }}</span> → <strong class="mono">{{ steps.score_now }}</strong> <span class="after-of">{{ T('score_of') }}</span></p>
+        <p class="after-band"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'good': 'good', 'fair': 'fair', 'poor': 'high'}[band_after] }}"/></svg><span>{{ T('score_band_now' if band_after == 'good' else 'score_band_still')|format(T('band_' ~ band_after)) }}{% if left %} · {{ T('score_left_one') if left == 1 else T('score_left_many')|format(left) }}{% endif %}</span></p>
         {% if newer_hint %}{% set newer_title = T('score_newer_title')|format(newer_hint.file, newer_hint.score) %}<a class="score-newer" href="{{ url_for('overview', scan=newer_hint.idx) }}" title="{{ newer_title }}" aria-label="{{ newer_title }}">{{ T('score_newer') }}</a>{% endif %}
       </div>
     {% endif %}

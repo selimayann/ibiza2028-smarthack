@@ -221,9 +221,22 @@ button:disabled { opacity: .6; cursor: progress; }
 .verify-info .icon { color: var(--brand); }
 .worst-note { margin-top: .2rem; color: var(--muted); }
 /* Scorul după reparațiile confirmate: separat de scorul scanării, într-o casetă discretă */
-.score-after { margin-top: .75rem; padding: .6rem .75rem; border-radius: 10px; background: var(--good-tint); }
-.score-after p { display: flex; align-items: flex-start; gap: .4rem; margin: 0; color: var(--good); font-weight: 700; }
-.score-after .icon { flex: none; margin-top: .2em; }
+.score-after { margin-top: .75rem; padding: .65rem .8rem; border-radius: 10px; border-left: 4px solid var(--brand);
+  background: var(--brand-tint); color: var(--ink); }
+.score-after p { display: flex; align-items: center; gap: .4rem; margin: 0; }
+.score-after .icon { flex: none; }
+.after-label { color: var(--brand); font-weight: 700; }
+.after-value { margin-top: .2rem !important; font-size: 1.15rem; padding-left: 1.4rem; }
+.after-value strong { font-size: 1.5rem; }
+.after-of { color: var(--muted); font-size: 1rem; }
+.after-band { margin-top: .3rem !important; font-weight: 700; align-items: flex-start !important; }
+.after-band .icon, .after-label .icon { margin-top: .2em; }
+.after-label { align-items: flex-start !important; }
+.after-poor .after-band { color: var(--high); }
+.after-fair .after-band { color: var(--medium); }
+/* verde doar când scorul de după reparații ajunge „Bun” */
+.after-good { border-left-color: var(--good); background: var(--good-tint); }
+.after-good .after-label, .after-good .after-band { color: var(--good); }
 .score-newer { display: inline-block; margin-top: .35rem; padding-left: 1.4rem; font-weight: 700; color: var(--link); text-decoration: none; }
 .score-newer:hover, .score-newer:focus-visible { text-decoration: underline; }
 .do-first-done { background: var(--good-tint); border-left-color: var(--good); }
