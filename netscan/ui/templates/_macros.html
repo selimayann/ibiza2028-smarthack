@@ -1,13 +1,22 @@
-{# Severitatea: iconiță + etichetă text, niciodată doar culoare. #}
+{# Severitatea: formă + etichetă text, niciodată doar culoare. #}
 {% macro sev(severity) -%}
-  {%- set icons = {'high': '🔴', 'medium': '🟠', 'low': '🟡', 'info': 'ℹ️'} -%}
-  <span class="sev sev-{{ severity }}"><span aria-hidden="true">{{ icons.get(severity, '•') }}</span> {{ T('sev_' ~ severity) }}</span>
+  <span class="sev sev-{{ severity }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ severity }}"/></svg>{{ T('sev_' ~ severity) }}</span>
 {%- endmacro %}
 
 {% macro port_label(f) -%}
-  {%- if f.port is not none -%}{{ T('port') }} {{ f.port }}{%- else -%}—{%- endif -%}
+  {%- if f.port is not none -%}{{ T('port') }} <span class="mono">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
 {%- endmacro %}
 
 {% macro device_name(host) -%}
-  {{ device_type_label(host.device_type) }} · {{ host.ip }}
+  {{ device_type_label(host.device_type) }}
+{%- endmacro %}
+
+{# Bara de scor: SVG cu atribute (nu style inline, din cauza CSP). Pragurile 50 și 80 sunt marcate. #}
+{% macro meter(score) -%}
+  <svg class="meter" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <rect class="meter-track" x="0" y="0" width="100" height="10" rx="5"/>
+    <rect class="meter-fill" x="0" y="0" width="{{ score }}" height="10" rx="5"/>
+    <line class="meter-tick" x1="50" y1="0" x2="50" y2="10"/>
+    <line class="meter-tick" x1="80" y1="0" x2="80" y2="10"/>
+  </svg>
 {%- endmacro %}

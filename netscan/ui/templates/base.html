@@ -3,18 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}{{ T('app_title') }}{% endblock %}</title>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/atkinson-hyperlegible-next-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  {# Iconițe: forma diferă per severitate, ca să nu depindem de culoare. #}
+  <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-high" viewBox="0 0 20 20"><path d="M10 1.5 19 17.5H1z" fill="currentColor"/><path d="M10 7v5" stroke="var(--on-icon)" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.1" fill="var(--on-icon)"/></symbol>
+    <symbol id="i-medium" viewBox="0 0 20 20"><path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M10 6.2v4.6" stroke="var(--on-icon)" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="13.6" r="1.1" fill="var(--on-icon)"/></symbol>
+    <symbol id="i-low" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2.5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="M10 9v5" stroke="var(--on-icon)" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="6.2" r="1.1" fill="var(--on-icon)"/></symbol>
+    <symbol id="i-good" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="m6 10.3 2.7 2.7L14.2 7.5" fill="none" stroke="var(--on-icon)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-fair" viewBox="0 0 20 20"><path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M6.5 10h7" stroke="var(--on-icon)" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  </svg>
+
   <a class="skip" href="#main">{{ T('skip_link') }}</a>
   <header class="top">
     <div class="wrap top-inner">
-      <a class="brand" href="{{ url_for('overview') }}">{{ T('app_title') }}</a>
-      <nav aria-label="{{ T('nav_overview') }}">
-        <a href="{{ url_for('overview') }}"{% if request.endpoint == 'overview' %} aria-current="page"{% endif %}>{{ T('nav_overview') }}</a>
-        <a href="{{ url_for('history') }}"{% if request.endpoint in ('history', 'history_scan') %} aria-current="page"{% endif %}>{{ T('nav_history') }}</a>
-        <a href="{{ lang_url() }}" lang="{{ other_lang }}">{{ T('lang_switch') }}</a>
+      <a class="brand" href="{{ url_for('overview') }}">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5a13 13 0 0 1 18 0M6 13a8 8 0 0 1 12 0M9.2 16.4a3.4 3.4 0 0 1 5.6 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.6" fill="currentColor"/></svg>
+        <span>{{ T('app_title') }}</span>
+      </a>
+      <nav aria-label="{{ T('nav_label') }}">
+        <a href="{{ url_for('overview') }}"{% if request.endpoint in ('overview', 'device') %} aria-current="page"{% endif %}>{{ T('nav_overview') }}</a>
+        <a href="{{ url_for('history') }}"{% if request.endpoint in ('history', 'history_scan', 'history_delete_confirm') %} aria-current="page"{% endif %}>{{ T('nav_history') }}</a>
+        <a class="lang" href="{{ lang_url() }}" lang="{{ other_lang }}">{{ T('lang_switch') }}</a>
       </nav>
     </div>
   </header>

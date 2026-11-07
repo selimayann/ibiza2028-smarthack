@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ T('history_title') }} · {{ T('app_title') }}{% endblock %}
 {% block content %}
-<h1>{{ T('history_title') }}</h1>
+<h1 class="page-title">{{ T('history_title') }}</h1>
 {% if deleted %}<p class="notice" role="status">{{ T('history_deleted') }}</p>{% endif %}
 
 {% if items %}
+  <p class="muted">{{ T('history_hint') }}</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th scope="col">{{ T('scan_date') }}</th><th scope="col">{{ T('scan_file') }}</th><th scope="col">{{ T('score_label') }}</th><th scope="col"><span class="sr-only">{{ T('open') }}</span></th></tr></thead>
@@ -13,15 +14,15 @@
         <tr>
           <td>{{ fmt_time(s.started_at) }}</td>
           <td>{{ s.file }}</td>
-          <td>{% if s.status == 'error' %}⚠️ {{ error_message(s.error_code) }}{% else %}{{ s.score }}{% endif %}</td>
+          <td>{% if s.status == 'error' %}{{ error_message(s.error_code) }}{% else %}<strong class="mono">{{ s.score }}</strong>{% endif %}</td>
           <td><a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('open') }}<span class="sr-only"> {{ s.file }}</span></a></td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
-  <p><a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a></p>
+  <p class="danger-zone"><a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a></p>
 {% else %}
-  <p>{{ T('history_empty') }}</p>
+  <p class="notice">{{ T('history_empty') }}</p>
 {% endif %}
 {% endblock %}
