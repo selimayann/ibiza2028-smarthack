@@ -26,7 +26,7 @@ FINDINGS = [
     ("T05_openssh_versions.xml", P + "12", "22", "SSH_OPEN", "info"),
     ("T05_openssh_versions.xml", P + "13", "22", "OUTDATED_SERVICE", "high"),
     ("T05_openssh_versions.xml", P + "13", "22", "SSH_OPEN", "info"),
-    # T06: Samba 3.X - 4.X e ambiguu -> doar SMB_EXPOSED (DE CONFIRMAT, întrebarea 1);
+    # T06: Samba 3.X - 4.X e ambiguu -> doar SMB_EXPOSED (confirmat de mentori, întrebarea 1);
     #      Samba 3.0.20 e clar învechit
     ("T06_samba_versions.xml", P + "10", "445", "SMB_EXPOSED", "medium"),
     ("T06_samba_versions.xml", P + "11", "445", "OUTDATED_SERVICE", "high"),
@@ -35,13 +35,15 @@ FINDINGS = [
     ("T07_title_administration.xml", P + "10", "80", "HTTP_ADMIN_CLEARTEXT", "medium"),
     # T08: textul din titlu nu e instrucțiune; doar cuvântul „Admin” contează
     ("T08_title_prompt_injection.xml", P + "11", "80", "HTTP_ADMIN_CLEARTEXT", "medium"),
-    # T15: OUTDATED_SERVICE pe FIECARE port cu Samba veche; SMB_EXPOSED o singură dată (pe 445)
-    #      (DE CONFIRMAT, întrebarea 2). .11: 139 veche (3.0.20), 445 nouă (4.15.13)
-    ("T15_samba_outdated_139_445.xml", P + "10", "139", "OUTDATED_SERVICE", "high"),
+    # T15: mentori (întrebarea 2): OUTDATED_SERVICE o singură dată pentru Samba, pe același port ca
+    #      SMB_EXPOSED (445, altfel 139). .10 are 139 și 445 -> doar 445; .11 are doar 139 -> 139
     ("T15_samba_outdated_139_445.xml", P + "10", "445", "OUTDATED_SERVICE", "high"),
     ("T15_samba_outdated_139_445.xml", P + "10", "445", "SMB_EXPOSED", "medium"),
     ("T15_samba_outdated_139_445.xml", P + "11", "139", "OUTDATED_SERVICE", "high"),
-    ("T15_samba_outdated_139_445.xml", P + "11", "445", "SMB_EXPOSED", "medium"),
+    ("T15_samba_outdated_139_445.xml", P + "11", "139", "SMB_EXPOSED", "medium"),
+    # T16: mentori (întrebarea 11): și „mosquitto version X" pe 1883 e MQTT_EXPOSED; filtered nu
+    ("T16_mosquitto_service_name.xml", P + "10", "1883", "MQTT_EXPOSED", "medium"),
+    ("T16_mosquitto_service_name.xml", P + "11", "1883", "MQTT_EXPOSED", "medium"),
 ]
 
 SCORES = {
@@ -52,7 +54,8 @@ SCORES = {
     "T05_openssh_versions.xml": "60",
     "T06_samba_versions.xml": "60",
     "T07_title_administration.xml": "90",
-    "T15_samba_outdated_139_445.xml": "20",
+    "T15_samba_outdated_139_445.xml": "40",
+    "T16_mosquitto_service_name.xml": "80",
     "T08_title_prompt_injection.xml": "90",
     "T09_xxe.xml": "ERROR",
     "T10_empty.xml": "ERROR",

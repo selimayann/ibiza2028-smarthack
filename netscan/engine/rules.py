@@ -58,6 +58,9 @@ UDP_ONLY_SERVICE_CODES: dict[str, str] = {
 
 SMB_SERVICES = frozenset({"microsoft-ds", "netbios-ssn"})
 
+# nmap -sV poate suprascrie numele serviciului cu „mosquitto version 1.6.15" (scriptul mqtt-subscribe)
+MOSQUITTO_PREFIX = "mosquitto version"
+
 HTTP_ADMIN_KEYWORDS = ("login", "admin", "config", "setup", "router", "settings")
 
 
@@ -158,10 +161,17 @@ def _host_findings(file: str, host: Host) -> list[Finding]:
     found: list[Finding] = []
     open_ports = [p for p in host.ports if p.state == "open"]
 
+    smb_ports = [
+        p for p in open_ports if (p.service or "").strip().lower() in SMB_SERVICES
+    ]
+    chosen_smb = _pick_smb_port(smb_ports) if smb_ports else None
+
     for port in open_ports:
         service = (port.service or "").strip().lower()
 
         code = SERVICE_CODES.get(service)
+        if code is None and service.startswith(MOSQUITTO_PREFIX):
+            code = "MQTT_EXPOSED"  # mentori (întrebarea 11): și „mosquitto version X" e expunere MQTT
         if code is None and port.proto == "udp":
             code = UDP_ONLY_SERVICE_CODES.get(service)
         if code is not None:
@@ -176,15 +186,14 @@ def _host_findings(file: str, host: Host) -> list[Finding]:
                 _make(file, host, port.port, "HTTP_ADMIN_CLEARTEXT", _evidence(port, True))
             )
 
-        if is_outdated(port):
+        # Mentori (întrebarea 2): pentru SMB/Samba, OUTDATED_SERVICE merge împreună cu
+        # SMB_EXPOSED, o singură dată, pe portul ales (445, altfel 139).
+        on_unchosen_smb_port = port in smb_ports and port is not chosen_smb
+        if is_outdated(port) and not on_unchosen_smb_port:
             found.append(_make(file, host, port.port, "OUTDATED_SERVICE", _evidence(port)))
 
-    smb_ports = [
-        p for p in open_ports if (p.service or "").strip().lower() in SMB_SERVICES
-    ]
-    if smb_ports:
-        chosen = _pick_smb_port(smb_ports)
-        found.append(_make(file, host, chosen.port, "SMB_EXPOSED", _evidence(chosen)))
+    if chosen_smb is not None:
+        found.append(_make(file, host, chosen_smb.port, "SMB_EXPOSED", _evidence(chosen_smb)))
 
     if open_ports and not host.vendor and not host.hostname:
         found.append(
