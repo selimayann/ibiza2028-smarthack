@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94 scan initiated (sintetic) -->
+<nmaprun scanner="nmap" args="nmap -sS -sU -sV -oX x.xml 192.168.1.0/24" start="1762500000" version="7.94">
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.10" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0A" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" method="probed" conf="10"/>
+<script id="http-title" output="Admin Login"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.11" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0B" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="443">
+<state state="open" reason="syn-ack"/>
+<service name="http" tunnel="ssl" method="probed" conf="10"/>
+<script id="http-title" output="Admin Login"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.12" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0C" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="8443">
+<state state="open" reason="syn-ack"/>
+<service name="http" tunnel="ssl" method="probed" conf="10"/>
+<script id="http-title" output="Router Admin"/>
+</port>
+</ports>
+</host>
+<runstats>
+<finished time="1762500100"/>
+</runstats>
+</nmaprun>

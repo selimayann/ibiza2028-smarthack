@@ -311,3 +311,31 @@ def test_down_hosts_and_ipv6_only_hosts_are_skipped(tmp_path):
         x.host("192.168.1.5", "AA:00:00:00:00:01", "V", ports=[x.port(23, name="telnet")], status="down"),
     ])
     assert analyze(tmp_path, xml).hosts == []
+
+
+# --- răspunsuri mentori (docs/questions.md, întrebările 2 și 11) ---
+
+def _samba(n, svc):
+    return x.port(n, name=svc, product="Samba smbd", version="3.0.20")
+
+
+def test_samba_outdated_is_reported_once_on_the_smb_port_445(tmp_path):
+    xml = x.nmaprun([x.host("192.168.1.5", "AA:BB:CC:00:00:05", "V", ports=[_samba(139, "netbios-ssn"), _samba(445, "microsoft-ds")])])
+    scan = analyze(tmp_path, xml)
+    assert codes(scan) == [("192.168.1.5", 445, "OUTDATED_SERVICE"), ("192.168.1.5", 445, "SMB_EXPOSED")]
+
+
+def test_samba_outdated_falls_back_to_139_when_445_is_not_open(tmp_path):
+    xml = x.nmaprun([x.host("192.168.1.5", "AA:BB:CC:00:00:05", "V", ports=[_samba(139, "netbios-ssn"), x.port(445, state="filtered", name="microsoft-ds")])])
+    scan = analyze(tmp_path, xml)
+    assert codes(scan) == [("192.168.1.5", 139, "OUTDATED_SERVICE"), ("192.168.1.5", 139, "SMB_EXPOSED")]
+
+
+def test_non_smb_outdated_service_keeps_its_own_port(tmp_path):
+    xml = x.nmaprun([x.host("192.168.1.5", "AA:BB:CC:00:00:05", "V", ports=[x.port(22, name="ssh", product="OpenSSH", version="7.3")])])
+    assert ("192.168.1.5", 22, "OUTDATED_SERVICE") in codes(analyze(tmp_path, xml))
+
+
+def test_mosquitto_version_service_name_is_mqtt_exposed(tmp_path):
+    xml = x.nmaprun([x.host("192.168.1.5", "AA:BB:CC:00:00:05", "V", ports=[x.port(1883, name="mosquitto version 1.6.15")])])
+    assert codes(analyze(tmp_path, xml)) == [("192.168.1.5", 1883, "MQTT_EXPOSED")]
