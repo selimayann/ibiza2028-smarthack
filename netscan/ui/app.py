@@ -28,7 +28,7 @@ from netscan.cli import load_env_file
 from netscan.engine import analyze_file, analyze_folder
 from netscan.engine.parser import MAX_BYTES
 from netscan.model import Scan
-from netscan.ui import extras, i18n, storage, verify
+from netscan.ui import extras, guide, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
 from netscan.ui.view import (action_plan, ip_key, most_dangerous, proof_of, rank_devices, score_band, score_trend,
@@ -220,10 +220,13 @@ def create_app(test_config: dict | None = None) -> Flask:
             "lang_url": lang_url,
             "T": lambda key: i18n.t(lang, key),
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
+            "device_type_the": lambda dt: i18n.device_type_the(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
             "eavesdrop": lambda code: extras.eavesdrop(code, lang),
             "announced": lambda ip: g.names.get(ip),
+            "guide_plan": guide.guide_for,
+            "guide_icon": guide.device_icon,
             "new_alerts": new_alerts,
             "alert_text": lambda a: i18n.alert_text(lang, a, custom_names()),
             "custom_name": lambda device_id: custom_names().get(device_id),
