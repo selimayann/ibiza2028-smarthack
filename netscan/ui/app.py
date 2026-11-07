@@ -20,7 +20,7 @@ from netscan.engine import analyze_folder
 from netscan.model import Scan
 from netscan.ui import i18n, storage
 from netscan.ui.explain_stub import get_explanation
-from netscan.ui.view import most_dangerous, rank_devices, score_band
+from netscan.ui.view import most_dangerous, rank_devices, score_band, score_trend
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
@@ -149,8 +149,9 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/history")
     def history():
+        items = storage.list_scans(app.config["DB_PATH"])
         return render_template(
-            "history.html", items=storage.list_scans(app.config["DB_PATH"]),
+            "history.html", items=items, trend=score_trend(items),
             deleted=request.args.get("deleted") == "1",
         )
 
@@ -175,10 +176,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         prev_id = storage.previous_scan_id(scan_id, db)
         prev = storage.get_scan(prev_id, db) if prev_id is not None else None
         compare = storage.diff(prev, scan) if prev is not None else None
+        ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
         return render_template(
             "overview.html", scan=scan, scan_list=[], selected=0,
             devices=rank_devices(scan), worst=most_dangerous(scan),
-            history_id=scan_id, compare=compare,
+            history_id=scan_id, compare=compare, ip_of=ip_of,
         )
 
     @app.errorhandler(400)

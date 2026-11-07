@@ -195,3 +195,37 @@ def test_history_shows_ip_recognition_note(tmp_path):
     client, _ = make_client(tmp_path, [])
     html = client.get(f"/scan/{b_id}").get_data(as_text=True)
     assert "Recunoscute după IP (3)" in html
+
+
+# ---------- FR-10: trendul scorului și porturile în istoric ----------
+
+def _save_validation(db, *names):
+    from netscan.engine import analyze_file
+    from netscan.ui.app import VALIDATION_DIR
+
+    return [storage.save_scan(analyze_file(VALIDATION_DIR / n), db) for n in names]
+
+
+def test_history_shows_score_trend(tmp_path):
+    client, app = make_client(tmp_path, [])
+    db = app.config["DB_PATH"]
+    _save_validation(db, "V6a_before.xml", "V6b_after.xml", "V7_broken.xml")
+    html = client.get("/history").get_data(as_text=True)
+    assert "Scorul standard în timp" in html
+    assert "Scorul a crescut de la 60 la 100 în ultimele 2 scanări." in html
+    assert html.count('class="trend-dot"') == 2  # V7 (eroare) nu are scor, nu apare pe grafic
+
+
+def test_trend_needs_two_scans(tmp_path):
+    client, app = make_client(tmp_path, [])
+    _save_validation(app.config["DB_PATH"], "V6a_before.xml")
+    html = client.get("/history").get_data(as_text=True)
+    assert "Salvează cel puțin două scanări" in html and "trend-dot" not in html
+
+
+def test_compare_shows_opened_and_closed_ports(tmp_path):
+    client, app = make_client(tmp_path, [])
+    _, b_id = _save_validation(app.config["DB_PATH"], "V6a_before.xml", "V6b_after.xml")
+    html = client.get(f"/scan/{b_id}").get_data(as_text=True)
+    assert "Porturi deschise acum (1)" in html and "443/tcp" in html
+    assert "Porturi închise acum (3)" in html and "23/tcp" in html and "1900/udp" in html

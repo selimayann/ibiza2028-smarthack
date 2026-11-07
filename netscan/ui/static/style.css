@@ -196,6 +196,22 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 .compare-col ul { list-style: none; padding: 0; margin: .5rem 0 0; display: flex; flex-direction: column; gap: .55rem; }
 .compare-col li { line-height: 1.4; }
 
+/* ---------- score trend (history) ---------- */
+.trend { background: var(--surface); border-radius: var(--radius); padding: 1.25rem 1.4rem; margin-top: 1rem; }
+.trend > h2 { margin: 0; }
+.trend-summary { margin: .4rem 0 .8rem; font-size: 1.125rem; }
+.trend-chart { width: 100%; height: auto; display: block; max-width: 44rem; overflow: visible; }
+.trend-grid { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.trend-threshold { stroke-dasharray: 4 4; }
+.trend-axis { fill: var(--muted); font-size: 14px; font-family: inherit; }
+.trend-line { fill: none; stroke: var(--link); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.trend-dot { fill: var(--link); stroke: var(--surface); stroke-width: 2; }
+.trend-hit { fill: transparent; }
+.trend-value { fill: var(--ink); font-size: 16px; font-weight: 700; font-family: inherit; }
+.trend-chart a:focus-visible { outline: none; }
+.trend-chart a:focus-visible .trend-dot, .trend-chart a:hover .trend-dot { r: 8; }
+.trend-chart a:focus-visible .trend-hit { stroke: var(--focus); stroke-width: 3; }
+
 /* ---------- device page ---------- */
 .back { margin-bottom: 1rem; }
 .device-page-head { background: var(--surface); border-radius: var(--radius); padding: 1.1rem 1.3rem; border-left: 6px solid var(--line); }
@@ -215,9 +231,9 @@ main > section > h2 { margin: 2rem 0 .8rem; }
 
 /* ---------- tables, panels, notices ---------- */
 .page-title { font-size: 2rem; margin-bottom: .5rem; }
-.table-wrap { overflow-x: auto; background: var(--surface); border-radius: var(--radius); margin-top: 1rem; }
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: .65rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+.table-wrap { position: relative; overflow-x: auto; background: var(--surface); border-radius: var(--radius); margin-top: 1rem; }
+table { border-collapse: collapse; width: 100%; min-width: 34rem; }
+th, td { text-align: left; padding: .65rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: break-word; }
 th { color: var(--muted); font-weight: 700; }
 tbody tr:last-child td { border-bottom: 0; }
 .notice { background: var(--surface); border-radius: var(--radius); padding: 1rem 1.2rem; }
@@ -229,6 +245,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .danger-zone { margin-top: 2rem; }
 
 @media (max-width: 30rem) {
+  /* graficul se micșorează cu ecranul: textul din SVG crește ca să rămână >= 16px */
+  .trend-axis { font-size: 30px; }
+  .trend-value { font-size: 34px; }
+  .trend-dot { r: 9; }
   .score-num { font-size: 3.75rem; }
   .worst-device { font-size: 1.5rem; }
   .do-first-step { font-size: 1.25rem; }
