@@ -4,6 +4,8 @@
 <section class="panel panel-error card">
   <h1>{{ T('history_delete_confirm_title') }}</h1>
   <p>{{ T('history_delete_confirm_body') }}</p>
+  <p>{{ T('history_delete_what') }}</p>
+  <p class="delete-note"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{{ T('history_delete_not') }}</span></p>
   <form method="post" action="{{ url_for('history_delete') }}" class="actions">
     <input type="hidden" name="token" value="{{ token }}">
     <button type="submit" class="button-danger">{{ T('history_delete_yes') }}</button>

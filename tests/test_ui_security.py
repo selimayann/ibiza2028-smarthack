@@ -1,0 +1,55 @@
+"""RBRT: reparațiile din auditul de securitate (DNS rebinding, AI pornit de alte site-uri, raportul descărcat)."""
+import json
+from pathlib import Path
+from urllib.parse import quote
+
+from netscan.model import Scan
+from netscan.ui.app import create_app
+
+SAMPLE = Path(__file__).parent.parent / "fixtures" / "sample.json"
+
+
+def client(tmp_path):
+    scan = Scan.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
+    app = create_app({"SCAN_LOADER": lambda: [scan], "DB_PATH": tmp_path / "h.db", "TESTING": True})
+    return app.test_client(), app
+
+
+def test_only_local_host_names_are_accepted(tmp_path):
+    """DNS rebinding: o cerere adresată altui nume (chiar dacă duce la 127.0.0.1) e refuzată."""
+    c, _ = client(tmp_path)
+    for host in ("127.0.0.1:5000", "localhost:5000", "localhost", "127.0.0.1"):
+        assert c.get("/", headers={"Host": host}).status_code == 200, host
+    for host in ("evil.example:5000", "evil.example", "127.0.0.1.evil.example", "attacker.localhost.com"):
+        assert c.get("/", headers={"Host": host}).status_code == 400, host
+        assert c.get("/history/delete", headers={"Host": host}).status_code == 400   # token-ul nu poate fi citit
+
+
+def test_cross_site_cannot_run_the_assistant(tmp_path):
+    c, _ = client(tmp_path)
+    q = quote("Ce fac întâi?")
+    assert c.get("/api/ask?scan=0&q=" + q, headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
+    assert c.get("/api/ask?scan=0&q=" + q, headers={"Sec-Fetch-Site": "same-site"}).status_code == 403
+    assert c.get("/api/ask?scan=0&q=" + q, headers={"Sec-Fetch-Site": "same-origin"}).get_json()["ok"]
+    assert c.get("/api/ask?scan=0&q=" + q).get_json()["ok"]                   # fără header (unelte, teste)
+    html = c.get("/?ask=1&q=" + q, headers={"Sec-Fetch-Site": "cross-site"}).get_data(as_text=True)
+    assert 'id="ask-answer"' not in html                                      # pagina se deschide, dar fără răspuns
+    assert 'id="ask-answer"' in c.get("/?ask=1&q=" + q, headers={"Sec-Fetch-Site": "same-origin"}).get_data(as_text=True)
+
+
+def test_downloaded_report_keeps_its_css_intact(tmp_path):
+    c, _ = client(tmp_path)
+    html = c.get("/report?scan=0&download=1").get_data(as_text=True)
+    assert '"Segoe UI"' in html and "&#34;" not in html.split("</style>")[0]
+
+
+def test_language_link_drops_internal_parameters(tmp_path):
+    c, _ = client(tmp_path)
+    html = c.get("/?scan=0&_scheme=javascript&_anchor=x&_method=DELETE").get_data(as_text=True)
+    assert "_scheme" not in html and "_anchor" not in html and "_method" not in html
+
+
+def test_delete_page_says_raw_scans_are_not_deleted(tmp_path):
+    c, _ = client(tmp_path)
+    html = c.get("/history/delete").get_data(as_text=True)
+    assert "Nu se șterg fișierele brute ale scanărilor" in html and "scans/" in html

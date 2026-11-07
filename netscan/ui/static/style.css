@@ -356,6 +356,8 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .panel { padding: 1.4rem 1.6rem; display: flex; flex-direction: column; gap: .6rem; }
 .panel h1, .panel h2 { font-size: 1.5rem; display: flex; align-items: center; gap: .5rem; }
 .panel-error h1, .panel-error h2 { color: var(--high); }
+.delete-note { display: flex; gap: .5rem; align-items: baseline; padding: .7rem .9rem; background: var(--tint); border-radius: var(--radius-sm); }
+.delete-note .icon { color: var(--info); position: relative; top: .15em; }
 .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
 
 /* ---------- monitorul și ușa-capcană (Jurnal) ---------- */
