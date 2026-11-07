@@ -10,14 +10,15 @@ Juriul alege un fișier din Test Set; rezultatul trebuie să fie **identic** cu 
 
 ```
 git checkout final
-python -m netscan analyze <folder-cu-fișierul-ales> --out rerun
+python scripts/preflight.py <folder-cu-fișierul-ales> --out rerun
 ```
-Apoi se compară `rerun/findings.csv` și `rerun/scores.csv` cu rândurile acelui fișier din CSV-urile încărcate.
+Preflight-ul (Oneata) rulează `python -m netscan analyze` de două ori, în procese separate, compară `findings.csv` și
+`scores.csv` byte cu byte și afișează scorul per fișier și SHA-256. Apoi se compară rândurile din `rerun/` cu cele
+ale acelui fișier din CSV-urile încărcate (procedura completă: [workflow.md](workflow.md)).
 
-- **Scriptul preflight al lui Oneata nu e încă în repo** (căutat pe `main`, 7 nov.). Până apare, comparația se face
-  cu `fc /b` (Windows) sau `cmp` (Linux/macOS) pe CSV-urile filtrate la fișierul ales.
-- **Rulat local** (pe Validation Set, ca exemplu): două rulări → fișiere **identice byte cu byte**, iar ambele CSV-uri
-  sunt **identice cu baremul** oficial (`fixtures/validation/expected_*.csv`).
+- **Rulat local** (Validation Set, commit 66d0c5d): `Cele două rulări sunt identice byte cu byte.`, cod de ieșire 0;
+  scoruri V1 90, V2 40, V3 45, V4 25, V5 50, V6a 60, V6b 100, V7 ERROR (TRUNCATED); CSV-urile sunt **identice cu
+  baremul** oficial (`fixtures/validation/expected_*.csv`).
 
 ## 2. Sarcina hands-on în UI (Radu)
 
