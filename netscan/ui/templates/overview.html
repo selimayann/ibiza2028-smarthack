@@ -73,12 +73,12 @@
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
 
-{# Bara scanării: ce scanare vezi (stânga) și ce poți face cu ea (dreapta). #}
-<div class="toolbar">
+{# Bara scanării, pe un rând: ce scanare vezi, când a fost făcută (stânga) și ce poți face cu ea (dreapta). #}
+<div class="toolbar card">
   <div class="toolbar-left">
     {% if scan_list|length > 1 %}
     <form class="picker" method="get" action="{{ url_for('overview') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
-      <label for="scan">{{ T('choose_scan') }}</label>
+      <label for="scan">{{ T('shown_scan') }}</label>
       <div class="picker-row">
         <select id="scan" name="scan" data-autosubmit>
           {% for s in scan_list %}
@@ -89,13 +89,9 @@
       </div>
     </form>
     {% else %}
-    <dl class="scanmeta">
-      <div><dt>{{ T('scan_file') }}</dt><dd>{{ scan.file }}</dd></div>
-    </dl>
+    <p class="picker"><span class="picker-label">{{ T('shown_scan') }}</span><strong class="scan-file">{{ scan.file }}</strong></p>
     {% endif %}
-    <dl class="scanmeta">
-      <div><dt>{{ T('scan_date') }}</dt><dd>{{ fmt_time(scan.started_at) }}</dd></div>
-    </dl>
+    <p class="scan-meta"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr-only">{{ T('scan_date') }}: </span>{{ fmt_time(scan.started_at) }}{% if scan.status == 'ok' %}<span aria-hidden="true">·</span>{{ T('devices_one') if devices|length == 1 else T('devices_many')|format(devices|length) }}{% endif %}</p>
   </div>
   <div class="toolbar-actions">
     <a class="button button-secondary" href="{{ url_for('history_report', scan_id=history_id) if history_id is not none else url_for('report', scan=selected) }}"><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>{{ T('report_link') }}</a>

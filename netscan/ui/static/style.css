@@ -139,10 +139,17 @@ button:disabled { opacity: .6; cursor: progress; }
 .lang-pill a + span::before, .lang-pill span + a::before { content: ""; }
 
 /* ---------- bara scanării (deschisă, nu în cutie) ---------- */
-.toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem 2rem; padding: 1.25rem 0 1.25rem; margin-bottom: 1.75rem; border-bottom: 1px solid var(--line); }
-.toolbar-left { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem 2rem; }
-.toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
-.picker label, .scanmeta dt { display: block; color: var(--muted); margin-bottom: .2rem; }
+/* Bara scanării: un singur card, pe un rând — „Scanarea afișată [listă]  📅 data · N dispozitive” + acțiunile */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem;
+  padding: .8rem 1rem; margin: 1.25rem 0 1.75rem; }
+.toolbar-left { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; min-width: 0; }
+.toolbar select { min-width: 0; max-width: 15rem; }   /* destul pentru cel mai lung nume de fișier, ca bara să încapă pe un rând */
+.toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-left: auto; }   /* și pe rândul 2, rămân în dreapta */
+.picker { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; margin: 0; }
+.picker label, .picker-label { color: var(--muted); font-weight: 600; margin: 0; }
+.scan-file { font-weight: 700; }
+.scan-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; color: var(--muted); }
+.scanmeta dt { display: block; color: var(--muted); margin-bottom: .2rem; }
 .picker-row { display: flex; gap: .5rem; flex-wrap: wrap; }
 .js .picker-row button[type="submit"] { display: none; }   /* cu JS, lista schimbă direct scanarea */
 .scanmeta { margin: 0; }
@@ -258,7 +265,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .section { margin-top: 3rem; }
 .section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem 1.5rem; padding-bottom: .75rem; border-bottom: 2px solid var(--ink); }
 .section-head p { color: var(--muted); }
-.page-head + .toolbar { padding-top: 0; }
+.page-head + .toolbar { margin-top: 0; }
 .page-head { padding: 1.75rem 0 1.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .75rem 2rem; }
 .page-title { font-size: 2.125rem; }
 .lead { max-width: 68ch; margin-top: .4rem; color: var(--muted); }
