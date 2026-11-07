@@ -164,6 +164,15 @@ TEXTS: dict[str, dict[str, str]] = {
         "choose_scan": "Alege scanarea",
         "show": "Arată",
         "summary_label": "Pe scurt",
+        "name_title": "Numele dispozitivului",
+        "name_hint": "Dă-i un nume ca să-l recunoști ușor, de exemplu „Camera din sufragerie”. Numele rămâne doar pe acest calculator.",
+        "name_label": "Nume (cel mult 40 de caractere)",
+        "name_placeholder": "de exemplu: Camera din sufragerie",
+        "name_save": "Salvează numele",
+        "name_clear": "Șterge numele",
+        "name_saved": "Am salvat numele.",
+        "name_cleared": "Am șters numele.",
+        "name_too_long": "Numele e prea lung. Folosește cel mult 40 de caractere.",
         "worst_title": "Cel mai periculos dispozitiv",
         "worst_problem": "Cea mai gravă problemă",
         "do_first": "Fă asta întâi:",
@@ -400,6 +409,15 @@ TEXTS: dict[str, dict[str, str]] = {
         "choose_scan": "Choose scan",
         "show": "Show",
         "summary_label": "In short",
+        "name_title": "Device name",
+        "name_hint": "Give it a name so you can recognise it easily, for example “Living room camera”. The name stays on this computer only.",
+        "name_label": "Name (at most 40 characters)",
+        "name_placeholder": "for example: Living room camera",
+        "name_save": "Save name",
+        "name_clear": "Remove name",
+        "name_saved": "Name saved.",
+        "name_cleared": "Name removed.",
+        "name_too_long": "That name is too long. Use at most 40 characters.",
         "worst_title": "Most dangerous device",
         "worst_problem": "Most serious problem",
         "do_first": "Do this first:",
@@ -656,10 +674,11 @@ def summary_sentence(lang: str, summary, device_label: str | None = None, step: 
     return f"{sentence} " + tx["start_no_step"].format(device=device_label)
 
 
-def alert_text(lang: str, alert) -> str:
-    """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template)."""
+def alert_text(lang: str, alert, names: dict[str, str] | None = None) -> str:
+    """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template).
+    `names`: numele date de utilizator, pe device_id; când există, înlocuiește tipul dispozitivului."""
     lang = normalize_lang(lang)
-    dev = device_type_label(lang, alert.device_type)
+    dev = (names or {}).get(alert.device_id) or device_type_label(lang, alert.device_type)
     port = f"{alert.port}/{alert.proto}" if alert.proto else (str(alert.port) if alert.port is not None else "")
     return ALERT_TEXTS[lang][alert.kind].format(dev=dev, ip=alert.ip, port=port, name=code_name(lang, alert.code))
 

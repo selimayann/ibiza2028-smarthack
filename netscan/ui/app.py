@@ -210,7 +210,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             "eavesdrop": lambda code: extras.eavesdrop(code, lang),
             "announced": lambda ip: g.names.get(ip),
             "new_alerts": new_alerts,
-            "alert_text": lambda a: i18n.alert_text(lang, a),
+            "alert_text": lambda a: i18n.alert_text(lang, a, custom_names()),
+            "custom_name": lambda device_id: custom_names().get(device_id),
             "code_name": lambda code: i18n.code_name(lang, code),
             "standards": lambda code: get_standards(code, lang),
             "fmt_time": lambda epoch: _fmt_time(epoch, lang),
@@ -222,6 +223,15 @@ def create_app(test_config: dict | None = None) -> Flask:
     def scans() -> list[Scan]:
         return app.config["SCAN_LOADER"]()
 
+    def custom_names() -> dict[str, str]:
+        """Numele date de utilizator ({device_id: nume}), citite o dată pe cerere. O bază ilizibilă nu strică pagina."""
+        if "custom_names" not in g:
+            try:
+                g.custom_names = storage.device_names(app.config["DB_PATH"])
+            except Exception:
+                g.custom_names = {}
+        return g.custom_names
+
     def summary_sentence(scan: Scan, worst, all_fixed: bool = False) -> str:
         """Fraza mare din capul paginii (cu ce să începi). `scan` și `worst` sunt cele ale cardului de dedesubt."""
         summary = summary_of(scan, worst, all_fixed)
@@ -231,7 +241,9 @@ def create_app(test_config: dict | None = None) -> Flask:
                 g.names = extras.announced_names()
             host = summary.device.host
             announced = g.names.get(host.ip)
-            label = announced["name"] if announced else i18n.device_type_label(g.lang, host.device_type)
+            # aceeași ordine ca în pagină: numele dat de utilizator, apoi cel anunțat de dispozitiv, apoi tipul
+            label = (custom_names().get(host.device_id) or (announced["name"] if announced else None)
+                     or i18n.device_type_label(g.lang, host.device_type))
             steps = get_explanation(summary.finding.code, g.lang).get("steps") or []
             step = steps[0] if steps else None
         return i18n.summary_sentence(g.lang, summary, label, step)
@@ -363,7 +375,28 @@ def create_app(test_config: dict | None = None) -> Flask:
         view = next((d for d in rank_devices(scan) if d.host.device_id == device_id), None)
         if view is None:
             abort(404)
-        return render_template("device.html", scan=scan, d=view, selected=idx)
+        name_status = request.args.get("name")
+        return render_template("device.html", scan=scan, d=view, selected=idx, token=app.config["FORM_TOKEN"],
+                               name_status=name_status if name_status in ("saved", "cleared", "too_long") else None,
+                               name_max=storage.DEVICE_NAME_MAX)
+
+    @app.post("/device/<device_id>/name")
+    def device_name_save(device_id: str):
+        """Numele dat dispozitivului, salvat pe device_id. Gol = șterge numele. Prea lung = refuzat, nu tăiat."""
+        if not same_site_request():
+            abort(403)
+        scan, idx = _form_scan()   # verifică și jetonul formularului
+        if not any(h.device_id == device_id for h in scan.hosts):
+            abort(404)             # nu salvăm nume pentru dispozitive care nu există în scanare
+        db = app.config["DB_PATH"]
+        raw = "" if request.form.get("action") == "clear" else request.form.get("name", "")
+        try:
+            saved = storage.set_device_name(device_id, raw, db)
+        except ValueError:
+            status = "too_long"
+        else:
+            status = "saved" if saved else "cleared"
+        return redirect(url_for("device", device_id=device_id, scan=idx, name=status) + "#name-h")
 
     @app.get("/history")
     def history():

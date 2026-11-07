@@ -420,7 +420,20 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .eaves-details .eaves { margin-top: .25rem; }
 
 /* ---------- nume anunțate de dispozitive ---------- */
-.announced { overflow-wrap: anywhere; }
+.announced, .custom-name { overflow-wrap: anywhere; }
+
+/* ---------- numele dat dispozitivului (pagina dispozitivului) ---------- */
+.name-box { padding: 1.1rem 1.4rem; margin: 0 0 1.5rem; }
+.name-box h2 { font-size: 1.25rem; margin: 0 0 .5rem; }
+.name-box .muted { margin: 0 0 .75rem; max-width: 62ch; }
+.name-form label { display: block; font-weight: 700; margin-bottom: .3rem; }
+.name-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.name-row input[type=text] { flex: 1 1 16rem; min-width: 0; font: inherit; color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm); padding: .5rem .8rem; min-height: 2.75rem; }
+.name-row input[type=text]::placeholder { color: var(--muted); }
+.name-msg { display: flex; align-items: center; gap: .45rem; margin: 0 0 .6rem; font-weight: 700; }
+.name-msg-good { color: var(--good); }
+.name-msg-bad { color: var(--high); }
 .announced-sub { display: block; color: var(--muted); font-family: "Atkinson Next", system-ui, sans-serif; font-weight: 400; font-size: 1rem; }
 .announced-tag { display: inline-block; margin-left: .3rem; padding: 0 .45rem; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--muted); }
 .worst-device + .announced-sub { margin-top: -.4rem; }

@@ -14,6 +14,28 @@
   </dl>
 </header>
 
+{# Numele dat de utilizator: salvat local, pe device_id. Fără JavaScript merge la fel (formular obișnuit). #}
+<section class="name-box card" aria-labelledby="name-h">
+  <h2 id="name-h">{{ T('name_title') }}</h2>
+  {% if name_status %}
+    <p class="name-msg name-msg-{{ 'bad' if name_status == 'too_long' else 'good' }}" role="{{ 'alert' if name_status == 'too_long' else 'status' }}">
+      <svg class="icon" aria-hidden="true"><use href="#i-{{ 'medium' if name_status == 'too_long' else 'good' }}"/></svg>{{ T('name_' ~ name_status) }}
+    </p>
+  {% endif %}
+  <p class="muted">{{ T('name_hint') }}</p>
+  <form method="post" action="{{ url_for('device_name_save', device_id=d.host.device_id) }}" class="name-form">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="scan" value="{{ selected }}">
+    <label for="device-name">{{ T('name_label') }}</label>
+    <div class="name-row">
+      <input id="device-name" name="name" type="text" maxlength="{{ name_max }}" autocomplete="off"
+             value="{{ custom_name(d.host.device_id) or '' }}" placeholder="{{ T('name_placeholder') }}">
+      <button type="submit" class="button-primary">{{ T('name_save') }}</button>
+      {% if custom_name(d.host.device_id) %}<button type="submit" name="action" value="clear">{{ T('name_clear') }}</button>{% endif %}
+    </div>
+  </form>
+</section>
+
 <section aria-labelledby="f-h">
   <h2 id="f-h">{{ T('findings_title') }}</h2>
   {% for f in d.findings %}
