@@ -48,7 +48,7 @@
       {% for d in devices %}
         {% set open_ports = d.host.ports|selectattr('state', 'equalto', 'open')|list %}
         <tr>
-          <td class="rt-main"><span class="rt-name"><a href="{{ url_for('device', device_id=d.host.device_id, scan=selected, **{'from': 'devices'}) }}">{{ device_title(d.host) }}</a></span>{% if announced(d.host.ip) %}<br>{{ announced_sub(d.host) }}{% endif %}{% if d.host.hostname %}<br><span class="muted">{{ d.host.hostname }}</span>{% endif %}</td>
+          <td class="rt-main"><span class="rt-name"><a href="{{ url_for('device', device_id=d.host.device_id, scan=selected, **{'from': 'devices'}) }}">{{ device_title(d.host) }}</a></span>{% if announced(d.host.ip) or custom_name(d.host.device_id) %}<br>{{ announced_sub(d.host) }}{% endif %}{% if d.host.hostname %}<br><span class="muted">{{ d.host.hostname }}</span>{% endif %}</td>
           <td data-label="{{ T('ip') }}"><div><span class="mono" translate="no">{{ d.host.ip }}</span></div></td>
           <td data-label="{{ T('vendor') }}"><div>{% if d.host.vendor %}{{ d.host.vendor }}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}<span class="muted">{{ T('unknown') }}</span>{% endif %}</div></td>
           <td data-label="{{ T('mac') }}"><div><span class="mono" translate="no">{{ d.host.mac_masked or T('unknown') }}</span></div></td>

@@ -1,0 +1,140 @@
+{# „Începe depanarea”: ghid pas cu pas, animat, într-o fereastră (dialog). Fără JavaScript linkul duce la pagina dispozitivului.
+   Toate animațiile sunt CSS și pornesc când scena devine vizibilă; cu „reduce motion” se vede direct starea finală.
+   Textele din dispozitiv (IP, nume) sunt escapate de Jinja; nu se folosește |safe. #}
+
+{% macro dev_svg(kind) -%}
+  <svg class="dv dv-{{ kind }}" viewBox="0 0 160 90" aria-hidden="true" focusable="false">
+    {% if kind == 'router' %}
+      <line class="dv-ant" x1="36" y1="46" x2="26" y2="10"/><line class="dv-ant" x1="124" y1="46" x2="134" y2="10"/>
+      <rect class="dv-body" x="8" y="44" width="144" height="38" rx="10"/>
+      <circle class="dv-led dv-led1" cx="34" cy="63" r="4.5"/><circle class="dv-led dv-led2" cx="52" cy="63" r="4.5"/><circle class="dv-led dv-led3" cx="70" cy="63" r="4.5"/>
+    {% elif kind == 'camera' %}
+      <rect class="dv-body" x="34" y="22" width="92" height="52" rx="14"/>
+      <circle class="dv-lens" cx="80" cy="48" r="19"/><circle class="dv-lens-in" cx="80" cy="48" r="9"/>
+      <circle class="dv-led dv-led1" cx="112" cy="33" r="4"/>
+    {% elif kind == 'printer' %}
+      <rect class="dv-paper" x="48" y="8" width="64" height="30" rx="3"/>
+      <rect class="dv-body" x="16" y="34" width="128" height="40" rx="9"/>
+      <rect class="dv-paper" x="46" y="58" width="68" height="24" rx="3"/>
+      <circle class="dv-led dv-led1" cx="132" cy="46" r="4"/>
+    {% else %}
+      <rect class="dv-body" x="20" y="18" width="120" height="58" rx="14"/>
+      <circle class="dv-led dv-led1" cx="80" cy="47" r="7"/>
+    {% endif %}
+  </svg>
+{%- endmacro %}
+
+{% macro tg(off_class='') -%}<span class="tg {{ off_class }}"><i class="tg-knob"></i></span>{%- endmacro %}
+
+{# Arta unei scene. `ip` = adresa dispozitivului, `icon` = tipul pictogramei, `svc` = numele serviciului (toggle). #}
+{% macro art(kind, ip, icon, svc, winpath, cfg=none) -%}
+  {% if kind == 'find' %}
+    <div class="art art-find"><span class="ring ring1"></span><span class="ring ring2"></span>{{ dev_svg(icon) }}<span class="ip-tag mono" translate="no">{{ ip }}</span></div>
+  {% elif kind == 'label' %}
+    <div class="art art-label"><span class="sh"></span><div class="rt">
+      <i class="an a1"></i><i class="an a1 b"></i><i class="an a2"></i><i class="an a2 b"></i>
+      <div class="fc fr"><span class="led"></span><span class="led"></span><span class="led"></span></div>
+      <div class="fc bk"><b>admin</b><span class="mono" translate="no">{{ ip }}</span><span class="mono">••••••••</span></div>
+      <div class="fc rs"></div><div class="fc ls"></div><div class="fc tp"></div><div class="fc bm"></div>
+    </div></div>
+  {% elif kind == 'admin' %}
+    <div class="art art-admin"><div class="win">
+      <div class="win-bar"><i></i><i></i><i></i><span class="addr mono" translate="no"><span class="typed">http://{{ ip }}</span></span></div>
+      <div class="win-body"><span class="field"><span class="fill fill1 mono">admin</span></span><span class="field"><span class="fill fill2 mono">••••••••</span></span><span class="btn-mock">OK</span></div>
+    </div></div>
+  {% elif kind == 'toggle' %}
+    <div class="art art-toggle"><div class="win"><div class="win-body list">
+      <div class="row">Wi-Fi {{ tg('on') }}</div>
+      <div class="row row-hl"><b translate="no">{{ svc }}</b> {{ tg() }}</div>
+      <div class="row">DHCP {{ tg('on') }}</div>
+    </div></div></div>
+  {% elif kind == 'update' %}
+    <div class="art art-update"><div class="win"><div class="win-body">
+      <span class="btn-mock btn-update">Update</span>
+      <span class="bar"><i class="bar-fill"></i></span>
+      <span class="version mono"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg> v2.0</span>
+    </div></div></div>
+  {% elif kind == 'password' %}
+    <div class="art art-password"><div class="win"><div class="win-body">
+      <span class="field"><span class="fill fill-pass mono">••••••••••••</span></span>
+      <span class="strength"><i class="s1"></i><i class="s2"></i><i class="s3"></i></span>
+      <span class="strength-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg></span>
+    </div></div></div>
+  {% elif kind == 'https' %}
+    <div class="art art-https"><div class="win"><div class="win-bar"><i></i><i></i><i></i>
+      <span class="addr mono" translate="no"><span class="proto-old">http://{{ ip }}</span><span class="proto-new"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg> https://{{ ip }}</span></span></div>
+      <div class="win-body"><span class="bar"><i class="bar-fill"></i></span></div></div></div>
+  {% elif kind == 'windows' %}
+    <div class="art art-windows"><div class="win"><div class="win-body list">
+      <div class="row row-hl path"><b>{{ winpath }}</b> {{ tg() }}</div>
+    </div></div></div>
+  {% elif kind == 'guest' %}
+    <div class="art art-guest">
+      <div class="net net-main"><span class="net-name">{{ T('g_net_main') }}</span></div>
+      <div class="net net-guest"><span class="net-name">{{ T('g_net_guest') }}</span></div>
+      <div class="mover">{{ dev_svg(icon) }}</div>
+    </div>
+  {% elif kind == 'routerlist' %}
+    <div class="art art-list"><div class="win"><div class="win-body list">
+      <div class="row"><span class="ph"></span><span class="ph ph2"></span></div>
+      <div class="row"><span class="ph"></span><span class="ph ph2"></span></div>
+      <div class="row row-hl"><span class="q">?</span><span class="mono" translate="no">{{ ip }}</span></div>
+    </div></div></div>
+  {% elif kind == 'config' and cfg %}
+    <div class="art art-config"><div class="win"><div class="win-bar"><i></i><i></i><i></i><span class="addr mono">config</span></div>
+      <div class="win-body code mono" translate="no"><span class="cl"># …</span><span class="cl cl-hl"><span class="cfg-old">{{ cfg[0] }}</span><span class="cfg-new">{{ cfg[1] }}</span></span><span class="cl"># …</span></div></div></div>
+  {% elif kind == 'verify' %}
+    <div class="art art-verify"><span class="radar r1"></span><span class="radar r2"></span>
+      <span class="door"><i class="door-leaf"></i></span><span class="door-ok"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-good"/></svg></span></div>
+  {% endif %}
+{%- endmacro %}
+
+{# Fereastra ghidului pentru pasul curent `st`. `hidden` = câmpurile ascunse ale formularelor (token, scan). #}
+{% macro guide_dialog(st, hidden, dv_icon) %}
+  {% set plan = guide_plan(st.finding.code, st.device.device_type) %}
+  {% set an = announced(st.device.ip) %}
+  {% set cn = custom_name(st.finding.device_id) %}
+  {% set dev_phrase = cn if cn else an.name if an else device_type_the(st.device.device_type) %}
+  <dialog class="guide" id="guide" aria-labelledby="guide-title" data-total="{{ plan.scenes|length }}">
+    <div class="guide-head">
+      <h2 id="guide-title">{{ T('g_title') }}</h2>
+      <button type="button" class="button button-secondary guide-close" data-guide-close><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>{{ T('g_close') }}</button>
+    </div>
+    <p class="guide-for">{{ T('step_on')|format(code_name(st.finding.code), device_type_label(st.device.device_type), st.device.ip) }}</p>
+    <p class="guide-count" aria-live="polite" data-guide-count data-fmt="{{ T('g_count') }}">{{ T('g_count')|format(1, plan.scenes|length) }}</p>
+    <ol class="guide-scenes">
+      {% for kind in plan.scenes %}
+        {% set svc = T('g_svc_' ~ st.finding.code) %}
+        {% set winpath = T('g_win_' ~ st.finding.code) %}
+        <li class="scene scene-{{ kind }}" data-scene{% if not loop.first %} hidden{% endif %}>
+          <div class="scene-art" aria-hidden="true">{{ art(kind, st.device.ip, dv_icon, svc, winpath, plan.config) }}</div>
+          {# Textul scenei: întâi varianta specială pentru cod (g_<scenă>_<COD>), altfel cea generală. Același număr de %s. #}
+          {% set sk = 'g_' ~ kind ~ '_' ~ st.finding.code %}
+          {% set raw = T(sk) if T(sk) != sk else T('g_' ~ kind) %}
+          <p class="scene-text" tabindex="-1">
+            {%- if kind == 'find' %}{{ raw|format(dev_phrase, st.device.ip) }}
+            {%- elif kind == 'toggle' %}{{ raw|format(svc) }}
+            {%- elif kind == 'windows' %}{{ raw|format(winpath) }}
+            {%- elif kind == 'routerlist' %}{{ raw|format(st.device.ip) }}
+            {%- else %}{{ raw }}{% endif -%}
+          </p>
+          {% if kind in ('toggle', 'update', 'password', 'https', 'windows', 'admin', 'config') %}<p class="scene-note">{{ T('g_note') }}</p>{% endif %}
+          {% if kind == 'verify' %}
+            <form method="post" action="{{ url_for('action_done') }}" class="guide-verify" data-swap="#summary, #score, #worst" data-focus="#summary" data-guide-submit>
+              {{ hidden }}
+              <input type="hidden" name="device_id" value="{{ st.finding.device_id }}">
+              <input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}">
+              <input type="hidden" name="code" value="{{ st.finding.code }}">
+              <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') }}</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+    <div class="guide-nav">
+      <button type="button" class="button button-secondary" data-guide-prev><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('g_back') }}</button>
+      <ol class="guide-dots" aria-hidden="true">{% for kind in plan.scenes %}<li class="{% if loop.first %}now{% endif %}"></li>{% endfor %}</ol>
+      <button type="button" class="button button-primary" data-guide-next>{{ T('g_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></button>
+    </div>
+  </dialog>
+{% endmacro %}

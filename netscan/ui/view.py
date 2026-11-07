@@ -86,6 +86,71 @@ def most_dangerous(scan: Scan) -> DeviceView | None:
     return ranked[0]
 
 
+# ---------- propoziția-rezumat din capul paginii ----------
+
+@dataclass
+class Summary:
+    """Datele pentru fraza de sus: câte probleme sunt și cu ce să începi. Doar numără și alege; severitățile,
+    punctele și ordinea vin din motor și din contract."""
+    kind: str                            # "error" | "clean" | "info" | "fixed" | "problems"
+    serious: int = 0                     # probleme cu severitatea „high”
+    minor: int = 0                       # restul problemelor care costă puncte (medium, low)
+    device: DeviceView | None = None     # primul dispozitiv, după ordinea din contract
+    finding: Finding | None = None       # cea mai gravă problemă a lui (primul ei pas se ia din explicații)
+    error_code: str | None = None
+
+
+def summary_of(scan: Scan, worst: DeviceView | None, all_fixed: bool = False) -> Summary:
+    """Cazurile: scanare cu eroare, nicio problemă, doar informări (0 puncte, ex. SSH_OPEN), tot ce s-a găsit
+    e deja rezolvat (`all_fixed`), probleme. `scan` și `worst` sunt aceleași ca la cardul „Cel mai periculos
+    dispozitiv” de dedesubt (fără problemele verificate), ca fraza și cardul să spună același lucru."""
+    if scan.status != "ok":
+        return Summary("error", error_code=scan.error_code)
+    costly = [f for f in scan.findings if f.points > 0]
+    if not costly:
+        if all_fixed:
+            return Summary("fixed")
+        if scan.findings:   # doar informări fără puncte (ex. SSH_OPEN): le numim, dar nu sunt probleme
+            return Summary("info", finding=scan.findings[0])
+        return Summary("clean")
+    serious = sum(1 for f in costly if f.severity == "high")
+    return Summary("problems", serious=serious, minor=len(costly) - serious,
+                   device=worst, finding=worst.worst if worst else None)
+
+
+# ---------- dovada „înainte / după” (după ce ai reparat și ai verificat din nou) ----------
+
+@dataclass
+class Proof:
+    """Ce s-a schimbat între două scanări, pentru cardul „Dovada”. Scorurile vin din motor (nu se recalculează aici);
+    aici doar se numără și se grupează rezultatele lui diff()."""
+    before: Scan
+    after: Scan
+    score_before: int
+    score_after: int
+    resolved: list[Finding] = field(default_factory=list)     # „ușile închise”
+    remaining: list[Finding] = field(default_factory=list)    # încă deschise
+    new: list[Finding] = field(default_factory=list)          # apărute între scanări
+
+    @property
+    def closed(self) -> int:
+        return len(self.resolved)
+
+    @property
+    def direction(self) -> str:
+        return ("up" if self.score_after > self.score_before
+                else "down" if self.score_after < self.score_before else "same")
+
+
+def proof_of(before: Scan, after: Scan, d) -> Proof | None:
+    """`d` e storage.diff(before, after). Fără dovadă dacă una dintre scanări nu are scor (e ilizibilă)."""
+    if d.score_before is None or d.score_after is None:
+        return None
+    key = lambda f: finding_rank_key(f)  # noqa: E731  (cea mai gravă întâi, ca peste tot în UI)
+    return Proof(before, after, d.score_before, d.score_after, sorted(d.resolved_findings, key=key),
+                 sorted(d.persistent_findings, key=key), sorted(d.new_findings, key=key))
+
+
 # ---------- trendul scorului (FR-10), pentru graficul din istoric ----------
 
 @dataclass
