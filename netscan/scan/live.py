@@ -72,6 +72,7 @@ TEXTS = {
         "PORT_OPENED_VS_SCAN": "Port deschis pe {ip}: {port}{label}, nou față de ultima scanare.",
         "PORT_CLOSED": "Portul {port}{label} de pe {ip} s-a închis.",
         "PORT_CLOSED_VS_SCAN": "Portul {port}{label} de pe {ip} e închis acum (în ultima scanare era deschis).",
+        "FIX_CONFIRMED": "Reparație confirmată: portul {port} de pe {ip} nu mai răspunde{label}. Scorul de pe Dashboard s-a actualizat.",
         "TRAP": "Cineva de pe {ip} a încercat să intre pe portul {port} (ușa-capcană).",
         "PAUSED": "Protecția live e în pauză: {why}",
         "RESUMED": "Ești pe hotspot: protecția live merge.",
@@ -89,6 +90,7 @@ TEXTS = {
         "PORT_OPENED_VS_SCAN": "Open port on {ip}: {port}{label}, new since the last scan.",
         "PORT_CLOSED": "Port {port}{label} on {ip} closed.",
         "PORT_CLOSED_VS_SCAN": "Port {port}{label} on {ip} is closed now (it was open in the last scan).",
+        "FIX_CONFIRMED": "Fix confirmed: port {port} on {ip} no longer answers{label}. The Dashboard score was updated.",
         "TRAP": "Someone at {ip} tried to get in on port {port} (trap door).",
         "PAUSED": "Live protection is paused: {why}",
         "RESUMED": "You are on the hotspot: live protection is running.",
@@ -100,7 +102,8 @@ TEXTS = {
     },
 }
 TONES = {"NEW_DEVICE": "urgent", "TRAP": "urgent", "PORT_OPENED": "urgent", "PORT_CLOSED": "good",
-         "DEVICE_BACK": "info", "DEVICE_GONE": "info", "PAUSED": "info", "RESUMED": "good", "SCAN_DONE": "good"}
+         "DEVICE_BACK": "info", "DEVICE_GONE": "info", "PAUSED": "info", "RESUMED": "good", "SCAN_DONE": "good",
+         "FIX_CONFIRMED": "good"}
 _SAFE_LABEL = re.compile(r"[^A-Za-z0-9._/-]")
 
 
@@ -136,6 +139,7 @@ class KnownScan:
     file: str
     types: dict[str, Optional[str]]
     ports: dict[str, dict[int, str]]                     # ip -> {port: serviciul văzut de nmap}
+    scan: Optional[object] = None                        # Scan-ul motorului (pentru confirmarea reparațiilor)
 
 
 def tcp_state(ip: str, port: int, timeout: float = PROBE_TIMEOUT_S) -> str:
@@ -216,6 +220,9 @@ class LiveMonitor:
         self.pulse_running = False
         self.pulse_now: set[str] = set()
         self.gen = 0
+        self.fixes = 0                                 # reparații confirmate live (Dashboard-ul își reîmprospătează scorul)
+        self._confirmed: set = set()
+        self._want_rescan = False
         self._trap = None
         self._trap_ip: Optional[str] = None
         self._trap_stop = threading.Event()
@@ -289,6 +296,7 @@ class LiveMonitor:
                 if self.status == ACTIVE:
                     self._sweep_step(now)
                     self._maybe_pulse(now)
+                    self._handle_rescan()
             except Exception:                          # protecția nu are voie să moară în tăcere
                 with self._lock:
                     self.next_gate = now               # reverificăm rețeaua la tura următoare
@@ -302,6 +310,20 @@ class LiveMonitor:
         if self.status == ACTIVE:
             self._sweep_step(now)
             self._maybe_pulse(now, wait=True)
+            self._handle_rescan()
+
+    def _handle_rescan(self) -> None:
+        """Dispozitiv nou sau port riscant nou: dacă scanarea automată așteaptă următoarea tură, îi cerem să
+        pornească acum (fișier în scans/, scris de utilizator). Procesul de admin respectă oricum pauza minimă."""
+        if not self._want_rescan:
+            return
+        self._want_rescan = False
+        st = self.full_scan_status()
+        if st.get("job") == "auto" and st.get("state") == "waiting_next":
+            try:
+                (self.scans_dir / scan_job.NOW_FILE).write_text("now")
+            except OSError:
+                pass
 
     # ---------- 0. rețeaua: doar hotspotul echipei ----------
 
@@ -493,8 +515,35 @@ class LiveMonitor:
                             self._event(now, "PORT_CLOSED", ip, port, label=label)
                         elif not d.pulsed and in_scan is not None and port in in_scan:
                             self._event(now, "PORT_CLOSED_VS_SCAN", ip, port, label=label)
+                        self._confirm_fix(known, ip, port, now)
                 d.pulsed = True
             self.last_pulse = now
+
+    def _confirm_fix(self, known: Optional[KnownScan], ip: str, port: int, now: float) -> None:
+        """Reparație confirmată live: portul unei probleme din ultima scanare REFUZĂ acum conexiunea. Exact regula
+        butonului „Am făcut asta, verifică” (ui/verify.py): toate problemele de pe acel port al dispozitivului
+        devin verificate, iar scorul de pe Dashboard îl recalculează motorul. Doar TCP și doar pe refuz clar;
+        UDP, problemele fără port și versiunile vechi se confirmă tot la scanarea completă."""
+        if known is None or known.scan is None:
+            return
+        scan = known.scan
+        host = next((h for h in scan.hosts if h.ip == ip), None)
+        if host is None or not any(p.port == port and p.proto == "tcp" for p in host.ports):
+            return                                     # conexiunea e TCP: nu spune nimic despre un port UDP
+        keys = [f.key() for f in scan.findings if f.ip == ip and f.port == port]
+        new = [k for k in keys if (known.file, k) not in self._confirmed]
+        if not new:
+            return
+        for k in new:
+            self._confirmed.add((known.file, k))
+        self.fixes += 1
+        if self.persist:
+            try:
+                from netscan.ui import storage
+                storage.mark_verified(scan, new, self.db_path)
+            except Exception:
+                return
+        self._event(now, "FIX_CONFIRMED", ip, port, label=", ".join(sorted({k[2] for k in new})))
 
     # ---------- 3. ușa-capcană ----------
 
@@ -566,6 +615,8 @@ class LiveMonitor:
                        tone=TONES.get(base, "info"))
         self.events.insert(0, ev)
         del self.events[MAX_EVENTS:]
+        if base in ("NEW_DEVICE", "PORT_OPENED"):
+            self._want_rescan = True                   # risc nou: scanarea completă automată pornește mai devreme
         if self.persist and base in PERSISTED_KINDS:
             try:
                 local_data.append_events(local_data.alerts_path(self.db_path),
@@ -605,7 +656,7 @@ class LiveMonitor:
         types = {h.ip: h.device_type for h in scan.hosts}
         ports = {h.ip: {p.port: (p.service or "") for p in h.ports if p.proto == "tcp" and p.state == "open"}
                  for h in scan.hosts}
-        return KnownScan(file=scan.file, types=types, ports=ports)
+        return KnownScan(file=scan.file, types=types, ports=ports, scan=scan)
 
     # ---------- 4. scanarea completă (pasul de admin) ----------
 
@@ -729,7 +780,7 @@ class LiveMonitor:
                     "in_scan": known is not None and d.ip in known.types,
                     "device_type": known.types.get(d.ip) if known is not None else None,
                     "open_ports": [{"port": p, "label": labels.get(p, "")} for p in sorted(d.open_ports)],
-                    "pulsed": d.pulsed,
+                    "pulsed": d.pulsed, "is_gateway": info is not None and d.ip == info.gateway,
                 })
             return {
                 "on": self.running, "status": self.status if self.running else OFF, "reason": self.reason,
@@ -743,4 +794,6 @@ class LiveMonitor:
                 "last_sweep": self.last_sweep or None, "last_pulse": self.last_pulse or None,
                 "pulse_running": self.pulse_running, "baseline_done": self.baseline_done,
                 "known_file": known.file if known is not None else None,
+                "gateway": info.gateway if info is not None and self.status == ACTIVE else None,
+                "fixes": self.fixes,
             }

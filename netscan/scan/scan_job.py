@@ -28,6 +28,8 @@ PROGRESS_FILE = ".scan_progress.json"
 LOCK_FILE = ".scan.lock"
 STOP_FILE = ".scan.stop"
 PART_SUFFIX = ".part"                  # XML-ul în lucru: scan_<dată>.xml.part
+NOW_FILE = ".scan.now"                 # aplicația cere o scanare mai devreme (dispozitiv sau port riscant nou)
+MIN_GAP_MIN = 10                       # dar nu mai des de o dată la 10 minute (ca `watch`)
 WATCH_LOCK_FILE = ".watch.lock"        # monitorul din terminal (`watch`): nu scanăm de două ori odată
 AUTO_EVERY_MIN = 15
 MAX_DISCOVERED = 300
@@ -303,16 +305,24 @@ def main(argv: list[str], scans_dir: Path = SCANS_DIR, run: Callable = run_once,
     lock = scans_dir / LOCK_FILE
     lock.write_text(str(os.getpid()))
     try:
+        last_start = now()
         rc = run(scans_dir, job, writer)
         while job == "auto" and not stop_requested(scans_dir):
-            next_at = now() + AUTO_EVERY_MIN * 60
+            next_at = last_start + AUTO_EVERY_MIN * 60
             data = (read_progress(scans_dir) or {}) | {"v": 1, "job": job, "state": "waiting_next",
                                                          "pid": os.getpid(), "next_at": next_at}
             writer.write(data, force=True)
             while now() < next_at and not stop_requested(scans_dir):
+                if (scans_dir / NOW_FILE).exists() and now() - last_start >= MIN_GAP_MIN * 60:
+                    break                      # risc nou văzut live: scanăm acum (dar nu mai des de 10 min)
                 sleep(1.0)
             if stop_requested(scans_dir):
                 break
+            try:
+                (scans_dir / NOW_FILE).unlink()
+            except OSError:
+                pass
+            last_start = now()
             rc = run(scans_dir, job, writer)
         if job == "auto":
             data = (read_progress(scans_dir) or {}) | {"v": 1, "job": job, "state": "stopped", "pid": os.getpid(),
@@ -320,7 +330,7 @@ def main(argv: list[str], scans_dir: Path = SCANS_DIR, run: Callable = run_once,
             writer.write(data, force=True)
         return rc
     finally:
-        for name in (LOCK_FILE, STOP_FILE):
+        for name in (LOCK_FILE, STOP_FILE, NOW_FILE):
             try:
                 (scans_dir / name).unlink()
             except OSError:

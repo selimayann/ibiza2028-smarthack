@@ -92,7 +92,12 @@
         if (next && now && next.dataset.version !== now.dataset.version) {
           const key = focusKey(document.activeElement, now);
           const before = now.dataset.latest || "";
+          const fixesBefore = now.dataset.fixes || "0";
           now.replaceWith(next);
+          // O reparație confirmată live: scorul (al motorului) și cardul dispozitivului se actualizează singure.
+          if ((next.dataset.fixes || "0") !== fixesBefore && document.getElementById("score")) {
+            swap(window.location.href.split("#")[0], { method: "GET" }, ["#score", "#worst"], null, false);
+          }
           const f = key && document.querySelector(key);
           if (f) f.focus({ preventScroll: true });
           const say = document.getElementById("live-announce");

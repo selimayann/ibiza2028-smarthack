@@ -61,8 +61,9 @@ def make(net, tmp_path, **kw):
     kw.setdefault("trap_server", None)
     kw.setdefault("launcher", lambda job: elevate.Launch(True, elevate.STARTED))
     kw.setdefault("read_table", net.read)
+    kw.setdefault("probe", net.probe)
     return live.LiveMonitor(scans_dir=tmp_path / "scans", db_path=tmp_path / "data" / "netscan.db",
-                            detect=net.detect, poke=net.poke, probe=net.probe, pacer=NoPace(), **kw)
+                            detect=net.detect, poke=net.poke, pacer=NoPace(), **kw)
 
 
 def sweep(m, t):
