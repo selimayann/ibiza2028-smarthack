@@ -78,18 +78,34 @@
 {%- endmacro %}
 
 {# Alertele din jurnal (FR-13): iconiță după ton + propoziție simplă. #}
-{% macro alert_list(alerts, two_col=false) -%}
+{% macro alert_list(alerts, two_col=false, short=false) -%}
   {%- set icons = {'bad': 'medium', 'good': 'good', 'info': 'info'} -%}
   <ul class="alerts{% if two_col %} alerts-2col{% endif %}">
     {% for a in alerts %}
       {%- if a.tone == 'bad' and a.severity %}
       {# problemă nouă: iconița și eticheta severității ei (formă + text, nu doar culoare) #}
-      <li class="alert alert-bad alert-sev-{{ a.severity }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ a.severity }}"/></svg><span><strong class="alert-sev">{{ T('sev_' ~ a.severity) }}</strong> · {{ alert_text(a) }}</span></li>
+      <li class="alert alert-bad alert-sev-{{ a.severity }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ a.severity }}"/></svg><span><strong class="alert-sev">{{ T('sev_' ~ a.severity) }}</strong> · {{ alert_text(a, short) }}</span></li>
       {%- else %}
-      <li class="alert alert-{{ a.tone }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ icons[a.tone] }}"/></svg><span>{{ alert_text(a) }}</span></li>
+      <li class="alert alert-{{ a.tone }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ icons[a.tone] }}"/></svg><span>{{ alert_text(a, short) }}</span></li>
       {%- endif %}
     {% endfor %}
   </ul>
+{%- endmacro %}
+
+{# Jurnal: alertele unei scanări grupate pe dispozitiv (în ordinea primei apariții), cu textele scurte.
+   Numele dispozitivului și IP-ul apar o singură dată, în antetul grupului. #}
+{% macro alert_groups(alerts) -%}
+  {%- set ns = namespace(ids=[]) -%}
+  {%- for a in alerts %}{% if a.device_id not in ns.ids %}{% set ns.ids = ns.ids + [a.device_id] %}{% endif %}{% endfor -%}
+  <div class="alert-groups">
+  {%- for id in ns.ids %}
+    {%- set da = alerts|selectattr('device_id', 'equalto', id)|list %}
+    <div class="alert-group">
+      <p class="alert-dev">{{ alert_device(da[0]) }} <span class="mono muted" translate="no">{{ da[0].ip }}</span></p>
+      {{ alert_list(da, false, true) }}
+    </div>
+  {%- endfor %}
+  </div>
 {%- endmacro %}
 
 {# Scorul ca etichetă: iconiță + număr + bandă (nu doar culoare). #}

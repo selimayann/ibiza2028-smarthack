@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import alert_list, empty_state, monitor_event with context %}
+{% from "_macros.html" import alert_list, alert_groups, empty_state, monitor_event with context %}
 {% block title %}{{ T('journal_title') }} · SafeEel{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -44,10 +44,10 @@
         </p>
       </div>
       {% if g.alerts|length > 6 %}
-        {{ alert_list(g.alerts[:6]) }}
-        <details class="journal-more"><summary>{{ T('journal_more')|format(g.alerts|length - 6) }}</summary>{{ alert_list(g.alerts[6:]) }}</details>
+        {{ alert_groups(g.alerts[:6]) }}
+        <details class="journal-more"><summary>{{ T('journal_more')|format(g.alerts|length - 6) }}</summary>{{ alert_groups(g.alerts[6:]) }}</details>
       {% else %}
-        {{ alert_list(g.alerts) }}
+        {{ alert_groups(g.alerts) }}
       {% endif %}
       <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id, **{'from': 'journal'}) }}">{{ T('see_in_history') }}</a></p>
     </li>

@@ -86,7 +86,7 @@
   </table>
   <div class="danger-zone">
     <p>{{ T('history_delete_hint') }}</p>
-    <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
+    <a class="button button-danger-quiet" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
   </div>
 {% else %}
   {{ empty_state(T('history_empty'), T('history_empty_hint'), url_for('overview'), T('go_overview')) }}

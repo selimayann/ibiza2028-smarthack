@@ -70,7 +70,9 @@ def test_journal_page(tmp_path):
         storage.save_scan(analyze_file(VAL / name), db)
     html = client.get("/journal").get_data(as_text=True)
     assert "Jurnalul de securitate" in html
-    assert "a fost rezolvată pe Router, 192.168.1.1." in html
+    # grupate pe dispozitiv: antetul „Router 192.168.1.1” o dată, apoi rânduri scurte
+    assert '<p class="alert-dev">Router <span class="mono muted" translate="no">192.168.1.1</span></p>' in html
+    assert "Rezolvată: „" in html
     assert html.count('class="alert alert-good"') >= 3
 
 

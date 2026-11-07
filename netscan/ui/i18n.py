@@ -826,6 +826,26 @@ ALERT_TEXTS: dict[str, dict[str, str]] = {
 }
 
 
+# Textele scurte din Jurnal, unde alertele sunt grupate sub dispozitiv (numele și IP-ul apar o singură dată).
+ALERT_SHORT: dict[str, dict[str, str]] = {
+    "ro": {
+        "NEW_DEVICE": "A apărut în rețea (dispozitiv nou).",
+        "DEVICE_GONE": "Nu mai apare în rețea.",
+        "PORT_OPENED": "Port nou deschis: {port}.",
+        "PORT_CLOSED": "Port închis: {port}.",
+        "FINDING_NEW": "Problemă nouă: „{name}”.",
+        "FINDING_RESOLVED": "Rezolvată: „{name}”.",
+    },
+    "en": {
+        "NEW_DEVICE": "Appeared on the network (new device).",
+        "DEVICE_GONE": "No longer on the network.",
+        "PORT_OPENED": "New port open: {port}.",
+        "PORT_CLOSED": "Port closed: {port}.",
+        "FINDING_NEW": "New problem: “{name}”.",
+        "FINDING_RESOLVED": "Fixed: “{name}”.",
+    },
+}
+
 DEVICE_TYPES_THE: dict[str, dict[str, str]] = {
     "ro": {
         "router": "routerul", "camera": "camera", "printer": "imprimanta", "tv": "televizorul",
@@ -963,13 +983,19 @@ def summary_sentence(lang: str, summary, device_label: str | None = None, step: 
     return f"{sentence} " + tx["start_no_step"].format(device=device_label)
 
 
-def alert_text(lang: str, alert, names: dict[str, str] | None = None) -> str:
+def alert_text(lang: str, alert, names: dict[str, str] | None = None, short: bool = False) -> str:
     """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template).
     `names`: numele date de utilizator, pe device_id; când există, înlocuiește tipul dispozitivului."""
     lang = normalize_lang(lang)
     dev = (names or {}).get(alert.device_id) or device_type_label(lang, alert.device_type)
     port = f"{alert.port}/{alert.proto}" if alert.proto else (str(alert.port) if alert.port is not None else "")
-    return ALERT_TEXTS[lang][alert.kind].format(dev=dev, ip=alert.ip, port=port, name=code_name(lang, alert.code))
+    texts = ALERT_SHORT if short else ALERT_TEXTS
+    return texts[lang][alert.kind].format(dev=dev, ip=alert.ip, port=port, name=code_name(lang, alert.code))
+
+
+def alert_device(lang: str, alert, names: dict[str, str] | None = None) -> str:
+    """Numele dispozitivului unei alerte (dat de utilizator sau tipul), pentru antetul grupului din Jurnal."""
+    return (names or {}).get(alert.device_id) or device_type_label(normalize_lang(lang), alert.device_type)
 
 
 MONTHS = {

@@ -114,6 +114,9 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 .button-quiet { border-color: var(--brand); color: var(--brand); font-weight: 700; }
 .button-quiet:hover { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
 .button-danger, button.button-danger { background: var(--high); border-color: var(--high); color: var(--on-icon); font-weight: 700; }
+/* Prima intrare spre ștergere (Istoric): doar contur roșu; butonul plin rămâne pe pagina de confirmare */
+.button-danger-quiet { background: transparent; border-color: var(--high); color: var(--high); font-weight: 700; }
+.button-danger-quiet:hover { background: color-mix(in srgb, var(--high) 8%, transparent); color: var(--high); }
 .button-link { background: none; border: 0; padding: 0; min-height: 2.75rem; color: var(--link); text-decoration: underline; text-underline-offset: .18em; font: inherit; cursor: pointer; }
 button:disabled { opacity: .6; cursor: progress; }
 
@@ -909,3 +912,8 @@ dialog.guide .mono { font-family: ui-monospace, Consolas, monospace; }
 /* Protecția live oprită și nicio scanare în curs: „Scanarea completă” și butoanele ei pe un singur rând */
 .live-off .live-scan:not(:has(.scan-line)) { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; }
 .live-off .live-scan:not(:has(.scan-line)) .live-sub { margin: 0; }
+/* Jurnal: schimbările grupate pe dispozitiv (numele și IP-ul o singură dată, rânduri scurte dedesubt) */
+.alert-groups { display: flex; flex-direction: column; gap: .9rem; }
+.alert-dev { font-weight: 700; margin: 0 0 .1rem; }
+.alert-dev .mono { font-weight: 400; margin-left: .3rem; }
+.alert-group .alerts { margin-top: 0; }
