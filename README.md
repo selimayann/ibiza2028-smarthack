@@ -40,6 +40,7 @@ ibiza2028-smarthack/
 │   ├── lab.md             lab-ul (Ayan)
 │   ├── questions.md       întrebări pentru mentori + răspunsuri (Oneata)
 │   ├── direction.md       direcția produsului, după nucleu (toți)
+│   ├── demo.md            pregătirea demo-ului și cele 7 verificări live
 │   └── roles/             instrucțiunile pentru Claude-ul fiecăruia
 ├── fixtures/
 │   ├── sample.json        exemplu în forma contractului (toți)
