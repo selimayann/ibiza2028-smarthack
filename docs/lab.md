@@ -79,6 +79,11 @@ Rețeaua: `RSH-Ibiza2028`, `172.20.10.0/28`. Gateway (iPhone) `172.20.10.1`, lap
 laptop-scanner `172.20.10.10` (nu apare: nmap pe Windows nu se scanează pe sine).
 Toate trei scanările: `nmap -sS -sU -sV --script http-title -p T:<top1000>,1883,6379,27017,U:53,123,161,1900,5353 --max-rate 100`, făcute cu `python -m netscan scan --confirm`.
 
+> **Notă:** scanările sunt făcute înainte de commit-ul `8ff742a` (B), care a adăugat `-n` (fără DNS invers) și
+> `--versiondb` (fără sonde de versiune pe portul 53). De aceea XML-urile n-au `-n` în linia de comandă.
+> Cu comanda nouă, findings-urile ar fi aceleași: portul 53 al gateway-ului ar apărea `domain` din tabel
+> (nicio regulă nu se uită la el), iar hostname-uri nu existau nici înainte. Nu trebuie refăcute.
+
 | Scanare | Gateway `172.20.10.1` | Laptop-țintă `172.20.10.14` | Rânduri | Scor |
 |---|---|---|---|---|
 | `scan_01_before.xml` | UNKNOWN_DEVICE, FTP_CLEARTEXT (21) | UNKNOWN_DEVICE, SSH_OPEN (22), MQTT_EXPOSED (1883), FTP_CLEARTEXT (2121), OUTDATED_SERVICE (2121), TELNET_OPEN (2323), DB_EXPOSED (6379), HTTP_ADMIN_CLEARTEXT (8080) | 10 | 0 (100 − 110) |
