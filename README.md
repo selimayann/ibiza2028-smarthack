@@ -90,6 +90,8 @@ python -m netscan ask <fișier.xml> "Ce fac întâi?" --local-ai          # + re
 python -m netscan ask <fișier.xml> x --verify-text "<text inventat>"   # demo: validatorul respinge datele inventate
 ```
 
+**AI local (opțional, D8):** [Ollama](https://ollama.com) instalat și modelul descărcat **înainte** (`ollama pull qwen2.5:7b`, 4,7 GB, licență Apache 2.0). Ollama ascultă doar pe `127.0.0.1`. Prima cerere încarcă modelul în placa video (poate dura peste 30 s), deci înainte de demo rulează o dată `ollama run qwen2.5:7b "salut"`; după aceea un răspuns durează câteva secunde. Validatorul verifică faptele (IP, porturi, coduri), nu gramatica: textele predefinite rămân sursa principală.
+
 **Demo istoric înainte/după (lab-ul nostru):** pune `NETSCAN_SCANS_DIR=<folderul cu scanările din lab>` în `.env`, pornește `python -m netscan ui`, apasă „Salvează” pe `scan_01_before.xml`, apoi pe `scan_03_after.xml`: pagina arată scorul 0 → 30 și cele 2 probleme rezolvate. Varianta din linia de comandă: `python -m netscan diff <scan_01_before.xml> <scan_03_after.xml>`.
 
 ### Scanarea live, pas cu pas (`network`, `scan`)

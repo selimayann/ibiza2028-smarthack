@@ -87,7 +87,7 @@ def test_request_goes_only_to_localhost_with_answer_text_only():
     req, timeout = op.requests[0]
     assert req.full_url == "http://127.0.0.1:11434/api/generate" and timeout == 30.0
     body = json.loads(req.data)
-    assert body["model"] == "qwen2.5:7b" and body["stream"] is False
+    assert body["model"] == "qwen2.5:7b" and body["stream"] is False and body["keep_alive"] == "30m"
     assert "Fă asta întâi: X" in body["prompt"]
     assert "SECRET-Q" not in body["prompt"] and "192.168.1.40" not in body["prompt"]
 
