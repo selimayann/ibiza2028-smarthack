@@ -150,7 +150,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .saved a { font-weight: 400; }
 
 /* ---------- fraza-rezumat: primul lucru pe pagină, înaintea oricărui card ---------- */
-.summary { margin: 0 0 1.5rem; padding: 1.1rem 1.4rem; background: var(--surface); border: 1px solid var(--line); border-left: .5rem solid var(--muted); border-radius: var(--radius); }
+.summary { margin: 1.5rem 0 1.5rem; padding: 1.1rem 1.4rem; background: var(--surface); border: 1px solid var(--line); border-left: .5rem solid var(--muted); border-radius: var(--radius); }
 .summary-problems { border-left-color: var(--high); }
 .summary-calm { border-left-color: var(--good); }
 .summary-text { margin: 0; max-width: 60ch; font-family: var(--head); font-size: 1.6rem; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
@@ -436,7 +436,7 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .recheck-form input[type=file] { flex: 1 1 16rem; min-width: 0; font: inherit; color: var(--ink); min-height: 2.75rem; padding: .4rem 0; }
 .recheck-how summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; font-weight: 700; }
 .recheck-how code { display: inline-block; padding: .35rem .6rem; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
-.proof { padding: 1.4rem 1.6rem; margin: 0 0 1.5rem; border-left: .5rem solid var(--muted); }
+.proof { padding: 1.4rem 1.6rem; margin: 1.5rem 0 1.5rem; border-left: .5rem solid var(--muted); }
 .proof-up { border-left-color: var(--good); }
 .proof-down { border-left-color: var(--high); }
 .proof h2 { font-size: 1.25rem; margin: 0 0 .8rem; }

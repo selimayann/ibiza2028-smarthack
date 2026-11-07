@@ -25,7 +25,7 @@
 - [ ] **Ușa-capcană:** regula de firewall doar pe Private (comanda o afișează `python -m netscan trap`), apoi `python -m netscan trap --confirm`.
   Demo: de pe laptopul-țintă, `telnet <IP-laptop-demo> 2323` → alerta apare live.
 - [ ] (Opțional) `python -m netscan listen --confirm` și `python -m netscan watch --every 10 --confirm` (terminal de Administrator).
-- [ ] **UI:** `NETSCAN_SCANS_DIR=fixtures/lab` (pentru istoricul înainte/după al lab-ului) și `python -m netscan ui`.
+- [ ] **UI:** `NETSCAN_SCANS_DIR=fixtures/lab` (pentru istoricul înainte/după al lab-ului) și `python -m netscan ui`. Pașii exacți (istoric încărcat, pagina deschisă, fereastra, notificări oprite, capturi pentru planul B): [demo_setup.md](demo_setup.md).
 
 ## 4. Cele 7 verificări live, în ordinea juriului
 

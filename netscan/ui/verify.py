@@ -32,7 +32,9 @@ OTHER_NETWORK = "network"
 NO_ANSWER = "noanswer"
 RESULTS = (VERIFIED, STILL_OPEN, STILL_OPEN_VERSION, UDP, NO_PORT, OTHER_NETWORK, NO_ANSWER)
 
-PROBE_TIMEOUT = 1.5  # secunde, o singură încercare
+# Secunde, o singură încercare. Pe Windows o conexiune refuzată se anunță abia după ~2 s (sistemul mai
+# retrimite SYN de două ori înainte să renunțe): cu 1,5 s un port închis ar părea „fără răspuns".
+PROBE_TIMEOUT = 3.0
 
 Probe = Callable[[str, int], str]           # (ip, port) -> "closed" | "open" | "unknown"
 TargetCheck = Callable[[str], bool]         # ip -> e în rețeaua mea?
