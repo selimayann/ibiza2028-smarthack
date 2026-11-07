@@ -409,9 +409,9 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
   min-height: 3.25rem; padding: .6rem 1.25rem .6rem 1rem; border-radius: 999px; background: var(--brand); color: var(--brand-ink);
   font-weight: 700; text-decoration: none; box-shadow: 0 6px 18px rgba(51, 51, 255, .28), 0 2px 4px rgba(52, 58, 64, .15); border: 0; }
 .ai-fab:hover { background: var(--brand-dark); color: var(--brand-ink); }
-.ai-fab:hover .eel { --eel-eye: var(--brand-dark); }
+.ai-fab:hover .volt { --eye: var(--brand-dark); }
 .ai-fab .icon { width: 1.4em; height: 1.4em; }
-.ai-fab .eel { width: 1.6em; height: 1.85em; margin: -.2em 0; --eel-eye: var(--brand); }
+.ai-fab .volt { width: 1.75em; height: 2em; margin: -.3em 0; --eye: var(--brand); --pupil: var(--brand-ink); }
 .ai-fab:focus-visible { outline-offset: 4px; }
 .chat { border: 0; padding: 0; width: min(30rem, calc(100vw - 2rem)); max-height: min(44rem, calc(100vh - 2rem)); border-radius: 16px;
   background: var(--surface); color: var(--ink); box-shadow: 0 20px 50px rgba(20, 24, 60, .25); margin: auto 1.25rem 1.25rem auto; }
@@ -421,7 +421,7 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .chat-head { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem 1.1rem .9rem; border-bottom: 1px solid var(--line); background: var(--brand-tint); border-radius: 16px 16px 0 0; }
 .chat-avatar { flex: none; width: 2.6rem; height: 2.6rem; border-radius: 999px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; }
 .chat-avatar .icon { width: 1.5rem; height: 1.5rem; }
-.chat-avatar .eel { width: 1.6rem; height: 1.85rem; --eel-eye: var(--brand); }
+.chat-avatar .volt { width: 1.85rem; height: 2.1rem; --eye: var(--brand); --pupil: var(--brand-ink); }
 .chat-title { flex: 1; min-width: 0; }
 .chat-title h2 { font-size: 1.1875rem; }
 .chat-badge { display: flex; align-items: flex-start; gap: .4rem; margin-top: .25rem; color: var(--ink); }
@@ -436,6 +436,30 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .msg-src { display: flex; align-items: center; gap: .35rem; margin-top: .45rem; color: var(--muted); white-space: normal; }
 .msg-src .icon { color: var(--brand); --eel-eye: var(--tint); }
 .msg-thinking { color: var(--muted); font-style: italic; }
+
+/* Volt, mascota asistentului (branding/mascot/): decor lângă bulele asistentului, starea e scrisă și în text. */
+.volt { overflow: visible; }
+.msg-row { align-self: flex-start; display: flex; align-items: flex-end; gap: .5rem; max-width: 96%; }
+.msg-row .msg { max-width: none; min-width: 0; }
+.msg-volt { flex: none; width: 2.6rem; height: 2.95rem; color: var(--brand); }
+.msg-volt .volt { display: block; width: 100%; height: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .volt.s-asteapta .waves path { animation: volt-rise 1.6s ease-out infinite; }
+  .volt.s-asteapta .waves path:nth-child(2) { animation-delay: .2s; }
+  .volt.s-asteapta .eye { transform-box: fill-box; transform-origin: center; animation: volt-blink 4s infinite; }
+  .volt.s-gandeste .spin { transform-box: view-box; transform-origin: 140px 120px; animation: volt-spin 1.8s linear infinite; }
+  .volt.s-prins .sparks path { transform-box: view-box; transform-origin: 160px 88px; animation: volt-burst 1.3s ease-out infinite; }
+  .volt.s-prins .sparks path:nth-child(2) { animation-delay: .08s; }
+  .volt.s-prins .sparks path:nth-child(3) { animation-delay: .16s; }
+  .volt.s-verificat .pop { transform-box: view-box; transform-origin: 130px 125px; animation: volt-pop .5s ease-out; }
+  .volt.s-verificat .twinkle { animation: volt-pulse 1.6s infinite; }
+}
+@keyframes volt-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes volt-spin { to { transform: rotate(360deg); } }
+@keyframes volt-pop { 0% { transform: scale(.6); } 70% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes volt-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@keyframes volt-rise { 0% { transform: translateY(0); opacity: 1; } 55% { transform: translateY(-12px); opacity: 0; } 56% { transform: translateY(0); opacity: 0; } 80%, 100% { transform: translateY(0); opacity: 1; } }
+@keyframes volt-burst { 0% { transform: scale(.75); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 60% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1.18); opacity: 0; } }
 .chat-suggest { display: flex; flex-wrap: wrap; gap: .45rem; padding: 0 1.1rem .8rem; }
 .chat-suggest button { min-height: 2.5rem; padding: .35rem .8rem; border-color: var(--brand-line); color: var(--brand); background: var(--surface); font-weight: 700; }
 .chat-suggest button:hover { background: var(--brand-tint); border-color: var(--brand); }

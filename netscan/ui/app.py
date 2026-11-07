@@ -102,6 +102,20 @@ def ask_assistant(question: str, scan: Scan | None, lang: str, previous: Scan | 
         return None
 
 
+# Starea lui Volt (mascota) după răspuns -> (stare, cheia textului, iconița). Starea e scrisă mereu și în text.
+REPLY_STATES = {
+    "verificat": ("ask_src_llm", "eel"),        # textul AI-ului a trecut validatorul
+    "prins": ("ask_src_caught", "shield"),      # validatorul a oprit textul AI-ului: arătăm răspunsul sigur
+    "fara-ai": ("ask_src_fallback", "info"),    # AI-ul local e oprit: răspuns construit direct din scanare
+}
+
+
+def reply_state(reply) -> str:
+    if getattr(reply, "source", None) == "llm":
+        return "verificat"
+    return "prins" if getattr(reply, "problems", None) else "fara-ai"
+
+
 def assistant_ctx(action: str, api: str, scan: Scan | None, scan_index: int | None, question: str, reply,
                   show_changes: bool) -> dict | None:
     """Datele pentru fereastra asistentului (templates/_assistant.html)."""
@@ -109,7 +123,8 @@ def assistant_ctx(action: str, api: str, scan: Scan | None, scan_index: int | No
         return None
     return {"action": action, "api": api, "scan_index": scan_index, "question": question, "reply": reply,
             "open": bool(request.args.get("ask")) or bool(question), "llm_on": local_ai_enabled(),
-            "file": scan.file, "show_changes": show_changes}
+            "file": scan.file, "show_changes": show_changes,
+            "state": reply_state(reply) if reply is not None else None}
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -154,6 +169,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Referrer-Policy"] = "no-referrer"
         return resp
+
+    app.jinja_env.globals["REPLY_STATES"] = REPLY_STATES
 
     @app.context_processor
     def helpers() -> dict:
@@ -403,9 +420,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         reply = ask_assistant(question, scan, g.lang, previous=prev)
         if reply is None:
             return {"ok": False, "text": i18n.t(g.lang, "ai_error")}, 200
+        state = reply_state(reply)
+        key, icon = REPLY_STATES[state]
         return {
-            "ok": True, "text": reply.text, "source": reply.source,
-            "source_label": i18n.t(g.lang, "ask_src_llm" if reply.source == "llm" else "ask_src_fallback"),
+            "ok": True, "text": reply.text, "source": reply.source, "state": state,
+            "source_label": i18n.t(g.lang, key), "source_icon": icon,
         }
 
     @app.errorhandler(400)
