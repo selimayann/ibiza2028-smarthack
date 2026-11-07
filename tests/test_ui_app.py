@@ -183,3 +183,15 @@ def test_save_to_history_from_ui(tmp_path):
     client.post("/history/save", data={"token": token, "scan": i_a})
     assert len(storage.list_scans(app.config["DB_PATH"])) == 2
     assert "Salvată în istoric" in client.get(f"/?scan={i_a}").get_data(as_text=True)
+
+
+def test_history_shows_ip_recognition_note(tmp_path):
+    from netscan.engine import analyze_file
+    from netscan.ui.app import VALIDATION_DIR
+
+    db = tmp_path / "h.db"
+    storage.save_scan(analyze_file(VALIDATION_DIR / "V6a_before.xml"), db)
+    b_id = storage.save_scan(analyze_file(VALIDATION_DIR / "V6b_after.xml"), db)
+    client, _ = make_client(tmp_path, [])
+    html = client.get(f"/scan/{b_id}").get_data(as_text=True)
+    assert "Recunoscute după IP (3)" in html

@@ -95,6 +95,13 @@
       <p>{{ T('compare_none') }}</p>
     {% else %}
       <p class="compare-score">{{ T('score_change') }}: <strong class="mono">{{ compare.score_before }} → {{ compare.score_after }}</strong></p>
+      {% if compare.matched_by_ip %}
+        <div class="ip-note" role="note">
+          <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('matched_ip_title') }} ({{ compare.matched_by_ip|length }})</h3>
+          <p>{{ T('matched_ip_body') }}</p>
+          <ul>{% for h in compare.matched_by_ip %}<li>{{ device_name(h) }} <span class="mono">{{ h.ip }}</span>{% if h.vendor %} <span class="muted">{{ h.vendor }}</span>{% endif %}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
       <div class="compare-grid">
         <div class="compare-col compare-good">
           <h3>{{ T('resolved') }} ({{ compare.resolved_findings|length }})</h3>
