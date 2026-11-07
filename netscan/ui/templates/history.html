@@ -6,6 +6,8 @@
   <div>
     <h1 class="page-title">{{ T('history_title') }}</h1>
     <p class="lead">{{ T('history_hint') }}</p>
+    {# Al cui e istoricul: utilizatorul de sistem (text de la sistem, escapat) #}
+    <p class="history-owner"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{% if owner %}{{ T('history_owner')|format(owner) }}{% else %}{{ T('history_owner_unknown') }}{% endif %}</p>
   </div>
 </div>
 {% if deleted %}<p class="notice" role="status">{{ T('history_deleted') }}</p>{% endif %}
@@ -88,5 +90,7 @@
   </div>
 {% else %}
   {{ empty_state(T('history_empty'), T('history_empty_hint'), url_for('overview'), T('go_overview')) }}
+  <p class="notice history-owner-note" role="note">{{ T('history_empty_owner') }}</p>
+  <p class="muted history-file">{{ T('history_file')|format(db_file) }}</p>
 {% endif %}
 {% endblock %}
