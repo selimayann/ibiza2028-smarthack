@@ -22,6 +22,8 @@ from typing import Callable, Optional
 from netscan.scan import guardrail, network
 
 UDP_PORTS = "53,123,161,1900,5353"
+# Porturile din catalog care lipsesc din top 1000 nmap (mqtt, redis, mongodb)
+CATALOG_EXTRA_TCP = [1883, 6379, 27017]
 MAX_RATE = "100"  # regula de ≤100 pachete/secundă
 TOP_PORTS_FILE = Path(__file__).with_name("top1000_tcp.txt")
 DEFAULT_SCANS_DIR = Path("scans")
@@ -79,11 +81,26 @@ def _refuse(code: str, info=None, target=None, ro: Optional[str] = None, en: Opt
 
 # --- argumentele nmap -----------------------------------------------------------------------
 
+def _port_in_list(port: int, ports: str) -> bool:
+    for part in ports.split(","):
+        a, _, b = part.partition("-")
+        if a.isdigit() and int(a) <= port <= int(b or a):
+            return True
+    return False
+
+
+def tcp_port_spec(top_ports: str) -> str:
+    """Lista top 1000 (neatinsă) + porturile din CATALOG_EXTRA_TCP care nu sunt deja în ea."""
+    extra = [str(p) for p in CATALOG_EXTRA_TCP if not _port_in_list(p, top_ports)]
+    return ",".join([top_ports, *extra])
+
+
 def build_nmap_args(target: str, iface: str, tcp_ports: str, out_path: str) -> list[str]:
-    """Exact comanda din instrucțiuni. Fiecare valoare e un argument separat; nimic nu trece prin shell."""
+    """Comanda din instrucțiuni, cu porturile CATALOG_EXTRA_TCP adăugate la T:.
+    Fiecare valoare e un argument separat; nimic nu trece prin shell."""
     return [
         "nmap", "-sS", "-sU", "-sV", "--script", "http-title",
-        "-p", f"T:{tcp_ports},U:{UDP_PORTS}",
+        "-p", f"T:{tcp_port_spec(tcp_ports)},U:{UDP_PORTS}",
         "--max-rate", MAX_RATE, "-e", iface, "-oX", out_path, target,
     ]
 
