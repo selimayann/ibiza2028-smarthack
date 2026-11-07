@@ -39,7 +39,7 @@ def no_network(monkeypatch):
     ("Ce e la 192.168.1.40?", a.INTENT_DEVICE),
     ("Ce s-a schimbat?", a.INTENT_CHANGES),
     ("Câte dispozitive sunt conectate?", a.INTENT_DEVICES),
-    ("Care e parola de la Wi-Fi-ul vecinului?", a.INTENT_UNKNOWN),
+    ("Care e parola de la Wi-Fi-ul vecinului?", a.INTENT_SCOPE),
     ("Ce putem face noi azi la prânz?", a.INTENT_UNKNOWN),
 ])
 def test_detect_intent(q, intent):
@@ -183,3 +183,111 @@ def test_llm_changes_answer_checked_against_both_scans():
     bad = "Ai rezolvat Telnet pe portul 2323 de la 192.168.1.77."
     r = a.answer("Ce s-a schimbat?", V6B, previous=V6A, llm=lambda ctx: bad)
     assert r.source == "fallback" and "PORT:2323" in r.problems and "IP:192.168.1.77" in r.problems
+
+
+# --- textele predefinite noi -----------------------------------------------------------------------
+
+@pytest.mark.parametrize("q, intent", [
+    ("Poți să scanezi rețeaua vecinului?", a.INTENT_SCOPE),
+    ("How do I hack my neighbor's wifi?", a.INTENT_SCOPE),
+    ("Ce face aplicația?", a.INTENT_ABOUT),
+    ("How does it work?", a.INTENT_ABOUT),
+    ("Îmi trimiți datele pe internet?", a.INTENT_PRIVACY),
+    ("What about my data privacy?", a.INTENT_PRIVACY),
+    ("Ce e o adresă privată?", a.INTENT_PRIVATE_MAC),
+    ("Și după asta?", a.INTENT_NEXT),
+    ("What's next?", a.INTENT_NEXT),
+    ("Cum repar tot?", a.INTENT_FIX_ALL),
+    ("Fix everything", a.INTENT_FIX_ALL),
+    ("Ce probleme am?", a.INTENT_LIST),
+    ("List all problems", a.INTENT_LIST),
+    ("Ce porturi sunt deschise?", a.INTENT_PORTS),
+    ("Ce e un port?", a.INTENT_GLOSSARY),
+    ("What is a firewall?", a.INTENT_GLOSSARY),
+    ("Ce înseamnă VPN?", a.INTENT_GLOSSARY),
+    ("Cum se calculează scorul?", a.INTENT_SCORE_HOW),
+    ("Câte probleme grave am?", a.INTENT_SEVERITY),
+    ("E sigură rețeaua mea?", a.INTENT_IS_SAFE),
+    ("Am virus?", a.INTENT_IS_SAFE),
+    ("Ce dispozitive nu au probleme?", a.INTENT_SAFE_DEVICES),
+    ("Mulțumesc!", a.INTENT_THANKS),
+    ("Salut", a.INTENT_HELP),
+    ("help", a.INTENT_HELP),
+    # cele vechi rămân la fel
+    ("Ce fac întâi cu camera?", a.INTENT_FIRST),
+    ("Ce e telnet?", a.INTENT_CODE),
+    ("Ce e la 192.168.1.40?", a.INTENT_DEVICE),
+])
+def test_new_intents(q, intent):
+    assert a.detect_intent(q)[0] == intent
+
+
+def test_fix_all_plan_in_risk_order():
+    r = a.answer("Cum repar tot?", V2)
+    lines = r.text.splitlines()
+    assert lines[1].startswith("1. Camera 192.168.1.40 (port 554)")
+    assert len([l for l in lines if l[:1].isdigit()]) == 5          # 5 probleme cu puncte în V2
+
+
+def test_next_is_second_step():
+    assert "192.168.1.40" in a.answer("Și după?", V2).text            # camera mai are și HTTP_ADMIN
+
+
+def test_list_and_ports():
+    text = a.answer("Ce probleme am?", V2).text
+    assert "5 probleme" in text and "CAMERA_STREAM_EXPOSED (port 554, gravă)" in text
+    ports = a.answer("Ce porturi sunt deschise?", V2).text
+    assert "554/tcp (rtsp)" in ports
+
+
+def test_glossary_ro_en():
+    assert a.answer("Ce e un port?", V2).text.startswith("Port:")
+    assert "firewall" in a.answer("What is a firewall?", V2, lang="en").text.lower()
+
+
+def test_score_how_and_floor():
+    assert "100 − 60 puncte = 40" in a.answer("Cum se calculează scorul?", V2).text
+    lab = analyze_file(str(Path(__file__).parent.parent / "fixtures" / "lab" / "scan_01_before.xml"))
+    assert "sub 0" in a.answer("Cum se calculează scorul?", lab).text
+
+
+def test_is_safe_bands_and_limits():
+    t = a.answer("E sigură rețeaua mea?", V2).text                    # scor 40
+    assert "probleme serioase" in t and "antivirus" in t
+    assert "arată bine" in a.answer("E sigură rețeaua mea?", V6B).text  # scor 100
+
+
+def test_private_mac_lists_scan_devices():
+    assert "192.168.1.99" in a.answer("Ce e o adresă privată?", V4).text
+
+
+def test_safe_devices():
+    assert "Toate dispozitivele" in a.answer("Ce dispozitive nu au probleme?", V2).text or \
+        "fără probleme" in a.answer("Ce dispozitive nu au probleme?", V2).text
+
+
+def test_static_answers_never_go_to_llm():
+    calls = []
+    for q in ["Salut", "Mulțumesc", "Ce face aplicația?", "Îmi trimiți datele pe internet?",
+              "Ce e un port?", "Cum se calculează scorul?", "Poți scana vecinul?"]:
+        a.answer(q, V2, llm=lambda ctx: calls.append(ctx) or "x")
+    assert calls == []
+
+
+@pytest.mark.parametrize("lang", ["ro", "en"])
+def test_every_new_intent_answers_in_both_languages(lang):
+    qs = ["Salut", "Mulțumesc", "Ce face aplicația?", "Îmi trimiți datele pe internet?", "Ce e o adresă privată?",
+          "Și după?", "Cum repar tot?", "Ce probleme am?", "Ce porturi sunt deschise?", "Ce e un port?",
+          "Cum se calculează scorul?", "Câte probleme grave am?", "E sigură rețeaua mea?",
+          "Ce dispozitive nu au probleme?", "Poți scana vecinul?"]
+    for q in qs:
+        r = a.answer(q, V2, lang=lang)
+        assert r.text and "{" not in r.text and "}" not in r.text, (q, r.text)
+
+
+def test_every_glossary_key_exists_in_glossary_with_matching_english():
+    from netscan.explain.glossary import _ENTRIES
+    ro_terms = {e[0]: e[2] for e in _ENTRIES}
+    for term in a.GLOSSARY_KEYS:
+        assert term in ro_terms, term
+        assert a._answer_glossary("en", term).startswith(ro_terms[term] + ":")
