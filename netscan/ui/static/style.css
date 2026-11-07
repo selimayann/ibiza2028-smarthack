@@ -154,6 +154,14 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 /* The one loud element: the work order. */
 .do-first { background: var(--order-bg); color: var(--order-ink); border-radius: var(--radius); padding: 1rem 1.2rem 1.15rem; margin-top: .25rem; border-left: 8px solid var(--order-accent); }
 .do-first-label { font-weight: 700; color: var(--order-accent); }
+.do-first-count { font-weight: 400; opacity: .9; margin-left: .4rem; }
+.do-first-for { margin-top: .5rem; opacity: .92; }
+.do-first-actions { margin-top: .8rem; }
+.button-check { background: var(--order-accent); color: var(--order-bg); border-color: var(--order-accent); font-weight: 700; }
+.button-check:hover { border-color: var(--order-ink); }
+.do-first-done .do-first-label { display: flex; align-items: center; gap: .4rem; }
+.do-first-reset { margin-top: .2rem; }
+.button-link { background: none; border: 0; padding: 0; min-height: 2.75rem; color: var(--link); text-decoration: underline; text-underline-offset: .18em; font: inherit; cursor: pointer; }
 .do-first-step { font-size: 1.375rem; line-height: 1.35; font-weight: 700; margin-top: .25rem; max-width: 40ch; }
 
 /* ---------- severity ---------- */
@@ -196,6 +204,23 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 .compare-warn h3 { border-bottom-color: var(--medium); }
 .compare-col ul { list-style: none; padding: 0; margin: .5rem 0 0; display: flex; flex-direction: column; gap: .55rem; }
 .compare-col li { line-height: 1.4; }
+
+/* ---------- inventory (D4) ---------- */
+.inv-picker { margin-bottom: 1rem; }
+.inv-summary { font-size: 1.125rem; margin-bottom: .8rem; }
+.inventory { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .6rem; }
+.inv-item { background: var(--surface); border-radius: var(--radius); padding: .9rem 1.2rem 1rem 1.3rem; border-left: 6px solid var(--line); }
+.inv-item.rail-high { border-left-color: var(--high); }
+.inv-item.rail-medium { border-left-color: var(--medium); }
+.inv-item.rail-low { border-left-color: var(--low); }
+.inv-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .2rem 1rem; }
+.inv-head h2 { font-size: 1.1875rem; margin: 0; overflow-wrap: anywhere; }
+.inv-head h2 a { color: var(--ink); text-decoration-color: var(--line); }
+.inv-head h2 a:hover { text-decoration-color: currentColor; }
+.inv-head .ip { font-weight: 400; color: var(--muted); }
+.inv-status { display: flex; gap: .5rem; align-items: center; }
+.inv-ok { display: inline-flex; gap: .3rem; align-items: center; color: var(--good); font-weight: 700; }
+.inv-item .facts { margin-top: .5rem; }
 
 /* ---------- assistant (FR-12) ---------- */
 .ask { background: var(--surface); border-radius: var(--radius); padding: 1.2rem 1.4rem; margin-top: 1.25rem; }

@@ -72,10 +72,43 @@
       <p class="worst-device">{{ device_name(worst.host) }} <span class="mono ip" translate="no">{{ worst.host.ip }}</span></p>
       <p class="worst-problem">{{ sev(w.severity) }} <span class="code" translate="no">{{ w.code }}</span> <span class="muted">{{ port_label(w) }}</span></p>
       <p class="worst-text">{{ ex.text }}</p>
-      <div class="do-first">
-        <p class="do-first-label">{{ T('do_first') }}</p>
-        <p class="do-first-step">{{ ex.steps[0] }}</p>
-      </div>
+      {% if history_id is none and step %}
+        {# D5: un singur pas pe rând, în ordinea riscului; după bifă apare următorul #}
+        {% set sx = explain(step.finding.code) %}
+        <div class="do-first">
+          <p class="do-first-label">{{ T('do_first') if step.number == 1 else T('next_step') }} <span class="do-first-count">{{ T('step_of')|format(step.number, step.total) }}</span></p>
+          <p class="do-first-step">{{ sx.steps[0] }}</p>
+          <p class="do-first-for">{{ T('step_on')|format(code_name(step.finding.code), device_type_label(step.device.device_type), step.device.ip) }}</p>
+          <form method="post" action="{{ url_for('action_done') }}" class="do-first-actions">
+            <input type="hidden" name="token" value="{{ token }}">
+            <input type="hidden" name="scan" value="{{ selected }}">
+            <input type="hidden" name="device_id" value="{{ step.finding.device_id }}">
+            <input type="hidden" name="port" value="{{ step.finding.port if step.finding.port is not none else '' }}">
+            <input type="hidden" name="code" value="{{ step.finding.code }}">
+            <button type="submit" class="button-check"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') }}</button>
+          </form>
+        </div>
+        {% if step.done_count %}
+          <form method="post" action="{{ url_for('action_reset') }}" class="do-first-reset">
+            <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+            <button type="submit" class="button-link">{{ T('step_reset') }}</button>
+          </form>
+        {% endif %}
+      {% elif history_id is none and all_done %}
+        <div class="do-first do-first-done">
+          <p class="do-first-label"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('steps_all_done') }}</p>
+          <p class="do-first-for">{{ T('steps_all_done_hint') }}</p>
+        </div>
+        <form method="post" action="{{ url_for('action_reset') }}" class="do-first-reset">
+          <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+          <button type="submit" class="button-link">{{ T('step_reset') }}</button>
+        </form>
+      {% else %}
+        <div class="do-first">
+          <p class="do-first-label">{{ T('do_first') }}</p>
+          <p class="do-first-step">{{ ex.steps[0] }}</p>
+        </div>
+      {% endif %}
       {% if history_id is none %}
         <p class="worst-more"><a href="{{ url_for('device', device_id=worst.host.device_id, scan=selected) }}">{{ T('all_steps') }}</a></p>
       {% endif %}

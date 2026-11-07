@@ -23,7 +23,7 @@ from netscan.model import Scan
 from netscan.ui import i18n, storage
 from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
-from netscan.ui.view import most_dangerous, rank_devices, score_band, score_trend
+from netscan.ui.view import action_plan, current_action, ip_key, most_dangerous, rank_devices, score_band, score_trend
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
@@ -140,12 +140,45 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan, idx = pick(scan_list)
         saved_id = storage.find_scan(scan.file, scan.started_at, app.config["DB_PATH"]) if scan else None
         question = request.args.get("q", "")[:MAX_QUESTION_LEN]
+        step, plan_total, all_done = None, 0, False
+        if scan is not None and scan.status == "ok" and scan.findings:
+            done = storage.done_keys(scan, app.config["DB_PATH"])
+            step, plan_total = current_action(scan, done), len(action_plan(scan))
+            all_done = step is None
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx,
+            step=step, plan_total=plan_total, all_done=all_done,
             question=question, reply=ask_assistant(question, scan, g.lang),
             devices=rank_devices(scan) if scan else [], worst=most_dangerous(scan) if scan else None,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
         )
+
+    def _form_scan() -> tuple[Scan, int]:
+        if not hmac.compare_digest(request.form.get("token", ""), app.config["FORM_TOKEN"]):
+            abort(400)
+        scan_list = scans()
+        idx = request.form.get("scan", default=-1, type=int)
+        if not 0 <= idx < len(scan_list):
+            abort(400)
+        return scan_list[idx], idx
+
+    @app.post("/action/done")
+    def action_done():
+        """D5: bifează pasul curent. Cheia trebuie să fie a unei probleme din scanare; scorul nu se schimbă."""
+        scan, idx = _form_scan()
+        port_raw = request.form.get("port", "")
+        key = (request.form.get("device_id", ""), int(port_raw) if port_raw.lstrip("-").isdigit() else None,
+               request.form.get("code", ""))
+        if key not in {f.key() for f in scan.findings}:
+            abort(400)
+        storage.mark_done(scan, key, app.config["DB_PATH"])
+        return redirect(url_for("overview", scan=idx) + "#worst-h")
+
+    @app.post("/action/reset")
+    def action_reset():
+        scan, idx = _form_scan()
+        storage.reset_done(scan, app.config["DB_PATH"])
+        return redirect(url_for("overview", scan=idx) + "#worst-h")
 
     @app.post("/history/save")
     def history_save():
@@ -161,6 +194,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         if scan_id is None:
             scan_id = storage.save_scan(scan, db)
         return redirect(url_for("history_scan", scan_id=scan_id))
+
+    @app.get("/devices")
+    def inventory():
+        """D4: „Ce e conectat la mine?”: toate dispozitivele, inclusiv cele fără probleme, după IP."""
+        scan_list = scans()
+        scan, idx = pick(scan_list)
+        devices = sorted(rank_devices(scan), key=lambda d: ip_key(d.host.ip)) if scan and scan.status == "ok" else []
+        return render_template("inventory.html", scan=scan, scan_list=scan_list, selected=idx, devices=devices)
 
     @app.get("/device/<device_id>")
     def device(device_id: str):

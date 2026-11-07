@@ -143,3 +143,32 @@ def score_trend(items, width: int = 640, height: int = 220) -> Trend | None:
         trend.points.append(TrendPoint(scan_id=s.id, file=s.file, started_at=s.started_at, score=s.score,
                                        x=left + step * i, y=trend.y_for(s.score)))
     return trend
+
+
+
+# ---------- D5: o singură acțiune pe rând ----------
+
+def action_plan(scan: Scan) -> list[Finding]:
+    """Toate problemele, în ordinea riscului: dispozitivele după contract, apoi problemele fiecăruia."""
+    return [f for d in rank_devices(scan) for f in d.findings]
+
+
+@dataclass
+class ActionStep:
+    finding: Finding
+    device: Host
+    number: int          # 1..total
+    total: int
+    done_count: int
+
+
+def current_action(scan: Scan, done: set) -> ActionStep | None:
+    """Primul pas încă nebifat. None dacă nu există probleme sau dacă toate sunt bifate."""
+    hosts = {h.device_id: h for h in scan.hosts}
+    plan = action_plan(scan)
+    done_count = sum(1 for f in plan if f.key() in done)
+    for i, f in enumerate(plan, 1):
+        if f.key() not in done:
+            return ActionStep(finding=f, device=hosts.get(f.device_id, Host(ip=f.ip, device_id=f.device_id)),
+                              number=i, total=len(plan), done_count=done_count)
+    return None

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import time
 from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -61,6 +62,14 @@ CREATE TABLE IF NOT EXISTS findings (
 CREATE INDEX IF NOT EXISTS idx_hosts_scan ON hosts(scan_id);
 CREATE INDEX IF NOT EXISTS idx_ports_scan ON ports(scan_id);
 CREATE INDEX IF NOT EXISTS idx_findings_scan ON findings(scan_id);
+CREATE TABLE IF NOT EXISTS done_actions (
+    scan_key TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    port INTEGER NOT NULL,          -- -1 pentru findings fără port (UNKNOWN_DEVICE)
+    code TEXT NOT NULL,
+    done_at INTEGER NOT NULL,
+    PRIMARY KEY (scan_key, device_id, port, code)
+);
 """
 
 
@@ -186,7 +195,7 @@ def previous_scan_id(scan_id: int, path: str | Path | None = None) -> int | None
 def delete_history(path: str | Path | None = None) -> None:
     """Șterge tot istoricul (NFR-02)."""
     with closing(connect(path)) as conn, conn:
-        for table in ("findings", "ports", "hosts", "scans"):
+        for table in ("done_actions", "findings", "ports", "hosts", "scans"):
             conn.execute(f"DELETE FROM {table}")  # nume fixe din cod, nu date din scanare
     with closing(connect(path)) as conn:
         conn.execute("VACUUM")
@@ -266,3 +275,30 @@ def diff(old: Scan, new: Scan) -> ScanDiff:
         score_before=old.score,
         score_after=new.score,
     )
+
+
+# ---------- D5: bifele „am făcut asta” (doar în UI și în istoric; nu schimbă findings sau scorul) ----------
+
+def scan_key(scan: Scan) -> str:
+    """Cheia unei scanări pentru bife: același fișier și aceeași dată = aceeași scanare."""
+    return f"{scan.file}|{scan.started_at if scan.started_at is not None else ''}"
+
+
+def done_keys(scan: Scan, path: str | Path | None = None) -> set[tuple]:
+    with closing(connect(path)) as conn:
+        rows = conn.execute("SELECT device_id, port, code FROM done_actions WHERE scan_key = ?", (scan_key(scan),))
+        return {(r["device_id"], None if r["port"] == -1 else r["port"], r["code"]) for r in rows}
+
+
+def mark_done(scan: Scan, key: tuple, path: str | Path | None = None) -> None:
+    device_id, port, code = key
+    with closing(connect(path)) as conn, conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO done_actions (scan_key, device_id, port, code, done_at) VALUES (?, ?, ?, ?, ?)",
+            (scan_key(scan), device_id, -1 if port is None else port, code, int(time.time())),
+        )
+
+
+def reset_done(scan: Scan, path: str | Path | None = None) -> None:
+    with closing(connect(path)) as conn, conn:
+        conn.execute("DELETE FROM done_actions WHERE scan_key = ?", (scan_key(scan),))

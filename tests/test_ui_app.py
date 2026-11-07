@@ -332,3 +332,76 @@ def test_report_error_scan_and_history(tmp_path):
     _, b_id = _save_validation(app.config["DB_PATH"], "V6a_before.xml", "V6b_after.xml")
     html = client.get(f"/scan/{b_id}/report").get_data(as_text=True)
     assert "Nu am găsit nicio problemă din catalog." in html
+
+
+# ---------- D4: inventarul ----------
+
+def test_inventory_lists_all_devices_by_ip(tmp_path):
+    client, _ = make_client(tmp_path, [sample()])
+    html = client.get("/devices").get_data(as_text=True)
+    assert "Ce e conectat la mine?" in html
+    assert "3 dispozitive: 3 cu probleme, 0 fără probleme." in html
+    assert html.index("192.168.1.1<") < html.index("192.168.1.40") < html.index("192.168.1.41")
+    assert "1883/tcp" in html and "DD:EE:FF:XX:XX:XX" in html
+
+
+def test_inventory_includes_devices_without_problems(tmp_path):
+    from netscan.ui.app import load_scans
+
+    scans = load_scans()
+    i = next(n for n, s in enumerate(scans) if s.file == "V2_smart_home.xml")
+    client, _ = make_client(tmp_path, scans)
+    html = client.get(f"/devices?scan={i}").get_data(as_text=True)
+    assert "Nicio problemă" in html and "192.168.1.50" in html
+    j = next(n for n, s in enumerate(scans) if s.file == "V7_broken.xml")
+    assert "pare incomplet" in client.get(f"/devices?scan={j}").get_data(as_text=True)
+
+
+# ---------- D5: o singură acțiune pe rând, cu bifă ----------
+
+def _done(client, app, f, scan_idx=0):
+    return client.post("/action/done", data={"token": app.config["FORM_TOKEN"], "scan": scan_idx,
+                                             "device_id": f.device_id, "port": "" if f.port is None else f.port,
+                                             "code": f.code})
+
+
+def test_one_step_at_a_time(tmp_path):
+    from netscan.ui.view import action_plan
+
+    s = sample()
+    client, app = make_client(tmp_path, [s])
+    plan = action_plan(s)
+    assert [f.code for f in plan][:2] == ["CAMERA_STREAM_EXPOSED", "HTTP_ADMIN_CLEARTEXT"]
+    html = client.get("/").get_data(as_text=True)
+    assert "Fă asta întâi:" in html and "Pasul 1 din 5" in html and "Am făcut asta" in html
+    assert _done(client, app, plan[0]).status_code == 302
+    html = client.get("/").get_data(as_text=True)
+    assert "Următorul pas:" in html and "Pasul 2 din 5" in html
+    assert ">40<" in html                                   # bifa nu schimbă scorul
+    for f in plan[1:]:
+        _done(client, app, f)
+    html = client.get("/").get_data(as_text=True)
+    assert "Ai bifat toți pașii" in html and "scanează din nou" in html
+    client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], "scan": 0})
+    assert "Pasul 1 din 5" in client.get("/").get_data(as_text=True)
+
+
+def test_step_tick_rejects_bad_token_and_unknown_problem(tmp_path):
+    s = sample()
+    client, app = make_client(tmp_path, [s])
+    f = s.findings[0]
+    assert client.post("/action/done", data={"token": "x", "scan": 0, "device_id": f.device_id,
+                                             "port": f.port, "code": f.code}).status_code == 400
+    bad = Finding(file=f.file, ip=f.ip, device_id=f.device_id, port=9999, code="TELNET_OPEN",
+                  severity="high", points=20, evidence="e")
+    assert _done(client, app, bad).status_code == 400
+    assert storage.done_keys(s, app.config["DB_PATH"]) == set()
+
+
+def test_delete_history_also_clears_ticks(tmp_path):
+    s = sample()
+    client, app = make_client(tmp_path, [s])
+    _done(client, app, s.findings[0])
+    assert storage.done_keys(s, app.config["DB_PATH"])
+    storage.delete_history(app.config["DB_PATH"])
+    assert storage.done_keys(s, app.config["DB_PATH"]) == set()
