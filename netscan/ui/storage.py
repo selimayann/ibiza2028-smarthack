@@ -161,6 +161,15 @@ def get_scan(scan_id: int, path: str | Path | None = None) -> Scan | None:
                 hosts=list(hosts.values()), findings=findings)
 
 
+def find_scan(file: str, started_at: int | None, path: str | Path | None = None) -> int | None:
+    """Id-ul unei scanări deja salvate (același fișier și aceeași dată), ca să nu o dublăm."""
+    with closing(connect(path)) as conn:
+        row = conn.execute(
+            "SELECT id FROM scans WHERE file = ? AND started_at IS ? ORDER BY id LIMIT 1", (file, started_at)
+        ).fetchone()
+    return row["id"] if row else None
+
+
 def previous_scan_id(scan_id: int, path: str | Path | None = None) -> int | None:
     """Scanarea dinaintea celei date, în ordinea istoricului."""
     ids = [s.id for s in list_scans(path)]

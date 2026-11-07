@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import hmac
 import json
+import os
 import secrets
 from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
 
+from netscan.cli import load_env_file
+from netscan.engine import analyze_folder
 from netscan.model import Scan
 from netscan.ui import i18n, storage
 from netscan.ui.explain_stub import get_explanation
@@ -21,6 +24,7 @@ from netscan.ui.view import most_dangerous, rank_devices, score_band
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
+VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
 LANG_COOKIE = "lang"
 
 
@@ -28,20 +32,26 @@ def load_scan(path: str | Path) -> Scan:
     return Scan.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
-def load_scans() -> list[Scan]:
-    """SURSA DE DATE pentru pagina principală, într-un singur loc.
+def scans_dir() -> Path:
+    """Folderul cu fișierele nmap XML afișate în UI (implicit Validation Set-ul)."""
+    return Path(os.environ.get("NETSCAN_SCANS_DIR") or VALIDATION_DIR)
 
-    Acum: fixtures/sample.json. După sincronizarea cu Radu: analyze_file() din netscan.engine.
-    """
-    return [load_scan(SAMPLE_PATH)]
+
+def load_scans() -> list[Scan]:
+    """SURSA DE DATE pentru pagina principală, într-un singur loc: motorul lui Radu."""
+    try:
+        return analyze_folder(scans_dir())
+    except NotADirectoryError:
+        return []
 
 
 def create_app(test_config: dict | None = None) -> Flask:
+    load_env_file(REPO_ROOT / ".env")  # NETSCAN_SALT, NETSCAN_DB_PATH; nu suprascrie ce e deja setat
     app = Flask(__name__)
     app.config.update(
         SCAN_LOADER=load_scans,
         DB_PATH=None,  # None = NETSCAN_DB_PATH sau data/netscan.db
-        DELETE_TOKEN=secrets.token_urlsafe(32),
+        FORM_TOKEN=secrets.token_urlsafe(32),
         MAX_CONTENT_LENGTH=1024 * 1024,
     )
     if test_config:
@@ -104,11 +114,27 @@ def create_app(test_config: dict | None = None) -> Flask:
     def overview():
         scan_list = scans()
         scan, idx = pick(scan_list)
+        saved_id = storage.find_scan(scan.file, scan.started_at, app.config["DB_PATH"]) if scan else None
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx,
             devices=rank_devices(scan) if scan else [], worst=most_dangerous(scan) if scan else None,
-            history_id=None, compare=None,
+            history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
         )
+
+    @app.post("/history/save")
+    def history_save():
+        """Salvează scanarea afișată în istoric (o singură dată per fișier + dată)."""
+        if not hmac.compare_digest(request.form.get("token", ""), app.config["FORM_TOKEN"]):
+            abort(400)
+        scan_list = scans()
+        idx = request.form.get("scan", default=-1, type=int)
+        if not 0 <= idx < len(scan_list):
+            abort(400)
+        scan, db = scan_list[idx], app.config["DB_PATH"]
+        scan_id = storage.find_scan(scan.file, scan.started_at, db)
+        if scan_id is None:
+            scan_id = storage.save_scan(scan, db)
+        return redirect(url_for("history_scan", scan_id=scan_id))
 
     @app.get("/device/<device_id>")
     def device(device_id: str):
@@ -130,12 +156,12 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/history/delete")
     def history_delete_confirm():
-        return render_template("history_delete.html", token=app.config["DELETE_TOKEN"])
+        return render_template("history_delete.html", token=app.config["FORM_TOKEN"])
 
     @app.post("/history/delete")
     def history_delete():
         sent = request.form.get("token", "")
-        if not hmac.compare_digest(sent, app.config["DELETE_TOKEN"]):
+        if not hmac.compare_digest(sent, app.config["FORM_TOKEN"]):
             abort(400)
         storage.delete_history(app.config["DB_PATH"])
         return redirect(url_for("history", deleted=1))
