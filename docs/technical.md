@@ -49,7 +49,7 @@ Doar `state="open"`; decizia după numele serviciului, nu după port; `upnp`/`sn
 - **Durata:** cu `--max-rate 100`, UDP și detecția de versiuni, o rețea /24 cu multe dispozitive poate depăși 5 minute (NFR-07); nu am avut un /24 pe care avem voie să-l scanăm.
 - nmap pe Windows nu se scanează pe sine: laptopul-scanner nu apare în rezultate.
 - Dacă sistemul nu permite citirea numelui Wi-Fi (de ex. macOS recent), tool-ul doar avertizează.
-- XML-urile din lab conțin MAC-uri, deci nu sunt încă în repo (întrebarea 9).
+- XML-urile din lab sunt în `fixtures/lab/`, neatinse; MAC-urile din ele sunt randomizate (adrese private), nu cele hardware.
 
 ## Folosirea LLM-ului
 Implicit **dezactivat** (`LLM_API_KEY` gol): toate explicațiile vin din textele predefinite RO/EN, deci tool-ul merge complet fără internet. Dacă e activat, regulile sunt:
