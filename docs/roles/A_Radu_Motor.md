@@ -347,7 +347,9 @@ Aceste valori vin din brief. Verifică numele exacte ale fișierelor când primi
 - `docs/contract.md`, `netscan/model.py` și `fixtures/sample.json` nu se schimbă pe tăcute. Un câmp sau tip nou se propune în `docs/direction.md`, la „Propuneri de contract”.
 - Produsul nu folosește numele sau logo-ul altui produs de securitate (UI, README, texte).
 
-## 3.1 Ce îți revine: D6 · raportul „servicii văzute care nu sunt în catalog” (dacă rămâne timp)
+## 3.1 Ce îți revine: D6 · raportul „servicii văzute care nu sunt în catalog” (gata înainte de ora 20)
+
+> Ghidul îl pune în procedura de la ora 20–21: rulezi `analyze testset/`, citești raportul, repari doar bug-uri clare de regulă, rulezi din nou.
 
 **Nicio funcție nouă în motor.** Regulile, scorul și CSV-urile standard rămân exact cum sunt. Singurul lucru opțional e un raport care te ajută să verifici Test Set-ul:
 - Ce servicii **deschise** a văzut parserul și n-au dat niciun finding (ex. `domain`, `ipp`, `http` fără titlu de admin), ca să vezi rapid dacă îți scapă o regulă sau dacă e o capcană corectă.

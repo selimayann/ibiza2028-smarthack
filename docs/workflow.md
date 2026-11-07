@@ -47,9 +47,10 @@ Detalii: [direction.md](direction.md). **Nu începe nimeni** până nu trece nuc
 |---|---|---|---|---|
 | 1 | RBRT | D1: jurnalul de securitate și alertele la schimbări (FR-13), din `diff()` | `ui` | `netscan/ui/` |
 | 2 | Ayan | D2: AI și siguranță: asistentul care răspunde doar din scanare, cu validatorul (FR-12) | `scan` | `netscan/scan/assistant.py` (nou), `netscan/scan/ai_check.py` |
-| 3 | RBRT | D4 + D5: inventarul complet și „o singură acțiune pe rând” | `ui` | `netscan/ui/` |
+| 3 | RBRT | D4 + D5: inventarul complet (pe datele FR-03) și „o singură acțiune pe rând” (FR-11, Ease of use) | `ui` | `netscan/ui/` |
+| 3b | RBRT | D7: raportul de o pagină pentru furnizorul IT (FR-14) | `ui` | `netscan/ui/` |
 | 4 | Oneata | D3: explicații: maparea celor 15 coduri pe CIS Controls v8 și OWASP IoT Top 10 (bonus) | `explain` | `netscan/explain/standards.py` (nou) |
-| 5 | Radu | D6: raportul „servicii văzute care nu sunt în catalog”, la cerere | `engine` | `netscan/engine/` (fără schimbări la reguli, scor sau CSV-uri) |
+| 5 | Radu | D6: raportul „servicii văzute care nu sunt în catalog”, **gata înainte de ora 20** (e în procedura Test Set-ului) | `engine` | `netscan/engine/` (fără schimbări la reguli, scor sau CSV-uri) |
 
 - **Ce nu se schimbă:** motorul de reguli, catalogul, scorul, `findings.csv` și `scores.csv`. Findings, severități și scoruri vin doar din cod.
 - **Fără** agenți pe dispozitive, colectare de log-uri sau reparații automate.

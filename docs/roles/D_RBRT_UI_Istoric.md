@@ -306,12 +306,16 @@ Istoricul se ordonează după `started_at`. Teste acum pe date sintetice; după 
 - **Teste:** V6a → V6b dă exact 3 alerte „problemă rezolvată” și nicio alertă „problemă nouă”.
 
 **D4 · Inventarul „ce e conectat la mine?”**
-- Toate dispozitivele, inclusiv cele fără probleme: tip (de la `netscan/engine/devices.py`), vendor, MAC mascat, porturi deschise.
+- Toate dispozitivele, inclusiv cele fără probleme: tip, producător, MAC mascat, porturi deschise. Tipul și producătorul vin din FR-03 (`netscan/scan/device_info.py` de la Ayan: lista IEEE offline, „adresă privată” pentru MAC aleatoriu); `DeviceView.info` le are deja.
 - Mare parte există deja; completează doar ce lipsește.
 
 **D5 · O singură acțiune pe rând**
 - Cardul „Fă asta acum” arată un singur pas, ordonat după risc (ordinea din contract). După ce utilizatorul îl bifează, apare următorul.
 - Bifa e doar în UI și în istoric; nu schimbă findings sau scorul (scorul se schimbă doar la o scanare nouă).
+
+**D7 · Raportul de o pagină pentru furnizorul IT (FR-14, Should/Could)**
+- HTML (și PDF, dacă rămâne timp): scorul standard, dispozitivele în ordinea de risc, findings cu dovada, pașii de reparare. Doar date din motor, MAC mascat.
+- În ghid e la orele 16–20, după UI-ul complet.
 
 **Afișezi și ce fac ceilalți:**
 - maparea pe standarde de la Oneata (`netscan/explain/standards.py`, `get_standards()`), lângă explicație;

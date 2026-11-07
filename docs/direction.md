@@ -37,9 +37,12 @@
 | D1 | **Jurnalul de securitate și alertele la schimbări** (din `diff()`): dispozitiv nou, port nou, problemă nouă sau rezolvată, în limbaj simplu, RO/EN | RBRT | FR-13 | După nucleu |
 | D2 | **Asistentul care răspunde doar din scanare**: întrebări în limbaj simplu; orice port, IP, cod sau CVE care nu există în scanare → răspunsul e respins și se folosește textul predefinit | Ayan (AI și siguranță: `netscan/scan/assistant.py` + validatorul `netscan/scan/ai_check.py`) | FR-12 | După nucleu |
 | D3 | **Maparea pe CIS Controls v8 și OWASP IoT Top 10** pentru fiecare dintre cele 15 coduri, afișată lângă explicație | Oneata (explicații: `netscan/explain/standards.py`) | Bonus | Dacă rămâne timp |
-| D4 | **Inventarul „ce e conectat la mine?”**: pagina cu toate dispozitivele (tip, vendor, MAC mascat, porturi), inclusiv cele fără probleme | RBRT (folosește `netscan/engine/devices.py` de la Radu) | FR-03 (tipul dispozitivului); restul de verificat în brief | După nucleu (mare parte există deja în UI) |
-| D5 | **O singură acțiune pe rând, ordonată după risc**: „Fă asta acum”, apoi următoarea după ce o bifezi | RBRT (UI), Ayan (textul pasului) | De verificat în brief (FR-10 sau FR-14) | După nucleu |
-| D6 | **Raportul „servicii văzute care nu sunt în catalog”**: ce servicii deschise a văzut motorul și n-au dat niciun finding; ajută la verificarea Test Set-ului | Radu | Nu e cerință; sprijină acuratețea pe Test Set | Dacă rămâne timp |
+| D4 | **Inventarul „ce e conectat la mine?”**: pagina cu toate dispozitivele (tip, producător, MAC mascat, porturi), inclusiv cele fără probleme | RBRT (UI), pe datele FR-03 de la Ayan (`netscan/scan/device_info.py`: producător IEEE offline, MAC privat, tip) | FR-03 + FR-11 (Must, deja în nucleu); direcția doar le pune pe o pagină „inventar” | După nucleu (mare parte există deja în UI) |
+| D5 | **O singură acțiune pe rând, ordonată după risc**: „Fă asta acum”, apoi următoarea după ce o bifezi | RBRT (UI), Oneata (textul pasului) | FR-11 (UI simplu) și criteriul „Ease of use” (20%): „cel mai periculos dispozitiv și ce fac întâi” | După nucleu |
+| D6 | **Raportul „servicii văzute care nu sunt în catalog”**: ce servicii deschise a văzut motorul și n-au dat niciun finding; ajută la verificarea Test Set-ului | Radu | Nu e cerință, dar e în procedura de rulare a Test Set-ului de la ora 20 (ghid, secțiunea 9) | **Înainte de ora 20** |
+| D7 | **Raportul de o pagină pentru furnizorul IT** (HTML/PDF): scor, dispozitive, findings, pașii de reparare | RBRT | FR-14 (Should/Could) | După nucleu (în ghid: orele 16–20) |
+
+> **FR-10 (Istoric) e cerință Must**, deci face parte din nucleu, nu din direcție: dispozitive noi/dispărute, porturi deschise/închise, findings rezolvate (V6a → V6b: 3), trendul scorului. D1 (alertele, FR-13) se construiește peste el.
 
 Reguli pentru toate funcțiile:
 - **Motorul, catalogul, scorul și CSV-urile nu se schimbă.** Funcțiile direcției doar citesc ce produce motorul.
@@ -72,9 +75,10 @@ Alert
 **P2 · Maparea pe standarde (pentru D3)**: fără schimbare de contract
 - Un fișier nou, `netscan/explain/standards.py` (Oneata), cu un dicționar static `cod → {"cis": [...], "owasp_iot": [...]}` și o funcție `get_standards(code, lang)`.
 - RBRT îl citește direct în UI. `get_explanation()` rămâne compatibil (doar chei noi, dacă e cazul), deci UI-ul existent nu se strică.
+- Punctul de pornire din ghid (secțiunea 11), de verificat în sursele oficiale: majoritatea codurilor → OWASP „servicii de rețea nesigure” și CIS 4.8 (dezactivarea serviciilor inutile); OUTDATED_SERVICE → „componente nesigure sau învechite”; TELNET / FTP / HTTP în clar → „transfer și stocare nesigure a datelor”; UPNP → „setări implicite nesigure”; UNKNOWN_DEVICE → inventarul dispozitivelor.
 
 **P3 · Raportul de servicii din afara catalogului (pentru D6)**: fără schimbare de contract
-- Fișier separat, de exemplu `unmatched_services.csv` (`file,ip,port,proto,service`), scris **doar la cerere** (o opțiune nouă la `analyze`).
+- Lista se afișează la `analyze` (ghidul: „programul afișează și o listă «servicii văzute care nu sunt în catalog»”) și, la cerere, se scrie într-un fișier separat, de exemplu `unmatched_services.csv` (`file,ip,port,proto,service`).
 - **Nu** modifică `findings.csv` și `scores.csv` (FR-15).
 
 **P4 · Răspunsul asistentului (pentru D2)**: fără schimbare de contract
