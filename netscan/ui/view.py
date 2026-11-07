@@ -5,9 +5,10 @@ UI-ul NU calculează severități, puncte sau scoruri: le ia din motor și doar 
 from __future__ import annotations
 
 import ipaddress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from netscan.model import SEVERITY_ORDER, Finding, Host, Scan
+from netscan.scan.device_info import DeviceInfo, describe
 
 # Praguri propuse pentru eticheta scorului (de confirmat cu echipa).
 BAND_GOOD_MIN = 80
@@ -41,6 +42,7 @@ def finding_rank_key(f: Finding) -> tuple:
 class DeviceView:
     host: Host
     findings: list[Finding] = field(default_factory=list)  # cea mai gravă prima
+    info: DeviceInfo | None = None  # FR-03: producător (nmap/IEEE), MAC privat, tip; doar pentru afișare
 
     @property
     def total_points(self) -> int:
@@ -59,7 +61,12 @@ class DeviceView:
 
 def rank_devices(scan: Scan) -> list[DeviceView]:
     """Dispozitive: suma punctelor ↓, severitatea maximă ↓, IP numeric ↑."""
-    views: dict[str, DeviceView] = {h.device_id: DeviceView(host=h) for h in scan.hosts}
+    views: dict[str, DeviceView] = {}
+    for h in scan.hosts:
+        info = describe(h)  # FR-03, doar afișare: findings și scorul rămân cele din motor
+        views[h.device_id] = DeviceView(
+            host=replace(h, vendor=info.vendor, device_type=info.device_type), info=info
+        )
     for f in scan.findings:
         if f.device_id not in views:  # defensiv: finding fără host în listă
             views[f.device_id] = DeviceView(host=Host(ip=f.ip, device_id=f.device_id))
