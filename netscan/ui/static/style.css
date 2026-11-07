@@ -923,3 +923,12 @@ dialog.guide .mono { font-family: ui-monospace, Consolas, monospace; }
 .harm .icon { flex: none; margin-top: .2em; color: var(--high); }
 .harm strong { color: var(--ink); }
 .worst-issue .harm { margin-top: .2rem; border-left: 0; border-radius: var(--radius-sm); }  /* deja în bara roșie a problemei */
+/* Dispozitive: tot rândul duce la pagina dispozitivului (țintă mare), nu doar numele; linkul rămâne unul singur
+   (cititorul de ecran îl anunță o dată), iar focusul de la tastatură încadrează tot rândul. */
+.inv-table tbody tr { position: relative; }
+.inv-table .rt-name a::after { content: ""; position: absolute; inset: 0; }
+.inv-table .rt-name a:focus-visible { outline: none; }
+.inv-table tbody tr:has(.rt-name a:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.inv-table tbody tr:hover td { background: var(--brand-tint); }
+.inv-table tbody tr:hover .rt-name a { color: var(--brand); }
+@media (min-width: 48rem) { .inv-table th:first-child, .inv-table td:first-child { padding-left: .75rem; } }
