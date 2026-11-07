@@ -4,8 +4,8 @@
 
 | # | Întrebare | Răspuns | Pe cine afectează |
 |---|---|---|---|
-| 1 | `Samba smbd 3.X - 4.X` se consideră învechit (OUTDATED_SERVICE)? | | Radu |
-| 2 | Pentru Samba învechit, OUTDATED_SERVICE apare pe același port ca SMB (445, altfel 139)? | | Radu |
+| 1 | `Samba smbd 3.X - 4.X` se consideră învechit (OUTDATED_SERVICE)? | **Mentori:** „Nu contează.” Motorul nu îl raportează (verificat). | Radu |
+| 2 | Pentru Samba învechit, OUTDATED_SERVICE apare pe același port ca SMB (445, altfel 139)? | **Mentori:** pe toate porturile, nu unul singur pentru amândouă (Samba învechit pe 139 și 445 → OUTDATED_SERVICE pe 139 și pe 445). Motorul face deja așa (verificat). | Radu |
 | 3 | `http-proxy` / `http-alt` contează ca `http` la HTTP_ADMIN_CLEARTEXT, sau doar numele exact? | | Radu |
 | 4 | Cuvintele din titlu se caută fără diferență între litere mari și mici, și ca subșir (ex. „Administration”)? | | Radu |
 | 5 | Un MAC prezent, dar fără vendor înseamnă „fără vendor” la UNKNOWN_DEVICE? | | Radu |
