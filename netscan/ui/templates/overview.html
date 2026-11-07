@@ -296,10 +296,15 @@
     <section class="worst card" id="worst" aria-labelledby="worst-h">
       <h2 id="worst-h" class="worst-label">{{ T('worst_title') }}</h2>
       {% if history_id is none and steps and steps.verified_count %}<p class="worst-note">{{ T('worst_after_verified') }}</p>{% endif %}
-      <p class="worst-device">{{ device_title(worst.host) }} <span class="mono ip" translate="no">{{ worst.host.ip }}</span></p>
+      {# Unde: dispozitivul și adresa:portul împreună (ca în raport). Codul tehnic e pe pagina dispozitivului, la „Detalii tehnice”. #}
+      <p class="worst-device">{{ device_title(worst.host) }} <span class="mono ip" translate="no">{{ worst.host.ip }}{% if w.port is not none %}:{{ w.port }}{% endif %}</span></p>
       {{ announced_sub(worst.host) }}
-      <p class="worst-problem">{{ sev(w.severity) }} <strong>{{ code_name(w.code) }}</strong> <span class="code" translate="no">{{ w.code }}</span> <span class="muted">{{ port_label(w) }}</span></p>
-      <p class="worst-text">{{ ex.text }}</p>
+      {# Ce: severitatea (etichetă), numele problemei (subtitlu) și explicația, legate de bara în culoarea severității #}
+      <div class="worst-issue issue-{{ w.severity }}">
+        <p class="sev-pill">{{ sev(w.severity) }}</p>
+        <h3 class="worst-problem">{{ code_name(w.code) }}</h3>
+        <p class="worst-text">{{ ex.text }}</p>
+      </div>
       {% if history_id is none and steps %}
         {{ steps_panel() }}
       {% else %}

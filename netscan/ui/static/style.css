@@ -202,7 +202,10 @@ button:disabled { opacity: .6; cursor: progress; }
 .worst-label { font-size: 1.0625rem; color: var(--muted); display: flex; align-items: center; gap: .45rem; }
 .worst-device { font-family: var(--head); font-size: 2rem; font-weight: 700; line-height: 1.15; }
 .worst-device .ip { font-family: "Atkinson Mono", ui-monospace, monospace; font-size: 1.2rem; font-weight: 400; color: var(--muted); margin-left: .35rem; white-space: nowrap; }
-.worst-problem { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .5rem; }
+.worst-issue { --c: var(--info); border-left: 4px solid var(--c); padding: .15rem 0 .15rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
+.issue-high { --c: var(--high); } .issue-medium { --c: var(--medium); } .issue-low { --c: var(--low); } .issue-info { --c: var(--info); }
+.sev-pill .sev { padding: .1rem .65rem; border-radius: 999px; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 9%, var(--surface, #fff)); }
+.worst-problem { font-family: var(--head); font-size: 1.3rem; font-weight: 700; line-height: 1.25; margin: 0; }
 .worst-text { max-width: 68ch; }
 .worst-ok { align-items: center; justify-content: center; text-align: center; }
 .worst-ok .worst-label { justify-content: center; }
