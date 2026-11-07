@@ -44,6 +44,39 @@ FINDINGS = [
     # T16: mentori (întrebarea 11): și „mosquitto version X" pe 1883 e MQTT_EXPOSED; filtered nu
     ("T16_mosquitto_service_name.xml", P + "10", "1883", "MQTT_EXPOSED", "medium"),
     ("T16_mosquitto_service_name.xml", P + "11", "1883", "MQTT_EXPOSED", "medium"),
+    # --- Oneata (pre-flight Test Set) ---
+    # T17: decide numele serviciului, nu portul: ssh pe 2222, telnet pe 2323, mysql pe 3307
+    ("T17_catalog_on_unusual_ports.xml", P + "10", "2222", "SSH_OPEN", "info"),
+    ("T17_catalog_on_unusual_ports.xml", P + "10", "2323", "TELNET_OPEN", "high"),
+    ("T17_catalog_on_unusual_ports.xml", P + "10", "3307", "DB_EXPOSED", "high"),
+    # T18: hostname fără MAC nu e UNKNOWN_DEVICE (are nume); martorul fără MAC și fără nume este
+    ("T18_hostname_without_mac.xml", P + "10", "22", "SSH_OPEN", "info"),
+    ("T18_hostname_without_mac.xml", P + "11", "", "UNKNOWN_DEVICE", "low"),
+    ("T18_hostname_without_mac.xml", P + "11", "22", "SSH_OPEN", "info"),
+    # T19: vendor fără hostname nu e UNKNOWN_DEVICE; martorul cu MAC fără vendor este (mentori, întrebarea 5)
+    ("T19_vendor_without_hostname.xml", P + "10", "23", "TELNET_OPEN", "high"),
+    ("T19_vendor_without_hostname.xml", P + "11", "", "UNKNOWN_DEVICE", "low"),
+    ("T19_vendor_without_hostname.xml", P + "11", "21", "FTP_CLEARTEXT", "medium"),
+    # T20: pragurile din catalog: IIS <= 7.5, Apache httpd <= 2.2.x, OpenSSH < 7.4 sunt învechite;
+    #      IIS 8.0, Apache 2.4.0 și OpenSSH 7.4 nu. `http` fără titlu de admin nu e în catalog.
+    ("T20_version_boundaries.xml", P + "10", "80", "OUTDATED_SERVICE", "high"),
+    ("T20_version_boundaries.xml", P + "12", "80", "OUTDATED_SERVICE", "high"),
+    ("T20_version_boundaries.xml", P + "14", "22", "OUTDATED_SERVICE", "high"),
+    ("T20_version_boundaries.xml", P + "14", "22", "SSH_OPEN", "info"),
+    ("T20_version_boundaries.xml", P + "15", "22", "SSH_OPEN", "info"),
+    # T21: „Pagină de LOGIN” și „Setări Router” conțin cuvinte-cheie (subșir, fără diferență de litere,
+    #      mentori întrebarea 4); „Pagina principală” nu
+    ("T21_title_case_diacritics.xml", P + "10", "80", "HTTP_ADMIN_CLEARTEXT", "medium"),
+    ("T21_title_case_diacritics.xml", P + "11", "80", "HTTP_ADMIN_CLEARTEXT", "medium"),
+    # T22: hosturi fără niciun port deschis: niciun rând, nici UNKNOWN_DEVICE
+    # T23: același serviciu pe mai multe porturi: câte un rând per (ip, port, cod)
+    ("T23_same_service_many_ports.xml", P + "10", "23", "TELNET_OPEN", "high"),
+    ("T23_same_service_many_ports.xml", P + "10", "2323", "TELNET_OPEN", "high"),
+    ("T23_same_service_many_ports.xml", P + "11", "80", "HTTP_ADMIN_CLEARTEXT", "medium"),
+    ("T23_same_service_many_ports.xml", P + "11", "8080", "HTTP_ADMIN_CLEARTEXT", "medium"),
+    ("T23_same_service_many_ports.xml", P + "12", "21", "FTP_CLEARTEXT", "medium"),
+    ("T23_same_service_many_ports.xml", P + "12", "2121", "FTP_CLEARTEXT", "medium"),
+    # T24: fișier nmap valid fără niciun host: niciun rând, scor 100
 ]
 
 SCORES = {
@@ -63,6 +96,14 @@ SCORES = {
     "T12_truncated.xml": "ERROR",
     "T13_billion_laughs.xml": "ERROR",
     "T14_closed_and_filtered.xml": "100",
+    "T17_catalog_on_unusual_ports.xml": "60",       # 100 - 0 - 20 - 20
+    "T18_hostname_without_mac.xml": "95",           # 100 - 5 (UNKNOWN_DEVICE la martor)
+    "T19_vendor_without_hostname.xml": "65",        # 100 - 20 - 5 - 10
+    "T20_version_boundaries.xml": "40",             # 100 - 3 x 20
+    "T21_title_case_diacritics.xml": "80",          # 100 - 2 x 10
+    "T22_host_without_open_ports.xml": "100",
+    "T23_same_service_many_ports.xml": "20",        # 100 - 2 x 20 - 2 x 10 - 2 x 10
+    "T24_valid_without_hosts.xml": "100",
 }
 
 ERROR_CODES = {

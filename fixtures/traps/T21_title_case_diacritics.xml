@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94 scan initiated (sintetic) -->
+<!-- titluri cu majuscule si diacritice; martor fara cuvant-cheie -->
+<nmaprun scanner="nmap" args="nmap -sS -sU -sV --script http-title -oX x.xml 192.168.1.0/24" start="1762500000" version="7.94">
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.10" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0A" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" method="probed" conf="10"/>
+<script id="http-title" output="Pagină de LOGIN"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.11" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0B" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" method="probed" conf="10"/>
+<script id="http-title" output="Setări Router"/>
+</port>
+</ports>
+</host>
+<host>
+<status state="up" reason="arp-response"/>
+<address addr="192.168.1.12" addrtype="ipv4"/>
+<address addr="AA:BB:CC:00:00:0C" addrtype="mac" vendor="Acme"/>
+<hostnames/>
+<ports>
+<extraports state="closed" count="990"/>
+<port protocol="tcp" portid="80">
+<state state="open" reason="syn-ack"/>
+<service name="http" method="probed" conf="10"/>
+<script id="http-title" output="Pagina principală"/>
+</port>
+</ports>
+</host>
+<runstats>
+<finished time="1762500100"/>
+<hosts up="3" down="253" total="256"/>
+</runstats>
+</nmaprun>

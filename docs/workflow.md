@@ -60,6 +60,27 @@ Detalii: [direction.md](direction.md). **Nu începe nimeni** până nu trece nuc
 - **Sincronizări:** RBRT ↔ Ayan când alertele și asistentul apar în UI; RBRT ↔ Oneata când maparea e gata de afișat.
 - Merge în `main` doar ce merge, ca până acum. Înainte de upload-ul Test Set-ului, nimic din direcție nu trebuie să atingă `analyze`.
 
+## Ziua Test Set (ora 20)
+
+Obiectiv: rezultatul încărcat e exact cel pe care îl reproduce oricine pe commit-ul cu tag-ul `final`. Fără improvizații: se urmează pașii în ordine. Scriptul: `scripts/preflight.py` (rulează `analyze` de două ori, în procese separate, compară `findings.csv` și `scores.csv` byte cu byte, scrie hash-urile și raportul de servicii din afara catalogului).
+
+| Pas | Cine | Ce |
+|---|---|---|
+| 1 | Oneata | Copiază Test Set-ul într-un folder local, în afara repo-ului (de ex. `~/testset/`), și notează SHA-256 pentru fiecare XML: `sha256sum ~/testset/*.xml > ~/testset_sha256.txt`. Fișierele XML nu se deschid în editor și nu se modifică. |
+| 2 | Oneata | Pe `main` actualizat și fără modificări locale: `python scripts/preflight.py ~/testset --out results/`. Dacă scrie „OPRIT”, nu se încarcă nimic: rezultatul depinde de rulare (bug în motor, Radu). |
+| 3 | Ayan | Citește „Servicii văzute care nu sunt în catalog” (și `results/unmatched_services.csv`). Pentru fiecare serviciu: e în catalog sub alt nume? Decizia: **doar bug-uri clare**, cu test (o capcană nouă în `fixtures/traps/` + rezultatul ei în `tests/expected_traps.py`) și cu acordul lui Radu. Un caz ambiguu nu se „repară”: se scrie în `docs/questions.md` și se întreabă mentorii. |
+| 3b | RBRT | Verifică scorurile din ieșirea preflight: fiecare fișier are un scor sau `ERROR`; un scor de 0 sau 100 se verifică cu ochiul în `findings.csv`. |
+| 4 | Oneata | **Doar dacă s-a schimbat cod:** commit + push pe `main`, apoi `pytest` complet, apoi pasul 2 din nou (ieșirea veche nu se mai folosește). |
+| 5 | Oneata + Radu | Upload `results/findings.csv`, `results/scores.csv` și captura UI-ului. Radu face captura: `NETSCAN_SCANS_DIR=~/testset python -m netscan ui`. |
+| 6 | Oneata | **Imediat după upload:** `git tag final <commit-ul din hashes.txt>` și `git push origin final`. Hash-urile din `results/hashes.txt` se copiază pe grup (și în descrierea tag-ului, dacă vrem: `git tag -a final -m "<hash-uri>"`). Commit-ul din `hashes.txt` nu trebuie să aibă „+modificări necomise”. |
+| 7 | toți | După tag nu se mai schimbă nimic în `netscan/` sau `pyproject.toml`. La verificarea live (re-rularea), juriul rulează `analyze` pe commit-ul `final`: rezultatul trebuie să aibă exact hash-urile notate. |
+
+Reguli:
+- Nicio excepție pe nume de fișiere, nicio regulă schimbată ca să „iasă” un rezultat. Doar bug-uri clare, cu test, înainte de upload.
+- Test Set-ul și `results/` nu se pun în repo fără acordul echipei.
+
+**Repetiția pe Validation Set** (7 nov., Oneata, pe commit-ul `1714b3e`): pașii 1, 2, 4 (pytest + preflight din nou) și hash-ul commit-ului au durat **7,5 s** pe mașină (preflight: 0,18 s; `pytest` complet: 7,1 s). Rezultatul a fost identic byte cu byte cu `expected_findings.csv` și `expected_scores.csv` (24 de rânduri, V7 = `ERROR`). Pașii făcuți de oameni (citirea raportului, upload, captura, tag-ul) nu sunt cronometrați aici: se cronometrează la repetiția cu toată echipa.
+
 ## Când ceva nu e clar
 
 Nu inventa o regulă. Scrie întrebarea în `docs/questions.md`, spune-i echipei, iar Oneata o duce la mentori. „Nu înțeleg încă” e o propoziție productivă aici.

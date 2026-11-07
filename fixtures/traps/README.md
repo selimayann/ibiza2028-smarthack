@@ -1,4 +1,4 @@
-# Capcane (Radu + Ayan)
+# Capcane (Radu + Ayan + Oneata)
 
 Fișiere XML mici, create de noi, pentru cazurile-limită ale regulilor. Sunt **sintetice** (în comentariul din fiecare scrie „sintetic"), nu scanări reale.
 
@@ -22,6 +22,14 @@ Fiecare fișier are un rezultat așteptat dedus **de mână din catalogul oficia
 | T15 | Samba 3.0.20 pe 139 și 445; apoi doar pe 139 | un singur `OUTDATED_SERVICE`, pe același port ca `SMB_EXPOSED` (445, altfel 139) — confirmat de mentori, întrebarea 2 |
 | T16 | `mosquitto version 1.6.15` pe 1883 (nmap suprascrie numele), `mqtt`, și `filtered` | primele două dau MQTT_EXPOSED, `filtered` nu — confirmat de mentori, întrebarea 11 |
 | T14 | porturi `filtered`, `closed`, `open\|filtered` | niciun finding, scor 100 |
+| T17 | ssh pe 2222, telnet pe 2323, mysql pe 3307 | SSH_OPEN, TELNET_OPEN, DB_EXPOSED: decide numele serviciului, nu portul |
+| T18 | hostname fără MAC; martor fără MAC și fără hostname | doar martorul e UNKNOWN_DEVICE |
+| T19 | vendor fără hostname; martor cu MAC fără vendor | doar martorul e UNKNOWN_DEVICE (mentori, întrebarea 5) |
+| T20 | IIS 7.5 / 8.0, Apache httpd 2.2.34 / 2.4.0, OpenSSH 7.3 / 7.4 | învechite doar IIS 7.5, Apache 2.2.34, OpenSSH 7.3 |
+| T21 | titluri „Pagină de LOGIN”, „Setări Router”, „Pagina principală” | primele două dau HTTP_ADMIN_CLEARTEXT (majuscule și diacritice nu încurcă) |
+| T22 | hosturi fără niciun port deschis (doar `filtered`/`closed`, sau fără `<ports>`), fără MAC și nume | niciun finding, nici UNKNOWN_DEVICE; scor 100 |
+| T23 | același serviciu pe mai multe porturi și hosturi (telnet, http admin, ftp) | câte un rând per (ip, port, cod); scor 20 |
+| T24 | fișier nmap valid fără niciun host | niciun finding, scor 100 (nu ERROR) |
 
 Dacă un răspuns al mentorilor se schimbă, se schimbă regula în `netscan/engine/rules.py` și rezultatul așteptat din `tests/expected_traps.py`, în același commit.
 
