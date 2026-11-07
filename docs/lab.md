@@ -92,9 +92,10 @@ Toate trei scanările: `nmap -sS -sU -sV --script http-title -p T:<top1000>,1883
 
 - 8 coduri diferite în scanarea 1 (cerința: cel puțin 5). Diferența 1 → 3: **DB_EXPOSED și TELNET_OPEN rezolvate**, scorul crește de la 0 la 30.
 - Scorul 0 la scanarea 1 vine din `max(0, …)`: suma punctelor e 110.
-- **Depind de răspunsurile mentorilor:**
-  - UNKNOWN_DEVICE pe ambele dispozitive: amândouă au MAC randomizat (bitul „administrat local” setat), deci fără vendor, și n-au hostname. Întrebările 5 și 8.
-  - FTP_CLEARTEXT pe `172.20.10.1:21`: nmap n-a confirmat serviciul, l-a ghicit din tabel (`method="table"`). Întrebarea 12.
+- **Confirmate de mentori** (vezi `docs/questions.md`):
+  - UNKNOWN_DEVICE pe ambele dispozitive: amândouă au MAC randomizat (bitul „administrat local” setat), deci fără vendor, și n-au hostname. Întrebarea 5: MAC prezent, dar fără vendor = „fără vendor”, deci se raportează.
+  - FTP_CLEARTEXT pe `172.20.10.1:21`, deși nmap doar l-a ghicit din tabel (`method="table"`). Întrebarea 12: `method` se ignoră, contează doar `name="ftp"`.
+- Încă fără răspuns: întrebarea 8 (laptopul-scanner). Nu schimbă nimic aici, pentru că laptopul-scanner nu apare în scanări.
 - Porturile `open|filtered` (1900/udp upnp, 5353/udp) nu dau findings.
 
 ### Verificarea integrității
@@ -106,6 +107,7 @@ XML-urile **nu intră în repo** până la întrebarea 9 (au MAC-uri). Local: ad
 - Pe laptopul-țintă rulau alte containere Docker (alt proiect) publicate pe `0.0.0.0`, inclusiv pe portul 6379. Le oprim înainte de lab; altfel apar ca findings în plus și blochează portul redis.
 - Docker ocolește firewall-ul Fedora (firewalld) când publică porturi. De aceea porturile se publică explicit doar pe `LAB_BIND`, nu pe toate interfețele.
 - **nmap a raportat portul 1883 ca `mosquitto version 1.6.15`, nu `mqtt`** (găsit de B la prima verificare). Cauza: scriptul `mqtt-subscribe` (categoria `version`, rulează automat la `-sV`) citește subiectul `$SYS/broker/version` și înlocuiește numele serviciului (`port.version.name = ver` în `mqtt-subscribe.nse`). Reparat în configurarea lab-ului, nu în motor și nu în XML: `sys_interval 0` în `lab/mosquitto/mosquitto.conf` oprește subiectele `$SYS`. Bun și pentru pitch: un broker real n-ar trebui să-și anunțe versiunea.
+  După răspunsul mentorilor la întrebarea 11, și `mosquitto version X` pe 1883 se raportează MQTT_EXPOSED (motorul trebuie să-l accepte). Pentru reguli `sys_interval 0` nu mai e necesar, dar îl păstrăm: scanările din lab au fost făcute cu el și dau `mqtt`.
 - Laptopul-țintă și iPhone-ul apar cu MAC randomizat (fără vendor) și fără hostname, deci motorul raportează **UNKNOWN_DEVICE** pentru amândouă.
 - Porturile 1883 (mqtt), 6379 (redis) și 27017 (mongodb) nu sunt în top 1000 TCP al nmap. Prima scanare 1 nu le-a verificat deloc; B le-a adăugat la `-p` în `runner.py` și scanarea s-a refăcut.
 - iPhone-ul (gateway) are 21/tcp deschis, pe care nmap îl numește `ftp` doar din tabelul de porturi (`method="table"`). Întrebarea 12.
