@@ -132,7 +132,7 @@ De știut:
 - Serviciile false nu execută și nu salvează nimic; orice login eșuează. Teste: `pytest tests/test_lab_fake_services.py`.
 - Mosquitto rulează cu `sys_interval 0` (`lab/mosquitto/mosquitto.conf`). Fără asta, scriptul nmap `mqtt-subscribe` schimbă numele serviciului din `mqtt` în `mosquitto version 1.6.15` (vezi întrebarea 11).
 - Laptopul-țintă poate apărea cu MAC randomizat (vendor necunoscut) și fără hostname → motorul raportează și UNKNOWN_DEVICE pentru el.
-- XML-urile din lab conțin MAC-uri: nu intră în repo până la răspunsul la întrebarea 9.
+- XML-urile din lab sunt în `fixtures/lab/`, neatinse (mentorii au confirmat la întrebarea 9); MAC-urile din ele sunt randomizate.
 
 ## Reguli care nu se negociază
 

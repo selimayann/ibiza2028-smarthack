@@ -100,7 +100,7 @@ Toate trei scanările: `nmap -sS -sU -sV --script http-title -p T:<top1000>,1883
 
 ### Verificarea integrității
 Fișierele vin de la B cu `SHA256SUMS.txt`; înainte de analiză: `cd fixtures/lab && sha256sum -c SHA256SUMS.txt`.
-XML-urile **nu intră în repo** până la întrebarea 9 (au MAC-uri). Local: adaugă `fixtures/lab/*.xml` în `.git/info/exclude`.
+XML-urile sunt în repo, în `fixtures/lab/`, neatinse (NFR-10: scanările din lab fac parte din livrabil). MAC-urile din ele sunt randomizate de sistem (adresă privată), nu cele hardware; motorul oricum le maschează în rezultate. `tests/test_lab_scans.py` verifică SHA256-urile, MAC-urile randomizate și findings-urile din tabelul de mai sus.
 
 ## Probleme întâlnite
 
