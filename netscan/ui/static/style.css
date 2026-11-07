@@ -226,9 +226,11 @@ button:disabled { opacity: .6; cursor: progress; }
 .score-after p { display: flex; align-items: center; gap: .4rem; margin: 0; }
 .score-after .icon { flex: none; }
 .after-label { color: var(--brand); font-weight: 700; }
-.after-value { margin-top: .2rem !important; font-size: 1.15rem; padding-left: 1.4rem; }
-.after-value strong { font-size: 1.5rem; }
-.after-of { color: var(--muted); font-size: 1rem; }
+/* „0 → 30 din 100”: totul pe aceeași linie de bază și aceeași mărime, doar scorul nou îngroșat */
+.score-after p.after-value { display: block; margin-top: .25rem; padding-left: 1.4rem; font-size: 1.05rem; line-height: 1.4; }
+.after-value .mono { font-size: inherit; }
+.after-value strong { font-weight: 800; }
+.after-of { color: var(--muted); }
 .after-band { margin-top: .3rem !important; font-weight: 700; align-items: flex-start !important; }
 .after-band .icon, .after-label .icon { margin-top: .2em; }
 .after-label { align-items: flex-start !important; }
