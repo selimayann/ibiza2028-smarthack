@@ -59,7 +59,15 @@ python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 cp .env.example .env             # completează valorile local; .env nu intră în git
+pytest
 ```
+
+În `.env` sunt obligatorii pentru scanarea live: `NETSCAN_EXPECTED_SSID` (numele hotspotului, ex. `RSH-Ibiza2028`) și `NETSCAN_SALT` (un text lung, aleatoriu, de ex. `python -c "import secrets; print(secrets.token_hex(32))"`). Tool-ul citește singur `.env` din folderul curent.
+
+**Windows**
+- Folosiți Python-ul oficial (python.org sau Microsoft Store). Python-ul din MSYS2 (`C:\msys64\...`, cel găsit des primul de Git Bash) nu poate instala `psutil`. Verificare: `python -c "import sysconfig; print(sysconfig.get_platform())"` trebuie să afișeze `win-amd64`.
+- nmap de pe [nmap.org/download](https://nmap.org/download.html) și Npcap de pe [npcap.com](https://npcap.com). Scanarea live (`scan --confirm`) cere terminal deschis **ca Administrator**; restul comenzilor nu.
+- Rețeaua hotspotului trebuie setată ca **Private** (Setări → Network & internet → Wi-Fi → rețeaua → Network profile type).
 
 ## Comenzi (se implementează pe parcurs)
 
@@ -71,6 +79,21 @@ python -m netscan ui                   # interfața web locală
 python -m netscan diff <a> <b>         # diferența dintre două scanări
 python -m netscan delete-history       # șterge istoricul local
 ```
+
+### Scanarea live, pas cu pas (`network`, `scan`)
+
+```
+python -m netscan network                    # ce rețea vede tool-ul și dacă scanarea e permisă
+python -m netscan scan                       # dry-run pe tot subnetul: arată comanda nmap, nu scanează
+python -m netscan scan 172.20.10.14          # dry-run pe un singur dispozitiv
+python -m netscan scan 172.20.10.14 --confirm   # scanează (Administrator / sudo); XML-ul ajunge în scans/
+python -m netscan scan --lang en             # mesajele în engleză
+```
+
+Înainte de orice scanare, tool-ul verifică în ordine:
+1. **Rețeaua** (`network`): o singură rețea fizică activă (Wi-Fi și cablu în același timp → refuz), interfețele virtuale (Docker, WSL, VirtualBox, VPN) sunt ignorate, iar numele Wi-Fi trebuie să fie `NETSCAN_EXPECTED_SSID`.
+2. **Ținta** (`check_target`): doar adrese IPv4 din subnetul hotspotului (plus `NETSCAN_ALLOWLIST`). Refuză IP-uri publice, `100.64.0.0/10`, subneturi mai mari decât al nostru, rețele private străine (venue), nume de dispozitive (fără DNS) și orice text care nu e o adresă.
+3. **Comanda nmap** e o listă de argumente (fără shell), cu `--max-rate 100` și ținta normalizată de guardrail.
 
 ## Reguli care nu se negociază
 
