@@ -73,6 +73,14 @@
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
 
+{% if history_id is not none %}
+  {% if from_journal %}
+  <p class="back"><a href="{{ url_for('journal_page') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back_journal') }}</a></p>
+  {% else %}
+  <p class="back"><a href="{{ url_for('history') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back_history') }}</a></p>
+  {% endif %}
+{% endif %}
+
 {# Bara scanării: ce scanare vezi (stânga) și ce poți face cu ea (dreapta). #}
 <div class="toolbar">
   <div class="toolbar-left">
@@ -128,7 +136,70 @@
 {% set band = score_band(score_shown) %}
 {% set band_icon = {'good': 'good', 'fair': 'fair', 'poor': 'high'}[band] %}
 
-<div class="verdict">
+{# Comparația cu scanarea anterioară (doar în istoric): prima, pentru că de asta deschizi o scanare salvată #}
+{% if history_id is not none %}
+  <section class="section compare" aria-labelledby="cmp-h">
+    <div class="section-head"><h2 id="cmp-h">{{ T('compare_title') }}</h2></div>
+    {% if compare is none %}
+      <p>{{ T('compare_none') }}</p>
+    {% else %}
+      {% if not same_network %}
+        <div class="ip-note" role="note">
+          <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('other_network_title') }}</h3>
+          <p>{{ T('other_network_body') }}</p>
+        </div>
+      {% endif %}
+      <p class="compare-score">{{ T('score_change') }}: <strong class="mono">{{ compare.score_before }} → {{ compare.score_after }}</strong></p>
+      <h3 class="alerts-title">{{ T('alerts_title') }}</h3>
+      {% if alerts %}{{ alert_list(alerts, true) }}{% else %}<p class="muted">{{ T('journal_no_change') }}</p>{% endif %}
+      {% if compare.matched_by_ip %}
+        <div class="ip-note" role="note">
+          <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('matched_ip_title') }} ({{ compare.matched_by_ip|length }})</h3>
+          <p>{{ T('matched_ip_body') }}</p>
+          <ul>{% for h in compare.matched_by_ip %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span>{% if h.vendor %} <span class="muted">{{ h.vendor }}</span>{% endif %}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+      <details class="compare-details">
+      <summary>{{ T('compare_details') }}</summary>
+      <div class="compare-grid">
+        <div class="compare-col compare-good">
+          <h3><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('resolved') }} ({{ compare.resolved_findings|length }})</h3>
+          <ul>{% for f in compare.resolved_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+        </div>
+        <div class="compare-col compare-bad">
+          <h3><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('new_findings') }} ({{ compare.new_findings|length }})</h3>
+          <ul>{% for f in compare.new_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+        </div>
+        <div class="compare-col compare-warn">
+          <h3><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('persistent') }} ({{ compare.persistent_findings|length }})</h3>
+          <ul>{% for f in compare.persistent_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+        </div>
+        <div class="compare-col">
+          <h3>{{ T('opened_ports') }} ({{ compare.opened_ports|length }})</h3>
+          <ul>{% for dev, port, proto in compare.opened_ports %}<li><span class="mono" translate="no">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+        </div>
+        <div class="compare-col">
+          <h3>{{ T('closed_ports') }} ({{ compare.closed_ports|length }})</h3>
+          <ul>{% for dev, port, proto in compare.closed_ports %}<li><span class="mono" translate="no">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+        </div>
+        <div class="compare-col">
+          <h3>{{ T('new_devices') }} ({{ compare.new_devices|length }})</h3>
+          <ul>{% for h in compare.new_devices %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+        </div>
+        <div class="compare-col">
+          <h3>{{ T('removed_devices') }} ({{ compare.removed_devices|length }})</h3>
+          <ul>{% for h in compare.removed_devices %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+        </div>
+      </div>
+      </details>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% if history_id is not none %}
+  <div class="section-head section-this"><h2>{{ T('this_scan') }}</h2></div>
+{% endif %}
+<div class="verdict{% if history_id is not none %} verdict-history{% endif %}">
   {# 1. Scorul standard, cu scala pe care se citește #}
   <section class="score card score-{{ band }}" id="score" aria-labelledby="score-h">
     <h1 id="score-h" class="score-label">{{ T('score_label') }}</h1>
@@ -187,57 +258,6 @@
     </section>
   {% endif %}
 </div>
-
-{# Comparația cu scanarea anterioară (doar în istoric) #}
-{% if history_id is not none %}
-  <section class="section compare" aria-labelledby="cmp-h">
-    <div class="section-head"><h2 id="cmp-h">{{ T('compare_title') }}</h2></div>
-    {% if compare is none %}
-      <p>{{ T('compare_none') }}</p>
-    {% else %}
-      <p class="compare-score">{{ T('score_change') }}: <strong class="mono">{{ compare.score_before }} → {{ compare.score_after }}</strong></p>
-      <h3 class="alerts-title">{{ T('alerts_title') }}</h3>
-      {% if alerts %}{{ alert_list(alerts, true) }}{% else %}<p class="muted">{{ T('journal_no_change') }}</p>{% endif %}
-      {% if compare.matched_by_ip %}
-        <div class="ip-note" role="note">
-          <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('matched_ip_title') }} ({{ compare.matched_by_ip|length }})</h3>
-          <p>{{ T('matched_ip_body') }}</p>
-          <ul>{% for h in compare.matched_by_ip %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span>{% if h.vendor %} <span class="muted">{{ h.vendor }}</span>{% endif %}</li>{% endfor %}</ul>
-        </div>
-      {% endif %}
-      <div class="compare-grid">
-        <div class="compare-col compare-good">
-          <h3><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('resolved') }} ({{ compare.resolved_findings|length }})</h3>
-          <ul>{% for f in compare.resolved_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
-        </div>
-        <div class="compare-col compare-bad">
-          <h3><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('new_findings') }} ({{ compare.new_findings|length }})</h3>
-          <ul>{% for f in compare.new_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
-        </div>
-        <div class="compare-col compare-warn">
-          <h3><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('persistent') }} ({{ compare.persistent_findings|length }})</h3>
-          <ul>{% for f in compare.persistent_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
-        </div>
-        <div class="compare-col">
-          <h3>{{ T('opened_ports') }} ({{ compare.opened_ports|length }})</h3>
-          <ul>{% for dev, port, proto in compare.opened_ports %}<li><span class="mono" translate="no">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
-        </div>
-        <div class="compare-col">
-          <h3>{{ T('closed_ports') }} ({{ compare.closed_ports|length }})</h3>
-          <ul>{% for dev, port, proto in compare.closed_ports %}<li><span class="mono" translate="no">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
-        </div>
-        <div class="compare-col">
-          <h3>{{ T('new_devices') }} ({{ compare.new_devices|length }})</h3>
-          <ul>{% for h in compare.new_devices %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
-        </div>
-        <div class="compare-col">
-          <h3>{{ T('removed_devices') }} ({{ compare.removed_devices|length }})</h3>
-          <ul>{% for h in compare.removed_devices %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
-        </div>
-      </div>
-    {% endif %}
-  </section>
-{% endif %}
 
 {# 3. Lista dispozitivelor, în aceeași ordine (contractul: risc ↓), ca rânduri ușor de comparat #}
 <section class="section" aria-labelledby="dev-h">

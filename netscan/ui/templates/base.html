@@ -45,8 +45,8 @@
         <nav aria-label="{{ T('nav_label') }}">
           <a href="{{ url_for('overview') }}"{% if request.endpoint == 'overview' or (request.endpoint == 'device' and not from_devices) %} aria-current="page"{% endif %}>{{ T('nav_overview') }}</a>
           <a href="{{ url_for('inventory') }}"{% if request.endpoint == 'inventory' or (request.endpoint == 'device' and from_devices) %} aria-current="page"{% endif %}>{{ T('nav_devices') }}</a>
-          <a href="{{ url_for('journal_page') }}"{% if request.endpoint == 'journal_page' %} aria-current="page"{% endif %}>{{ T('nav_journal') }}{% if new_alerts and request.endpoint != 'journal_page' %}<span class="nav-badge" aria-hidden="true">{{ T('nav_new_alerts')|format(new_alerts) }}</span><span class="sr-only">, {{ T('nav_new_alerts_sr')|format(new_alerts) }}</span>{% endif %}</a>
-          <a href="{{ url_for('history') }}"{% if request.endpoint in ('history', 'history_scan', 'history_delete_confirm') %} aria-current="page"{% endif %}>{{ T('nav_history') }}</a>
+          <a href="{{ url_for('journal_page') }}"{% if request.endpoint == 'journal_page' or (request.endpoint == 'history_scan' and from_journal) %} aria-current="page"{% endif %}>{{ T('nav_journal') }}{% if new_alerts and request.endpoint != 'journal_page' %}<span class="nav-badge" aria-hidden="true">{{ T('nav_new_alerts')|format(new_alerts) }}</span><span class="sr-only">, {{ T('nav_new_alerts_sr')|format(new_alerts) }}</span>{% endif %}</a>
+          <a href="{{ url_for('history') }}"{% if request.endpoint in ('history', 'history_delete_confirm') or (request.endpoint == 'history_scan' and not from_journal) %} aria-current="page"{% endif %}>{{ T('nav_history') }}</a>
         </nav>
         {# Limba: control separat; limba curentă e marcată, cealaltă e un link în limba ei. #}
         <div class="lang-switch" role="group" aria-label="{{ T('lang_label') }}">

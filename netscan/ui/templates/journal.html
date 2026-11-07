@@ -19,7 +19,8 @@
   {% elif monitor_ran %}
     <p class="notice">{{ T('monitor_none') }}</p>
   {% else %}
-    <p class="notice">{{ T('monitor_empty') }} <code>python -m netscan watch --confirm</code></p>
+    <p class="notice">{{ T('monitor_empty') }}</p>
+    <details class="tech-details"><summary>{{ T('monitor_how') }}</summary><p><code>python -m netscan watch --confirm</code></p></details>
   {% endif %}
 </section>
 
@@ -42,8 +43,13 @@
           {{ parts|join(', ') }}
         </p>
       </div>
-      {{ alert_list(g.alerts) }}
-      <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id) }}">{{ T('see_in_history') }}</a></p>
+      {% if g.alerts|length > 6 %}
+        {{ alert_list(g.alerts[:6]) }}
+        <details class="journal-more"><summary>{{ T('journal_more')|format(g.alerts|length - 6) }}</summary>{{ alert_list(g.alerts[6:]) }}</details>
+      {% else %}
+        {{ alert_list(g.alerts) }}
+      {% endif %}
+      <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id, **{'from': 'journal'}) }}">{{ T('see_in_history') }}</a></p>
     </li>
   {% endfor %}
   </ol>

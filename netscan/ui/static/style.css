@@ -610,3 +610,15 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .tech-details summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
 .tech-details[open] summary::before { transform: rotate(45deg); }
 @media (prefers-reduced-motion: no-preference) { .tech-details summary::before { transition: transform .15s ease; } }
+
+/* Istoric: cardurile din rândul de sus nu se mai întind la aceeași înălțime (fără spațiu alb gol) */
+.verdict-history { align-items: start; }
+/* Detaliile comparației și restul schimbărilor din Jurnal: la cerere, cu aceeași săgeată ca la „Detalii tehnice” */
+.compare-details, .journal-more { margin-top: 1rem; }
+.compare-details > summary, .journal-more > summary { cursor: pointer; color: var(--brand); font-weight: 700; min-height: 2.75rem; display: flex; align-items: center; list-style: none; }
+.compare-details > summary::-webkit-details-marker, .journal-more > summary::-webkit-details-marker { display: none; }
+.compare-details > summary::before, .journal-more > summary::before { content: ""; flex: none; width: .5rem; height: .5rem; margin: 0 .7rem 0 .15rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.compare-details[open] > summary::before, .journal-more[open] > summary::before { transform: rotate(45deg); }
+.compare-details > summary:hover, .journal-more > summary:hover { text-decoration: underline; }
+.compare-details .compare-grid { margin-top: .5rem; }
+.section-this { margin: 2.5rem 0 1rem; }

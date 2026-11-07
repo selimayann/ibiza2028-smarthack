@@ -230,6 +230,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         return {
             "lang": lang,
             "from_devices": request.args.get("from") == "devices",   # pagina dispozitivului deschisă din „Dispozitive”
+            "from_journal": request.args.get("from") == "journal",   # comparația deschisă din „Jurnal”
             "other_lang": other,
             "lang_url": lang_url,
             "T": lambda key: i18n.t(lang, key),
@@ -567,13 +568,15 @@ def create_app(test_config: dict | None = None) -> Flask:
         prev_id = storage.previous_scan_id(scan_id, db)
         prev = storage.get_scan(prev_id, db) if prev_id is not None else None
         compare = storage.diff(prev, scan) if prev is not None else None
+        # niciun dispozitiv comun = scanarea anterioară e din altă rețea: comparația nu spune mare lucru
+        same_network = prev is None or bool(storage.match_devices(prev, scan))
         alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None else None
         question = request.args.get("q", "")[:MAX_QUESTION_LEN] if same_site_request() else ""
         ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
         return render_template(
             "overview.html", scan=scan, scan_list=[], selected=0,
             devices=rank_devices(scan), worst=most_dangerous(scan),
-            history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts,
+            history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts, same_network=same_network,
             assistant=assistant_ctx(url_for("history_scan", scan_id=scan_id), url_for("api_ask", history=scan_id),
                                     scan, None, question, ask_assistant(question, scan, g.lang, previous=prev), True),
         )
