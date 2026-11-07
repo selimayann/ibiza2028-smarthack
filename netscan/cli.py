@@ -20,6 +20,11 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("analyze", help="findings.csv + scores.csv pentru un folder de fișiere nmap XML (fără rețea)")
     a.add_argument("folder")
     a.add_argument("--out", default=".", help="unde se scriu CSV-urile")
+    a.add_argument(
+        "--unmatched",
+        action="store_true",
+        help="scrie în plus unmatched_services.csv (servicii deschise fără constatare)",
+    )
 
     n = sub.add_parser("network", help="afișează interfața, subnetul și gateway-ul detectate")
     n.add_argument("--lang", choices=["ro", "en"], default="ro")
@@ -103,6 +108,11 @@ def cmd_analyze(args) -> int:
             print(f"{scan.file}: scor {scan.score}, {len(scan.findings)} constatări")
     findings_path, scores_path = write_results(scans, args.out)
     print(f"Scrise: {findings_path} și {scores_path}")
+    if args.unmatched:
+        from netscan.engine import write_unmatched_csv
+
+        unmatched_path, count = write_unmatched_csv(scans, args.out)
+        print(f"Servicii fără constatare: {count}, scrise în {unmatched_path}")
     return 0
 
 

@@ -30,3 +30,20 @@ def get_explanation(code: str, lang: str) -> dict:
     except Exception:  # explicațiile nu au voie să strice pagina
         pass
     return _stub(code, lang)
+
+
+def get_standards(code: str, lang: str) -> dict:
+    """Trimiterile la standarde de la Oneata (D3), gata de afișat. Lipsă sau eroare → nimic de afișat."""
+    try:
+        from netscan.explain import standards as st
+
+        refs = st.get_standards(code, lang)
+        lang = lang if lang in ("ro", "en") else "ro"
+        groups = []
+        for key, names in (("cis", st.CIS_NAME), ("owasp_iot", st.OWASP_NAME)):
+            items = [r for r in refs.get(key, []) if r.get("id") and r.get("title")]
+            if items:
+                groups.append({"name": names[lang], "url": st.SOURCES.get(key), "refs": items})
+        return {"groups": groups}
+    except Exception:  # standardele sunt un bonus: nu au voie să strice pagina
+        return {"groups": []}

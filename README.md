@@ -81,6 +81,8 @@ python -m netscan delete-history       # șterge istoricul local
 python -m netscan ask <fișier.xml> "Ce fac întâi?"   # asistentul: răspunde doar din scanare, fără rețea
 ```
 
+**Demo istoric înainte/după (lab-ul nostru):** pune `NETSCAN_SCANS_DIR=<folderul cu scanările din lab>` în `.env`, pornește `python -m netscan ui`, apasă „Salvează” pe `scan_01_before.xml`, apoi pe `scan_03_after.xml`: pagina arată scorul 0 → 30 și cele 2 probleme rezolvate. Varianta din linia de comandă: `python -m netscan diff <scan_01_before.xml> <scan_03_after.xml>`.
+
 ### Scanarea live, pas cu pas (`network`, `scan`)
 
 ```
@@ -101,7 +103,7 @@ python -m netscan scan --lang en             # mesajele în engleză
 - Portul 53 se scanează (U:53 e cerut), dar fără sonde de versiune: tool-ul generează la fiecare scanare `scans/nmap-service-probes.netscan`, o copie a bazei nmap cu `Exclude T:53,U:53`, și o dă lui nmap cu `--versiondb`. Altfel telefonul ar trimite mai departe interogările DNS ale nmap. Nicio regulă din catalog nu depinde de DNS.
 - Analiza fișierelor (`analyze`) și UI-ul nu folosesc rețeaua deloc.
 - Înainte de demo, pe laptopul-scanner: doar Wi-Fi-ul hotspotului conectat (fără cablu, VPN), iar adaptoarele virtuale (VirtualBox Host-Only, WSL/Hyper-V) dezactivate din Settings → Network → Advanced network settings. Tool-ul le ignoră oricum, dar așa nu există nicio altă rețea pe laptop.
-- LLM-ul (explicații) ar cere internet: până confirmă mentorii că e permis, `LLM_API_KEY` rămâne gol și se folosesc textele predefinite.
+- **Fără AI online** (răspunsul mentorilor, întrebarea 13): explicațiile și asistentul (`ask`) folosesc doar textele predefinite și datele din scanare.
 
 ### Lab-ul (ținta), pas cu pas
 

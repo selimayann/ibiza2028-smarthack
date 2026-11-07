@@ -16,6 +16,7 @@ _TXT = {
         "resolved": "Probleme rezolvate",
         "new": "Probleme noi",
         "persistent": "Probleme rămase",
+        "by_ip": "Recunoscute după IP (MAC schimbat)",
         "new_dev": "Dispozitive noi",
         "gone_dev": "Dispozitive dispărute",
         "opened": "Porturi deschise acum",
@@ -36,6 +37,7 @@ _TXT = {
         "resolved": "Resolved problems",
         "new": "New problems",
         "persistent": "Problems still there",
+        "by_ip": "Recognised by IP (MAC changed)",
         "new_dev": "New devices",
         "gone_dev": "Devices gone",
         "opened": "Newly open ports",
@@ -75,6 +77,7 @@ def format_diff(d: ScanDiff, lang: str = "ro", ip_of: dict[str, str] | None = No
     section(_t(lang, "resolved"), [f"{f.code}  {f.ip}  port {port(f)}" for f in d.resolved_findings])
     section(_t(lang, "new"), [f"{f.code}  {f.ip}  port {port(f)}" for f in d.new_findings])
     section(_t(lang, "persistent"), [f"{f.code}  {f.ip}  port {port(f)}" for f in d.persistent_findings])
+    section(_t(lang, "by_ip"), [f"{h.ip}  {i18n.device_type_label(lang, h.device_type)}" for h in d.matched_by_ip], "none_m")
     section(_t(lang, "new_dev"), [f"{h.ip}  {i18n.device_type_label(lang, h.device_type)}" for h in d.new_devices], "none_m")
     section(_t(lang, "gone_dev"), [f"{h.ip}  {i18n.device_type_label(lang, h.device_type)}" for h in d.removed_devices], "none_m")
     section(_t(lang, "opened"), [f"{p}/{proto}  {ip_of.get(dev, dev)}" for dev, p, proto in d.opened_ports], "none_m")

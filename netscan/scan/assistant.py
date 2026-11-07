@@ -1,11 +1,11 @@
 """FR-12 (B, AI și siguranță): asistentul care răspunde doar din scanare.
 
 „Code decides, the model words, code checks.”
-- **Fără internet, implicit:** răspunsurile se construiesc din scanare (findings, scor, dispozitive) și din
-  textele predefinite RO/EN (`netscan.explain`). Merge cu `LLM_API_KEY` gol.
-- **LLM opțional:** doar dacă se dă explicit o funcție `llm(context) -> str` (activată numai după ce mentorii
-  confirmă că internetul e permis). Contextul vine din `ai_check.prompt_context()` (fără MAC), iar răspunsul
-  trece prin `ai_check.check_llm_text()`; dacă pică, se afișează răspunsul predefinit.
+- **Fără internet:** răspunsurile se construiesc din scanare (findings, scor, dispozitive) și din textele
+  predefinite RO/EN (`netscan.explain`). Mentorii au spus că nu avem voie cu AI online (întrebarea 13).
+- **Parametrul `llm` (opțional, nefolosit în produs):** doar pentru un model rulat local, fără internet.
+  Contextul vine din `ai_check.prompt_context()` (fără MAC), iar textul trece prin `ai_check.check_llm_text()`;
+  dacă pică, se afișează răspunsul predefinit. Testele îl folosesc ca să verifice validatorul.
 - Asistentul **nu** calculează și nu schimbă findings, severități sau scoruri: doar le citește din scanare.
 - Întrebarea utilizatorului e text nesigur: nu se execută, nu se repetă în răspuns, nu schimbă regulile.
 - Când scanarea nu poate răspunde, o spune clar (ghidul, secțiunea 6).

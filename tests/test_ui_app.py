@@ -183,3 +183,71 @@ def test_save_to_history_from_ui(tmp_path):
     client.post("/history/save", data={"token": token, "scan": i_a})
     assert len(storage.list_scans(app.config["DB_PATH"])) == 2
     assert "Salvată în istoric" in client.get(f"/?scan={i_a}").get_data(as_text=True)
+
+
+def test_history_shows_ip_recognition_note(tmp_path):
+    from netscan.engine import analyze_file
+    from netscan.ui.app import VALIDATION_DIR
+
+    db = tmp_path / "h.db"
+    storage.save_scan(analyze_file(VALIDATION_DIR / "V6a_before.xml"), db)
+    b_id = storage.save_scan(analyze_file(VALIDATION_DIR / "V6b_after.xml"), db)
+    client, _ = make_client(tmp_path, [])
+    html = client.get(f"/scan/{b_id}").get_data(as_text=True)
+    assert "Recunoscute după IP (3)" in html
+
+
+# ---------- FR-10: trendul scorului și porturile în istoric ----------
+
+def _save_validation(db, *names):
+    from netscan.engine import analyze_file
+    from netscan.ui.app import VALIDATION_DIR
+
+    return [storage.save_scan(analyze_file(VALIDATION_DIR / n), db) for n in names]
+
+
+def test_history_shows_score_trend(tmp_path):
+    client, app = make_client(tmp_path, [])
+    db = app.config["DB_PATH"]
+    _save_validation(db, "V6a_before.xml", "V6b_after.xml", "V7_broken.xml")
+    html = client.get("/history").get_data(as_text=True)
+    assert "Scorul standard în timp" in html
+    assert "Scorul a crescut de la 60 la 100 în ultimele 2 scanări." in html
+    assert html.count('class="trend-dot"') == 2  # V7 (eroare) nu are scor, nu apare pe grafic
+
+
+def test_trend_needs_two_scans(tmp_path):
+    client, app = make_client(tmp_path, [])
+    _save_validation(app.config["DB_PATH"], "V6a_before.xml")
+    html = client.get("/history").get_data(as_text=True)
+    assert "Salvează cel puțin două scanări" in html and "trend-dot" not in html
+
+
+def test_compare_shows_opened_and_closed_ports(tmp_path):
+    client, app = make_client(tmp_path, [])
+    _, b_id = _save_validation(app.config["DB_PATH"], "V6a_before.xml", "V6b_after.xml")
+    html = client.get(f"/scan/{b_id}").get_data(as_text=True)
+    assert "Porturi deschise acum (1)" in html and "443/tcp" in html
+    assert "Porturi închise acum (3)" in html and "23/tcp" in html and "1900/udp" in html
+
+
+def test_device_page_shows_standards(tmp_path):
+    from netscan.ui.app import load_scans
+
+    scans = load_scans()
+    i = next(n for n, s in enumerate(scans) if s.file == "V6a_before.xml")
+    client, _ = make_client(tmp_path, scans)
+    worst = most_dangerous(scans[i])
+    html = client.get(f"/device/{worst.host.device_id}?scan={i}").get_data(as_text=True)
+    assert "Standarde de securitate" in html
+    assert "CIS Controls v8" in html and "OWASP IoT Top 10 (2018)" in html
+    assert "https://www.cisecurity.org/controls/v8" in html
+
+
+def test_standards_failure_does_not_break_page(tmp_path, monkeypatch):
+    import netscan.explain.standards as st
+
+    monkeypatch.setattr(st, "get_standards", lambda *a, **k: 1 / 0)
+    client, _ = make_client(tmp_path, [sample()])
+    resp = client.get("/device/e1f2a3b4c5d6")
+    assert resp.status_code == 200 and "Standarde de securitate" not in resp.get_data(as_text=True)

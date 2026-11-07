@@ -197,6 +197,7 @@ class ScanDiff:
     resolved_findings: list[Finding] = field(default_factory=list)
     new_findings: list[Finding] = field(default_factory=list)
     persistent_findings: list[Finding] = field(default_factory=list)          # din scanarea nouă
+    matched_by_ip: list[Host] = field(default_factory=list)  # dispozitive (din scanarea nouă) recunoscute după IP, nu după MAC
     score_before: int | None = None
     score_after: int | None = None
 
@@ -257,6 +258,7 @@ def diff(old: Scan, new: Scan) -> ScanDiff:
         resolved_findings=[f for k, f in old_f.items() if k not in new_f],
         new_findings=[f for k, f in new_f.items() if k not in old_f],
         persistent_findings=[f for k, f in new_f.items() if k in old_f],
+        matched_by_ip=[h for h in new.hosts if h.device_id in matched_new and h.device_id not in mapping],
         score_before=old.score,
         score_after=new.score,
     )
