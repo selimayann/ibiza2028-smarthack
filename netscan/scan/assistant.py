@@ -49,6 +49,15 @@ INTENT_IS_SAFE = "is_safe"          # „e sigură rețeaua mea?”
 INTENT_SAFE_DEVICES = "safe_devices"  # dispozitivele fără probleme
 INTENT_THANKS = "thanks"
 INTENT_HELP = "help"                # salut / ajutor / ce poți face
+INTENT_KB = "knowledge"             # răspuns din baza de cunoștințe (docs/knowledge_base.pdf)
+
+# Baza de cunoștințe (RAG): intrările generale care răspund mai bine decât o intenție din scanare când
+# potrivirea e puternică; restul doar când asistentul nu a înțeles întrebarea.
+KB_PREFERRED = frozenset({"A5", "A7", "A9", "A10", "B2", "B6", "B7", "B8", "F2", "F3", "F4", "F5", "F6", "F7",
+                          "F8", "F10", "F11", "G3"})
+KB_REFUSALS = frozenset({"G1", "G2", "G3"})
+KB_STRONG = 12.0      # scor BM25 de la care o intrare preferată înlocuiește intenția
+KB_WEAK = 8.0         # scor minim când asistentul nu a înțeles întrebarea
 
 # Răspunsuri fixe, care nu depind de scanare: nu se trimit niciodată unui model AI.
 STATIC_INTENTS = frozenset({INTENT_UNKNOWN, INTENT_SCOPE, INTENT_ABOUT, INTENT_PRIVACY, INTENT_PRIVATE_MAC,
@@ -65,6 +74,7 @@ class Answer:
     source: str                      # "fallback" (predefinit, din scanare) | "llm" (generat și verificat)
     intent: str
     problems: list[str] = field(default_factory=list)   # de ce a fost respins textul LLM, dacă e cazul
+    refs: list[str] = field(default_factory=list)       # intrările din baza de cunoștințe folosite (ex. ["F10"])
 
 
 # --- cuvinte cheie (fără diacritice, litere mici) ------------------------------------------------
@@ -239,6 +249,7 @@ T["ro"].update({
     "fix_all_item": "{n}. {dev} {ip}{port}: {step}",
     "fix_all_more": "…și încă {n}. După ce le repari pe acestea, fă o scanare nouă.",
     "fix_all_info": "Mai sunt {n} lucruri doar de știut (fără puncte), de exemplu SSH deschis.",
+    "fix_all_info_one": "Mai e un lucru doar de știut (fără puncte), de exemplu SSH deschis.",
     "list_head": "Am găsit {n} probleme în total:",
     "list_item": "- {dev} {ip}: {items}",
     "ports_head": "Porturile deschise (ușile prin care se poate intra):",
@@ -285,6 +296,7 @@ T["en"].update({
     "fix_all_item": "{n}. {dev} {ip}{port}: {step}",
     "fix_all_more": "…and {n} more. After you fix these, run a new scan.",
     "fix_all_info": "There are also {n} things just to know (no points), for example SSH being open.",
+    "fix_all_info_one": "There is also one thing just to know (no points), for example SSH being open.",
     "list_head": "I found {n} problems in total:",
     "list_item": "- {dev} {ip}: {items}",
     "ports_head": "Open ports (the doors someone could come in through):",
@@ -592,7 +604,7 @@ def _answer_fix_all(scan: Scan, lang: str, limit: int = 8) -> str:
         lines.append(t["fix_all_more"].format(n=len(plan) - limit))
     info = sum(1 for f in scan.findings if f.points == 0)
     if info:
-        lines.append(t["fix_all_info"].format(n=info))
+        lines.append(t["fix_all_info_one" if info == 1 else "fix_all_info"].format(n=info))
     return "\n".join(lines)
 
 
@@ -671,6 +683,22 @@ def _answer_private_mac(scan: Scan, lang: str) -> str:
     return "\n".join([t["private_mac"], tail])
 
 
+def kb_answer(question: str, intent: str, lang: str) -> Optional[tuple[str, str]]:
+    """(text, id) din baza de cunoștințe, dacă e cazul. Refuzurile rămân refuzuri; scanarea are întâietate."""
+    from netscan.scan import kb
+    hits = kb.search(question[:MAX_QUESTION_LEN], k=1)
+    if not hits:
+        return None
+    top = hits[0]
+    if intent == INTENT_SCOPE:
+        ok = top.id in KB_REFUSALS and top.score >= KB_WEAK
+    elif top.id in KB_PREFERRED and top.score >= KB_STRONG:
+        ok = True
+    else:
+        ok = intent == INTENT_UNKNOWN and top.score >= KB_WEAK
+    return (kb.answer_text(top.entry, lang), top.id) if ok else None
+
+
 def fallback_answer(question: str, scan: Scan, lang: str = "ro", previous: Optional[Scan] = None) -> tuple[str, str]:
     """(text, intenție) construit doar din scanare. Determinist, fără rețea."""
     lang = lang if lang in LANGS else "ro"
@@ -680,6 +708,10 @@ def fallback_answer(question: str, scan: Scan, lang: str = "ro", previous: Optio
     if not (question or "").strip():
         return t["empty"], INTENT_UNKNOWN
     intent, detail = detect_intent(question[:MAX_QUESTION_LEN])
+    from_kb = kb_answer(question, intent, lang) if intent not in (INTENT_DEVICE,) else None
+    if from_kb:
+        label = INTENT_SCOPE if intent == INTENT_SCOPE else INTENT_KB   # un refuz rămâne refuz
+        return from_kb[0], f"{label}:{from_kb[1]}"
     if intent == INTENT_DEVICE:
         return _answer_device(scan, lang, detail), intent
     if intent == INTENT_CODE:
@@ -729,6 +761,12 @@ def fallback_answer(question: str, scan: Scan, lang: str = "ro", previous: Optio
 
 # --- punctul de intrare ---------------------------------------------------------------------------
 
+def _kb_context(question: str, lang: str) -> list[dict]:
+    """Fragmentele din baza de cunoștințe pentru modelul local (RAG)."""
+    from netscan.scan import kb
+    return kb.context(question[:MAX_QUESTION_LEN], lang if lang in LANGS else "ro")
+
+
 LLMFunc = Callable[[dict], Optional[str]]
 
 
@@ -736,13 +774,18 @@ def answer(question: str, scan: Scan, lang: str = "ro", previous: Optional[Scan]
            llm: Optional[LLMFunc] = None) -> Answer:
     """Răspunde la o întrebare doar din scanare. `llm` e opțional; fără el, totul e predefinit."""
     text, intent = fallback_answer(question, scan, lang, previous)
+    refs: list[str] = []
+    if ":" in intent:                                  # „knowledge:F10” / „scope:G2”
+        intent, ref = intent.split(":", 1)
+        refs = [ref]
     if llm is None or scan.status != "ok" or intent in STATIC_INTENTS:
-        return Answer(text, "fallback", intent)
+        return Answer(text, "fallback", intent, refs=refs)
 
     context = {
         "lang": lang if lang in LANGS else "ro",
         "question_untrusted": normalize(question)[:MAX_QUESTION_LEN],
         "answer_from_scan": text,
+        "knowledge": _kb_context(question, lang),
         "findings": [ai_check.prompt_context(f, scan) for f in scan.findings[:50]],
         "score": scan.score,
         "rules": "Reformulează answer_from_scan simplu. Nu adăuga IP-uri, porturi, coduri, CVE-uri, "
@@ -752,7 +795,7 @@ def answer(question: str, scan: Scan, lang: str = "ro", previous: Optional[Scan]
     try:
         generated = llm(context)
     except Exception:  # LLM indisponibil: rămâne răspunsul predefinit
-        return Answer(text, "fallback", intent, ["LLM_ERROR"])
+        return Answer(text, "fallback", intent, ["LLM_ERROR"], refs=refs)
     # La „ce s-a schimbat”, faptele vin din ambele scanări (problemele rezolvate sunt doar în cea veche).
     facts = scan
     if intent == INTENT_CHANGES and previous is not None and previous.status == "ok":
@@ -760,5 +803,5 @@ def answer(question: str, scan: Scan, lang: str = "ro", previous: Optional[Scan]
                      findings=[*scan.findings, *previous.findings])
     check = ai_check.check_llm_text(generated, facts)
     if check.ok:
-        return Answer(generated.strip(), "llm", intent)
-    return Answer(text, "fallback", intent, check.problems)
+        return Answer(generated.strip(), "llm", intent, refs=refs)
+    return Answer(text, "fallback", intent, check.problems, refs=refs)

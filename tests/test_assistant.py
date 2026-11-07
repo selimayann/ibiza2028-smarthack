@@ -302,9 +302,17 @@ def test_every_glossary_key_exists_in_glossary_with_matching_english():
 ])
 def test_abuse_requests_are_refused(q):
     r = a.answer(q, V2)
-    assert r.intent == a.INTENT_SCOPE and ("ilegal" in r.text or "illegal" in r.text)
+    assert r.intent == a.INTENT_SCOPE and r.text.startswith(("Nu te pot ajuta", "I can't help"))
 
 
 @pytest.mark.parametrize("q", ["Cum schimb parola camerei?", "Ce fac întâi cu camera?", "Ce e telnet?"])
 def test_legit_questions_are_not_refused(q):
     assert a.answer(q, V2).intent != a.INTENT_SCOPE
+
+
+def test_fix_all_singular_for_one_info_item():
+    lab = Path(__file__).parent.parent / "fixtures" / "lab" / "scan_01_before.xml"   # un singur SSH_OPEN
+    scan = analyze_file(lab)
+    assert sum(1 for f in scan.findings if f.points == 0) == 1
+    assert "Mai e un lucru doar de știut" in a.answer("Cum repar tot?", scan).text
+    assert "There is also one thing" in a.answer("How do I fix everything?", scan, lang="en").text

@@ -54,12 +54,19 @@ def build_prompt(context: dict) -> str:
     """Promptul: doar textul deja construit de cod, cu instrucțiunea de a-l reformula simplu."""
     lang = context.get("lang") if context.get("lang") in LANG_NAMES else "ro"
     text = str(context.get("answer_from_scan") or "")[:MAX_ANSWER_CHARS]
+    knowledge = context.get("knowledge") or []
+    background = ""
+    if knowledge:
+        parts = [f"[{k.get('id')}] {str(k.get('text') or '')[:700]}" for k in knowledge[:2]]
+        background = ("\n\nFRAGMENTE DIN BAZA DE CUNOȘTINȚE (doar ca sprijin; nu adăuga din ele IP-uri, porturi "
+                      "sau coduri):\n" + "\n".join(parts))
     return (
         f"Rescrie textul de mai jos în {LANG_NAMES[lang]}, simplu, pentru un om fără cunoștințe tehnice "
         "(nivelul unui copil de 12 ani), în cel mult 4 propoziții scurte. Păstrează exact IP-urile, porturile și "
         "codurile care apar în text. Nu adăuga alte IP-uri, porturi, coduri, versiuni, CVE-uri, numere de telefon, "
-        "link-uri sau sfaturi noi. Răspunde doar cu textul rescris.\n\n"
-        f"TEXT:\n{text}"
+        "link-uri sau sfaturi noi; poți folosi fragmentele din baza de cunoștințe doar ca să explici mai clar. "
+        "Răspunde doar cu textul rescris.\n\n"
+        f"TEXT:\n{text}{background}"
     )
 
 

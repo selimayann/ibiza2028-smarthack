@@ -40,6 +40,7 @@ ibiza2028-smarthack/
 │   ├── lab.md             lab-ul (Ayan)
 │   ├── questions.md       întrebări pentru mentori + răspunsuri (Oneata)
 │   ├── direction.md       direcția produsului, după nucleu (toți)
+│   ├── demo.md            pregătirea demo-ului și cele 7 verificări live
 │   └── roles/             instrucțiunile pentru Claude-ul fiecăruia
 ├── fixtures/
 │   ├── sample.json        exemplu în forma contractului (toți)
@@ -106,6 +107,8 @@ python -m netscan listen --confirm                # ascultare pasivă: numele an
 - Scanează doar dispozitivele tale. Pentru musafiri, folosește o rețea separată pentru oaspeți.
 - Aplicația e **doar defensivă**: comanda nmap e fixă (fără scripturi de atac sau brute force), nu testează parole, nu exploatează nimic, capcana nu păstrează parole sau ce scrie cineva și nu răspunde înapoi spre cine a încercat, iar asistentul refuză cererile de atac.
 - Guardrail-ul refuză orice țintă din afara hotspotului propriu.
+
+**Baza de cunoștințe (RAG):** `docs/knowledge_base.pdf` (56 de întrebări RO/EN: produs, dispozitive, scor, cele 15 coduri, acțiuni, refuzuri) e transformată în `netscan/scan/data/knowledge_base.json` cu `python -m netscan.scan.build_kb` (are nevoie de `pip install pypdf`, doar pentru acest pas). Asistentul caută local în ea (BM25, fără internet): fără AI răspunde direct cu intrarea potrivită (de ex. „Cred că am fost hackuit” → F10), iar cu AI-ul local intrările găsite sunt contextul modelului, verificat apoi de validator. Întrebările despre scanare (cel mai periculos dispozitiv, scorul, un IP) rămân construite din scanare. După orice modificare a PDF-ului, rulează din nou `build_kb` (un test verifică asta).
 
 **AI local (opțional, D8):** [Ollama](https://ollama.com) instalat și modelul descărcat **înainte** (`ollama pull qwen2.5:7b`, 4,7 GB, licență Apache 2.0). Ollama ascultă doar pe `127.0.0.1`. Prima cerere încarcă modelul în placa video (poate dura peste 30 s), deci înainte de demo rulează o dată `ollama run qwen2.5:7b "salut"`; după aceea un răspuns durează câteva secunde. Validatorul verifică faptele (IP, porturi, coduri), nu gramatica: textele predefinite rămân sursa principală.
 
