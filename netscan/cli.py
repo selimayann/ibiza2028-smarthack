@@ -20,6 +20,11 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("analyze", help="findings.csv + scores.csv pentru un folder de fișiere nmap XML (fără rețea)")
     a.add_argument("folder")
     a.add_argument("--out", default=".", help="unde se scriu CSV-urile")
+    a.add_argument(
+        "--unmatched",
+        action="store_true",
+        help="scrie în plus unmatched_services.csv (servicii deschise fără constatare)",
+    )
 
     n = sub.add_parser("network", help="afișează interfața, subnetul și gateway-ul detectate")
     n.add_argument("--lang", choices=["ro", "en"], default="ro")
@@ -42,6 +47,12 @@ def build_parser() -> argparse.ArgumentParser:
     h = sub.add_parser("delete-history", help="șterge istoricul local")
     h.add_argument("--yes", action="store_true", help="fără întrebarea de confirmare")
     h.add_argument("--lang", choices=["ro", "en"], default="ro")
+
+    q = sub.add_parser("ask", help="asistentul: răspunde la o întrebare doar din scanare (fără rețea)")
+    q.add_argument("file", help="fișierul nmap XML")
+    q.add_argument("question", help="întrebarea, între ghilimele")
+    q.add_argument("--previous", help="o scanare anterioară, pentru „ce s-a schimbat?”")
+    q.add_argument("--lang", choices=["ro", "en"], default="ro")
     return p
 
 
@@ -97,6 +108,11 @@ def cmd_analyze(args) -> int:
             print(f"{scan.file}: scor {scan.score}, {len(scan.findings)} constatări")
     findings_path, scores_path = write_results(scans, args.out)
     print(f"Scrise: {findings_path} și {scores_path}")
+    if args.unmatched:
+        from netscan.engine import write_unmatched_csv
+
+        unmatched_path, count = write_unmatched_csv(scans, args.out)
+        print(f"Servicii fără constatare: {count}, scrise în {unmatched_path}")
     return 0
 
 
@@ -157,6 +173,17 @@ def cmd_delete_history(args) -> int:
     return run_delete(lang=args.lang, yes=args.yes)
 
 
+def cmd_ask(args) -> int:
+    """B: asistentul FR-12. Doar răspunsuri din scanare; LLM-ul nu e folosit din linia de comandă."""
+    from netscan.engine.parser import analyze_file
+    from netscan.scan.assistant import answer
+
+    scan = analyze_file(args.file)
+    previous = analyze_file(args.previous) if args.previous else None
+    print(answer(args.question, scan, lang=args.lang, previous=previous).text)
+    return 0 if scan.status == "ok" else 2
+
+
 COMMANDS = {
     "analyze": cmd_analyze,
     "network": cmd_network,
@@ -164,6 +191,7 @@ COMMANDS = {
     "ui": cmd_ui,
     "diff": cmd_diff,
     "delete-history": cmd_delete_history,
+    "ask": cmd_ask,
 }
 
 

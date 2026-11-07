@@ -179,3 +179,12 @@ def test_same_device_id_wins_over_ip():
     new = Scan(file="b", status="ok", score=100, hosts=[_h("aaa", "10.0.0.9", "X"), _h("ccc", "10.0.0.6", "X")])
     d = storage.diff(old, new)
     assert d.new_devices == [] and d.removed_devices == []
+
+
+def test_matched_by_ip_is_reported():
+    from netscan.engine import analyze_file
+
+    d = storage.diff(analyze_file(VAL / "V6a_before.xml"), analyze_file(VAL / "V6b_after.xml"))
+    assert sorted(h.ip for h in d.matched_by_ip) == ["192.168.1.1", "192.168.1.20", "192.168.1.30"]
+    same = storage.diff(analyze_file(VAL / "V6a_before.xml"), analyze_file(VAL / "V6a_before.xml"))
+    assert same.matched_by_ip == []

@@ -1,0 +1,138 @@
+"""Oneata/B: FR-03, informațiile despre dispozitive (producător IEEE offline, MAC privat, tip).
+Nimic de aici nu are voie să schimbe findings, scorul sau CSV-urile."""
+import gzip
+from dataclasses import asdict
+from pathlib import Path
+
+import pytest
+
+from netscan.engine.parser import analyze_folder
+from netscan.model import Host, Port
+from netscan.scan import device_info as di
+
+VALIDATION = Path(__file__).parent.parent / "fixtures" / "validation"
+
+
+def host(ports=(), vendor=None, mac=None, hostname=None, ip="192.168.1.50", dtype="unknown"):
+    return Host(ip=ip, device_id="x", mac_masked=mac, vendor=vendor, hostname=hostname,
+                device_type=dtype, ports=[Port(p, "tcp", "open") for p in ports])
+
+
+# --- MAC privat --------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("mac, private", [
+    ("02:1A:7D:XX:XX:XX", True), ("06:00:00:XX:XX:XX", True), ("DA:00:00:XX:XX:XX", True),
+    ("4E:C7:BC:XX:XX:XX", True), ("50:C7:BF:XX:XX:XX", False), ("B8:27:EB:XX:XX:XX", False),
+    ("00:11:32:XX:XX:XX", False), (None, False), ("", False), ("nu e mac", False),
+])
+def test_private_mac(mac, private):
+    assert di.is_private_mac(mac) is private
+
+
+def test_mac_prefix_formats():
+    assert di.mac_prefix("50:c7:bf:XX:XX:XX") == "50C7BF"
+    assert di.mac_prefix("50-C7-BF-12-34-56") == "50C7BF"
+    assert di.mac_prefix("50C7BF123456") == "50C7BF"
+    assert di.mac_prefix("XX:XX") is None
+
+
+# --- lista IEEE offline ------------------------------------------------------------------------
+
+def test_oui_file_is_in_repo_and_well_formed():
+    assert di.OUI_FILE.is_file()
+    with gzip.open(di.OUI_FILE, "rt", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    assert len(lines) > 30000
+    prefixes = [l.split("\t")[0] for l in lines]
+    assert prefixes == sorted(prefixes)
+    assert all(len(p) == 6 and all(c in "0123456789ABCDEF" for c in p) for p in prefixes)
+    assert all("\t" not in l.split("\t", 1)[1] and len(l.split("\t", 1)[1]) <= 80 for l in lines)
+
+
+@pytest.mark.parametrize("mac, contains", [
+    ("50:C7:BF:XX:XX:XX", "TP-LINK"), ("B8:27:EB:XX:XX:XX", "Raspberry Pi"),
+    ("C0:56:E3:XX:XX:XX", "Hikvision"), ("24:0A:C4:XX:XX:XX", "Espressif"),
+])
+def test_lookup_vendor_known(mac, contains):
+    assert contains.lower() in di.lookup_vendor(mac).lower()
+
+
+def test_lookup_vendor_private_or_unknown():
+    assert di.lookup_vendor("02:1A:7D:XX:XX:XX") is None        # privat: nu căutăm
+    assert di.lookup_vendor(None) is None
+
+
+def test_no_network_needed(monkeypatch):
+    import socket
+
+    def boom(*a, **k):
+        raise AssertionError("FR-03 nu are voie să folosească rețeaua")
+
+    monkeypatch.setattr(socket, "getaddrinfo", boom)
+    monkeypatch.setattr(socket.socket, "connect", boom)
+    di._oui_table.cache_clear()
+    assert di.lookup_vendor("50:C7:BF:XX:XX:XX")
+
+
+# --- descrierea și tipul -----------------------------------------------------------------------
+
+def test_nmap_vendor_wins():
+    info = di.describe(host(vendor="Dell", mac="50:C7:BF:XX:XX:XX"))
+    assert (info.vendor, info.vendor_source) == ("Dell", "nmap")
+
+
+def test_ieee_vendor_when_nmap_has_none_and_retyped():
+    info = di.describe(host(ports=[554], mac="C0:56:E3:XX:XX:XX"))
+    assert info.vendor_source == "ieee" and "Hikvision" in info.vendor
+    assert info.device_type == "camera"
+
+
+def test_private_mac_without_ports_is_phone_laptop():
+    info = di.describe(host(mac="02:1A:7D:XX:XX:XX"))
+    assert info.private_mac and info.vendor is None and info.device_type == "phone_laptop"
+
+
+@pytest.mark.parametrize("ports, dtype", [
+    ([631], "printer"), ([9100], "printer"), ([8008], "tv"), ([8009], "tv"),
+    ([554], "camera"), ([3389], "pc_windows"), ([445], "pc_windows"),
+])
+def test_port_types_from_guide(ports, dtype):
+    assert di.describe(host(ports=ports)).device_type == dtype
+
+
+def test_strong_engine_type_is_kept():
+    assert di.describe(host(ports=[8008], dtype="iot")).device_type == "iot"
+    assert di.describe(host(ports=[631], dtype="camera")).device_type == "camera"
+
+
+def test_gateway_is_router():
+    assert di.describe(host(ip="172.20.10.1", ports=[53]), gateway_ip="172.20.10.1").device_type == "router"
+    assert di.describe(host(ip="172.20.10.14"), gateway_ip="172.20.10.1").device_type != "router"
+
+
+def test_display_host_is_a_copy():
+    h = host(mac="C0:56:E3:XX:XX:XX", ports=[554])
+    before = asdict(h)
+    shown = di.display_host(h)
+    assert asdict(h) == before and shown is not h and shown.vendor
+
+
+# --- nu schimbă regulile -----------------------------------------------------------------------
+
+def test_engine_output_unchanged_on_validation_set():
+    """FR-03 e doar afișare: hosturile și findings-urile motorului rămân exact cum erau."""
+    scans = analyze_folder(VALIDATION)
+    snapshot = [s.to_dict() for s in scans]
+    for s in scans:
+        for h in s.hosts:
+            di.describe(h)
+            di.display_host(h, gateway_ip=h.ip)
+    assert [s.to_dict() for s in scans] == snapshot
+
+
+def test_v4_unknown_device_is_private_address():
+    v4 = next(s for s in analyze_folder(VALIDATION) if s.file == "V4_legacy.xml")
+    h99 = next(h for h in v4.hosts if h.ip == "192.168.1.99")
+    assert any(f.code == "UNKNOWN_DEVICE" and f.ip == "192.168.1.99" for f in v4.findings)
+    info = di.describe(h99)
+    assert info.private_mac and info.vendor is None

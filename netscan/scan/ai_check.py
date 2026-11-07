@@ -29,6 +29,18 @@ _CVE = re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.IGNORECASE)
 _CODE = re.compile(r"\b[A-Z]{2,}(?:_[A-Z]{2,})+\b")
 _MAC = re.compile(r"\b[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}\b")
 _URL = re.compile(r"\b(?:https?://|www\.)\S+", re.IGNORECASE)
+# Numere de telefon (ghidul: „orice port, IP, CVE sau număr de telefon care nu există în scanare”).
+# Candidat: cel puțin 9 cifre, cu spații, cratime, puncte, paranteze sau „+” între ele.
+_PHONE = re.compile(r"(?<![\w.:/-])\+?\(?\d[\d\s().-]{7,}\d(?!\w)(?![.:/-]\d)")
+
+
+def has_phone_number(text: str) -> bool:
+    """True dacă textul conține ceva ce arată a număr de telefon (nu IP, nu CVE, nu dată)."""
+    clean = _IPV4.sub(" ", _CVE.sub(" ", text))   # IP-urile și CVE-urile se verifică separat
+    for m in _PHONE.finditer(clean):
+        if sum(c.isdigit() for c in m.group(0)) >= 9:
+            return True
+    return False
 # „port 80”, „portul 8080”, „porturile 80 și 443”, „ports 80, 443”, „80/tcp”, „:8080”
 _PORT_WORD = re.compile(r"\bport(?:ul|urile|s)?\s*(?:nr\.?\s*)?((?:\d{1,5}(?:\s*(?:,|și|si|and|or|sau)\s*)?)+)",
                         re.IGNORECASE)
@@ -95,6 +107,8 @@ def check_llm_text(text: Optional[str], scan: Scan, finding: Optional[Finding] =
         problems.append("MAC")
     if _URL.search(text):
         problems.append("URL")
+    if has_phone_number(text):
+        problems.append("PHONE")
     return CheckResult(not problems, problems)
 
 

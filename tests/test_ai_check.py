@@ -81,3 +81,34 @@ def test_prompt_context_has_no_mac_and_cleans_untrusted_text():
     title = ctx["untrusted_device_text"]["page_title"]
     assert "\n" not in title and "\x00" not in title and len(title) <= 80
     assert ctx["code"] == "HTTP_ADMIN_CLEARTEXT" and ctx["port"] == 80 and ctx["service"] == "http"
+
+
+# --- numere de telefon (ghidul, secțiunea 6) --------------------------------------------------
+
+@pytest.mark.parametrize("text", [
+    "Sună la suport: 0721 234 567.",
+    "Call +40 721 234 567 for help.",
+    "Sunați la (021) 123 4567.",
+    "Contact: 0721-234-567",
+    "Numărul 0721234567 te ajută.",
+])
+def test_phone_numbers_rejected(text):
+    r = check_llm_text(text, SCAN, CAM)
+    assert not r.ok and "PHONE" in r.problems
+
+
+@pytest.mark.parametrize("text", [
+    "Camera de la 192.168.1.40 e expusă pe portul 554.",
+    "Scanarea din 2026-11-07 a găsit o problemă.",
+    "Închide portul 554 (554/tcp).",
+])
+def test_not_phone_numbers(text):
+    assert "PHONE" not in check_llm_text(text, SCAN, CAM).problems
+
+
+def test_cve_is_not_a_phone_number():
+    assert "PHONE" not in check_llm_text("Vulnerabil la CVE-2021-36260.", SCAN, CAM).problems
+
+
+def test_ip_in_parentheses_is_not_a_phone_number():
+    assert "PHONE" not in check_llm_text("Camera (192.168.1.40) are o problemă.", SCAN, CAM).problems

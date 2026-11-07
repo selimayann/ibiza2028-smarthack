@@ -4,7 +4,7 @@
 {%- endmacro %}
 
 {% macro port_label(f) -%}
-  {%- if f.port is not none -%}{{ T('port') }} <span class="mono">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
+  {%- if f.port is not none -%}{{ T('port') }} <span class="mono" translate="no">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
 {%- endmacro %}
 
 {% macro device_name(host) -%}
@@ -19,4 +19,39 @@
     <line class="meter-tick" x1="50" y1="0" x2="50" y2="10"/>
     <line class="meter-tick" x1="80" y1="0" x2="80" y2="10"/>
   </svg>
+{%- endmacro %}
+
+{# Alertele din jurnal (FR-13): iconiță după ton + propoziție simplă. #}
+{% macro alert_list(alerts) -%}
+  {%- set icons = {'bad': 'medium', 'good': 'good', 'info': 'info'} -%}
+  <ul class="alerts">
+    {% for a in alerts %}
+      <li class="alert alert-{{ a.tone }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ icons[a.tone] }}"/></svg><span>{{ alert_text(a) }}</span></li>
+    {% endfor %}
+  </ul>
+{%- endmacro %}
+
+{# FR-12: caseta pentru asistent. Întrebarea și răspunsul sunt text simplu (autoescape). #}
+{% macro ask_box(action, scan_index, question, reply, show_changes) -%}
+  <section class="ask" id="ask" aria-labelledby="ask-h">
+    <h2 id="ask-h">{{ T('ask_title') }}</h2>
+    <form method="get" action="{{ action }}#ask" class="ask-form">
+      {% if scan_index is not none %}<input type="hidden" name="scan" value="{{ scan_index }}">{% endif %}
+      <label for="q" class="sr-only">{{ T('ask_label') }}</label>
+      <input id="q" name="q" type="text" maxlength="500" value="{{ question }}" autocomplete="off" placeholder="{{ T('ask_ex1') }}">
+      <button type="submit">{{ T('ask_button') }}</button>
+    </form>
+    <p class="ask-examples"><span class="muted">{{ T('ask_examples') }}</span>
+      {% for k in ('ask_ex1', 'ask_ex2', 'ask_ex3') + (('ask_ex4',) if show_changes else ()) %}
+        <a href="{{ action }}?{% if scan_index is not none %}scan={{ scan_index }}&amp;{% endif %}q={{ T(k)|urlencode }}#ask">{{ T(k) }}</a>
+      {% endfor %}
+    </p>
+    {% if reply %}
+      <div class="ask-reply" role="status">
+        <p class="ask-q"><span class="muted">{{ T('ask_you') }}</span> {{ question }}</p>
+        <p class="ask-a">{{ reply.text }}</p>
+        <p class="ask-src muted"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('ask_src_llm') if reply.source == 'llm' else T('ask_src_fallback') }}</p>
+      </div>
+    {% endif %}
+  </section>
 {%- endmacro %}
