@@ -218,6 +218,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .verify-warn { border-color: var(--medium); }
 .verify-warn .icon { color: var(--medium); }
 .verify-info .icon { color: var(--brand); }
+.worst-note { margin-top: .2rem; color: var(--muted); }
 .score-after { display: flex; align-items: flex-start; gap: .4rem; margin-top: .6rem; color: var(--good); font-weight: 700; }
 .score-after .icon { flex: none; margin-top: .2em; }
 .do-first-done { background: var(--good-tint); border-left-color: var(--good); }

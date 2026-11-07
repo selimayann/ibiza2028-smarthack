@@ -208,6 +208,11 @@ class StepsView:
         return len(self.steps)
 
     @property
+    def fixed_keys(self) -> set[tuple]:
+        """Problemele confirmate ca rezolvate (live sau de o scanare mai nouă)."""
+        return {s.finding.key() for s in self.steps if s.status == "verified"}
+
+    @property
     def all_resolved(self) -> bool:
         return all(s.status != "todo" for s in self.steps)
 

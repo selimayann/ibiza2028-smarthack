@@ -14,6 +14,7 @@ import re
 import secrets
 import threading
 import time
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -240,6 +241,10 @@ def create_app(test_config: dict | None = None) -> Flask:
             steps = steps_view(scan, storage.done_keys(scan, db), storage.verified_keys(scan, db),
                                verified_by_newer(scan, newer_scans(scan, scan_list)),
                                request.args.get("step", type=int))
+        # cardul „Cel mai periculos dispozitiv” nu mai arată problemele verificate ca rezolvate
+        remaining = scan
+        if steps is not None and steps.fixed_keys:
+            remaining = replace(scan, findings=[f for f in scan.findings if f.key() not in steps.fixed_keys])
         check = request.args.get("check")
         checked = request.args.get("checked", type=int)
         if check not in verify.RESULTS or steps is None or not (checked and 1 <= checked <= steps.total):
@@ -250,7 +255,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             steps=steps, check=check, checked=steps.steps[checked - 1] if checked else None,
             show_steps=steps is not None and (request.args.get("step") is not None or not steps.all_resolved),
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", scan=idx), scan, idx, question, reply, False),
-            devices=rank_devices(scan) if scan else [], worst=most_dangerous(scan) if scan else None,
+            devices=rank_devices(scan) if scan else [], worst=most_dangerous(remaining) if remaining else None,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
         )
 

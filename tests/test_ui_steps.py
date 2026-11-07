@@ -160,3 +160,33 @@ def test_newer_scan_verifies_missing_problems(tmp_path):
     client, _ = client_for(tmp_path, [old, new])
     html = client.get("/?step=1").get_data(as_text=True)
     assert "Verificat de scanarea after.xml" in html
+
+
+# ---------- cardul „Cel mai periculos dispozitiv” ține cont de pașii verificați ----------
+
+def _worst_card(html):
+    return html.split('id="worst"', 1)[1].split("</section>", 1)[0]
+
+
+def test_worst_card_skips_verified_problems(tmp_path):
+    s = sample()
+    client, app = client_for(tmp_path, [s], probe=lambda ip, port: "closed")
+    card = _worst_card(client.get("/").get_data(as_text=True))
+    assert "CAMERA_STREAM_EXPOSED" in card and "Fără problemele verificate" not in card
+    tick(client, app, action_plan(s)[0])                    # camera, port 554: închis -> verificat
+    card = _worst_card(client.get("/").get_data(as_text=True))
+    assert "CAMERA_STREAM_EXPOSED" not in card and "Fără problemele verificate" in card
+
+
+def test_all_verified_shows_fixed_card_with_steps(tmp_path):
+    """O scanare mai nouă cu aceleași dispozitive și fără probleme confirmă toți pașii (inclusiv UPnP pe UDP)."""
+    old = sample()
+    new = replace(old, file="after.xml", started_at=old.started_at + 3600, findings=[], score=100)
+    client, _ = client_for(tmp_path, [old, new])
+    html = client.get("/?scan=0").get_data(as_text=True)
+    card = _worst_card(html)
+    assert "Toate problemele au fost verificate ca rezolvate" in card and "Revezi pașii" in card
+    assert ">100<" in html and "Scanarea a dat 40" in html
+    assert "Pasul 1 din 5" in _worst_card(client.get("/?scan=0&step=1").get_data(as_text=True))
+    # o scanare care chiar nu a găsit nimic își păstrează textul obișnuit
+    assert "Nicio problemă găsită" in _worst_card(client.get("/?scan=1").get_data(as_text=True))
