@@ -95,6 +95,13 @@ python -m netscan scan --lang en             # mesajele în engleză
 2. **Ținta** (`check_target`): doar adrese IPv4 din subnetul hotspotului (plus `NETSCAN_ALLOWLIST`). Refuză IP-uri publice, `100.64.0.0/10`, subneturi mai mari decât al nostru, rețele private străine (venue), nume de dispozitive (fără DNS) și orice text care nu e o adresă.
 3. **Comanda nmap** e o listă de argumente (fără shell), cu `--max-rate 100` și ținta normalizată de guardrail.
 
+**Nimic nu iese din hotspot** (regula organizatorilor: conectarea la alte rețele = descalificare):
+- `-n`: nmap nu face DNS invers (cererile ar ajunge prin telefon la DNS-ul operatorului).
+- Portul 53 se scanează (U:53 e cerut), dar fără sonde de versiune: tool-ul generează la fiecare scanare `scans/nmap-service-probes.netscan`, o copie a bazei nmap cu `Exclude T:53,U:53`, și o dă lui nmap cu `--versiondb`. Altfel telefonul ar trimite mai departe interogările DNS ale nmap. Nicio regulă din catalog nu depinde de DNS.
+- Analiza fișierelor (`analyze`) și UI-ul nu folosesc rețeaua deloc.
+- Înainte de demo, pe laptopul-scanner: doar Wi-Fi-ul hotspotului conectat (fără cablu, VPN), iar adaptoarele virtuale (VirtualBox Host-Only, WSL/Hyper-V) dezactivate din Settings → Network → Advanced network settings. Tool-ul le ignoră oricum, dar așa nu există nicio altă rețea pe laptop.
+- LLM-ul (explicații) ar cere internet: până confirmă mentorii că e permis, `LLM_API_KEY` rămâne gol și se folosesc textele predefinite.
+
 ### Lab-ul (ținta), pas cu pas
 
 Laptopul-țintă rulează serviciile vulnerabile simulate; laptopul-scanner le scanează. Detalii, findings așteptate și probleme: [docs/lab.md](docs/lab.md).

@@ -32,14 +32,74 @@ def plan(target=None, info=INFO_OK, env=None, iflist=IFLIST, ports="22,80,443"):
         nmap_path="nmap",
         top_ports=ports,
         out_path=Path("scans/test.xml"),
+        service_probes=Path(__file__),   # orice fișier existent; în prepare se verifică doar că există
     )
 
 
 def test_build_nmap_args_exact():
-    args = runner.build_nmap_args("172.20.10.0/28", "wlan0", "22,80", "scans/x.xml")
-    assert args == ["nmap", "-sS", "-sU", "-sV", "--script", "http-title",
+    args = runner.build_nmap_args("172.20.10.0/28", "wlan0", "22,80", "scans/x.xml", "scans/db")
+    assert args == ["nmap", "-n", "-sS", "-sU", "-sV", "--script", "http-title",
                     "-p", "T:22,80,1883,6379,27017,U:53,123,161,1900,5353",
-                    "--max-rate", "100", "-e", "wlan0", "-oX", "scans/x.xml", "172.20.10.0/28"]
+                    "--max-rate", "100", "-e", "wlan0", "--versiondb", "scans/db",
+                    "-oX", "scans/x.xml", "172.20.10.0/28"]
+
+
+def test_no_reverse_dns_in_every_plan(monkeypatch):
+    """-n: nmap nu face DNS invers; altfel cererile ies din hotspot prin DNS-ul operatorului."""
+    monkeypatch.setattr(runner.sys, "platform", "win32")
+    p = plan()
+    assert "-n" in p.args and "-R" not in p.args and "--system-dns" not in p.args
+    assert p.args[p.args.index("--versiondb") + 1].endswith(runner.VERSIONDB_NAME)
+    assert p.args[-2] == "scans/test.xml" or p.args[-2].endswith("test.xml")
+
+
+def test_udp53_still_scanned():
+    a = runner.build_nmap_args("172.20.10.0/28", "eth3", "22", "x.xml")
+    spec = a[a.index("-p") + 1]
+    assert spec.endswith(",U:53,123,161,1900,5353")
+
+
+PROBES_SAMPLE = (
+    "# Nmap service detection probe list\n"
+    "Exclude T:9100-9107\n"
+    "Probe TCP NULL q||\n"
+    "Probe UDP DNSVersionBindReq q|\\0\\x06|\n"
+    "ports 53\n"
+)
+
+
+def test_make_versiondb_extends_exclude():
+    out = runner.make_versiondb(PROBES_SAMPLE)
+    assert "Exclude T:9100-9107,T:53,U:53\n" in out
+    assert out.count("Exclude") == 1
+    assert out.replace(",T:53,U:53", "") == PROBES_SAMPLE   # restul fișierului neatins
+
+
+def test_make_versiondb_crlf_and_missing_exclude():
+    crlf = PROBES_SAMPLE.replace("\n", "\r\n")
+    assert "Exclude T:9100-9107,T:53,U:53\r\n" in runner.make_versiondb(crlf)
+    no_ex = PROBES_SAMPLE.replace("Exclude T:9100-9107\n", "")
+    out = runner.make_versiondb(no_ex)
+    assert out.index("Exclude T:53,U:53") < out.index("Probe TCP NULL")
+
+
+def test_write_versiondb_with_installed_nmap(tmp_path):
+    nmap = runner.find_nmap()
+    probes = runner.find_service_probes(nmap) if nmap else None
+    if probes is None:
+        pytest.skip("nmap nu e instalat pe acest calculator")
+    dst = runner.write_versiondb(probes, tmp_path / "db")
+    lines = [l for l in dst.read_text(encoding="utf-8", errors="surrogateescape").splitlines()
+             if l.startswith("Exclude ")]
+    assert len(lines) == 1 and lines[0].endswith(",T:53,U:53")
+
+
+def test_missing_service_probes_refuses(monkeypatch, tmp_path):
+    monkeypatch.setattr(runner.sys, "platform", "win32")
+    p = runner.prepare_scan(target=None, env={}, detect=lambda: INFO_OK, run=lambda a: IFLIST,
+                            nmap_path="nmap", top_ports="22", out_path=Path("x.xml"),
+                            service_probes=tmp_path / "nu-exista")
+    assert not p.ok and p.reason_code == runner.NO_SERVICE_PROBES
 
 
 def test_catalog_extra_ports_reach_command_with_real_top1000():
@@ -47,7 +107,8 @@ def test_catalog_extra_ports_reach_command_with_real_top1000():
     top = runner.load_top_ports()
     for p in runner.CATALOG_EXTRA_TCP:
         assert not runner._port_in_list(p, top)          # lista top 1000 rămâne neatinsă
-    spec = runner.build_nmap_args("172.20.10.0/28", "eth3", top, "x.xml")[7]
+    a = runner.build_nmap_args("172.20.10.0/28", "eth3", top, "x.xml")
+    spec = a[a.index("-p") + 1]
     tcp = spec[2:spec.index(",U:")]
     assert tcp.startswith(top)
     for p in runner.CATALOG_EXTRA_TCP:
@@ -151,6 +212,9 @@ def test_execute_never_uses_shell(monkeypatch, tmp_path):
     monkeypatch.setattr(runner, "is_admin", lambda: True)
     p = plan()
     p.out_path = str(tmp_path / "scan.xml")
+    src = tmp_path / "nmap-service-probes"
+    src.write_text(PROBES_SAMPLE, encoding="utf-8")
+    p.service_probes, p.versiondb = str(src), str(tmp_path / runner.VERSIONDB_NAME)
     seen = {}
 
     class R:
@@ -165,6 +229,7 @@ def test_execute_never_uses_shell(monkeypatch, tmp_path):
     assert runner.execute(p, nmap_path="C:/Nmap/nmap.exe").ok
     assert seen["shell"] is False and isinstance(seen["args"], list)
     assert seen["args"][0] == "C:/Nmap/nmap.exe" and seen["args"][-1] == "172.20.10.0/28"
+    assert "Exclude T:9100-9107,T:53,U:53" in Path(p.versiondb).read_text(encoding="utf-8")
 
 
 def test_execute_refused_plan_does_nothing(monkeypatch):
