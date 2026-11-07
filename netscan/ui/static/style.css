@@ -144,6 +144,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .picker label, .scanmeta dt { display: block; color: var(--muted); margin-bottom: .2rem; }
 .picker-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+.js .picker-row button[type="submit"] { display: none; }   /* cu JS, lista schimbă direct scanarea */
 .scanmeta { margin: 0; }
 .scanmeta dd { margin: 0; min-height: 2.75rem; display: flex; align-items: center; font-weight: 700; }
 .saved { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; color: var(--good); font-weight: 700; min-height: 2.75rem; }
@@ -221,6 +222,8 @@ button:disabled { opacity: .6; cursor: progress; }
 .worst-note { margin-top: .2rem; color: var(--muted); }
 .score-after { display: flex; align-items: flex-start; gap: .4rem; margin-top: .6rem; color: var(--good); font-weight: 700; }
 .score-after .icon { flex: none; margin-top: .2em; }
+.score-newer { margin-top: .4rem; }
+.score-newer a { font-weight: 700; }
 .do-first-done { background: var(--good-tint); border-left-color: var(--good); }
 .do-first-done .do-first-label { color: var(--good); display: flex; align-items: center; gap: .4rem; }
 

@@ -4,6 +4,8 @@
 (() => {
   "use strict";
   if (!window.fetch || !window.DOMParser) return;
+  // De aici, alegerea scanării se aplică singură: butonul „Arată” rămâne doar pentru varianta fără JS.
+  document.documentElement.classList.add("js");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   async function swap(url, init, selectors, focusSel, keepUrl) {

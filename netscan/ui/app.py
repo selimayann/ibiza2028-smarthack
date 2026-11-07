@@ -272,6 +272,14 @@ def create_app(test_config: dict | None = None) -> Flask:
             steps = steps_view(scan, storage.done_keys(scan, db), storage.verified_keys(scan, db),
                                verified_by_newer(scan, newer_scans(scan, scan_list)),
                                request.args.get("step", type=int))
+        # reparațiile confirmate de o scanare mai nouă: arătăm acea scanare (cea mai nouă), cu link spre ea
+        newer_hint = None
+        if steps is not None:
+            by_files = {s.verified_by for s in steps.steps if s.verified_by not in (None, "live")}
+            found = [(i, s) for i, s in enumerate(scan_list) if s.file in by_files and s.status == "ok"]
+            if found:
+                i_new, s_new = max(found, key=lambda t: t[1].started_at or 0)
+                newer_hint = {"idx": i_new, "file": s_new.file, "score": s_new.score}
         # cardul „Cel mai periculos dispozitiv” nu mai arată problemele verificate ca rezolvate
         remaining = scan
         if steps is not None and steps.fixed_keys:
@@ -288,6 +296,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", scan=idx), scan, idx, question, reply, False),
             devices=rank_devices(scan) if scan else [], worst=most_dangerous(remaining) if remaining else None,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
+            newer_hint=newer_hint,
         )
 
     def newer_scans(scan: Scan, scan_list: list[Scan]) -> list[Scan]:

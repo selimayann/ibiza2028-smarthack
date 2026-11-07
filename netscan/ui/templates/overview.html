@@ -123,8 +123,9 @@
   </section>
 {% else %}
 
-{# Scorul afișat: al scanării sau, după pași verificați pe date reale, cel recalculat de motor #}
-{% set score_shown = steps.score_now if steps else scan.score %}
+{# Cifra mare e mereu scorul standard al scanării (exact ca în scores.csv). Scorul după reparațiile
+   confirmate (recalculat de motor) apare separat, dedesubt, ca să nu se confunde cu scorul scanării. #}
+{% set score_shown = scan.score %}
 {% set band = score_band(score_shown) %}
 {% set band_icon = {'good': 'good', 'fair': 'fair', 'poor': 'high'}[band] %}
 
@@ -134,7 +135,8 @@
     <h1 id="score-h" class="score-label">{{ T('score_label') }}</h1>
     <p class="score-value"><span class="score-num">{{ score_shown }}</span><span class="score-of">{{ T('score_of') }}</span></p>
     {{ meter(score_shown) }}
-    {% if steps and steps.verified_count %}<p class="score-after"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('score_after')|format(scan.score, steps.verified_count) }}</p>{% endif %}
+    {% if steps and steps.verified_count %}<p class="score-after"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg><span>{{ T('score_after')|format(steps.verified_count) }} <strong class="mono">{{ steps.score_now }}</strong> {{ T('score_of') }}</span></p>{% endif %}
+    {% if newer_hint %}<p class="score-newer"><a href="{{ url_for('overview', scan=newer_hint.idx) }}">{{ T('score_newer')|format(newer_hint.file, newer_hint.score) }}</a></p>{% endif %}
     <p class="score-band"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-{{ band_icon }}"/></svg>{{ T('band_' ~ band) }}</p>
     <ul class="scale" aria-label="{{ T('scale_title') }}">
       {% for b, icon, rng in (('good', 'good', '80–100'), ('fair', 'fair', '50–79'), ('poor', 'high', '0–49')) %}
