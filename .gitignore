@@ -5,6 +5,8 @@
 
 # date locale (istoric, scanări live)
 data/
+# excepție: lista offline de producători (FR-03), face parte din cod
+!netscan/scan/data/
 *.db
 *.sqlite
 scans/
