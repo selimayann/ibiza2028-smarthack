@@ -64,6 +64,10 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
     w.add_argument("--lang", choices=["ro", "en"], default="ro")
 
+    dm = sub.add_parser("demo-ai-check", help="demo: validatorul anti-halucinații pe texte simulate (fără rețea, fără AI)")
+    dm.add_argument("file", help="o scanare nmap XML, de ex. fixtures/lab/scan_01_before.xml")
+    dm.add_argument("--lang", choices=["ro", "en"], default="ro")
+
     im = sub.add_parser("import-scans", help="aduce scanările monitorului în istoric (ca utilizator normal, nu admin)")
     im.add_argument("folder", nargs="?", default="scans", help="folderul cu watch_*.xml (implicit scans/)")
     im.add_argument("--lang", choices=["ro", "en"], default="ro")
@@ -242,6 +246,13 @@ def cmd_watch(args) -> int:
     return watch(args.every, args.confirm, lang=args.lang, target=args.target)
 
 
+def cmd_demo_ai_check(args) -> int:
+    """B: demonstrația validatorului (inovație): texte simulate, validatorul real, fără rețea și fără model."""
+    from netscan.scan.ai_demo import run_demo
+
+    return run_demo(args.file, lang=args.lang)
+
+
 def cmd_import_scans(args) -> int:
     """B: pasul neprivilegiat al monitorului (NFR-04): XML-urile din scans/ -> istoric + alerte."""
     from pathlib import Path as _P
@@ -275,6 +286,7 @@ COMMANDS = {
     "ask": cmd_ask,
     "watch": cmd_watch,
     "import-scans": cmd_import_scans,
+    "demo-ai-check": cmd_demo_ai_check,
     "trap": cmd_trap,
     "listen": cmd_listen,
 }

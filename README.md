@@ -89,6 +89,7 @@ python -m netscan delete-history       # șterge istoricul local
 python -m netscan ask <fișier.xml> "Ce fac întâi?"   # asistentul: răspunde doar din scanare, fără rețea
 python -m netscan ask <fișier.xml> "Ce fac întâi?" --local-ai          # + reformulare cu AI local (Ollama), verificată
 python -m netscan ask <fișier.xml> x --verify-text "<text inventat>"   # demo: validatorul respinge datele inventate
+python -m netscan demo-ai-check fixtures/lab/scan_01_before.xml   # demo pentru juriu: 3 texte simulate respinse, 1 acceptat
 python -m netscan watch --every 15 --confirm      # monitorul: scanează periodic doar hotspotul, alerte la schimbări
 python -m netscan trap --confirm                  # ușa-capcană: alertă când cineva din hotspot încearcă să intre
 python -m netscan listen --confirm                # ascultare pasivă: numele anunțate de dispozitive (mDNS/SSDP)
