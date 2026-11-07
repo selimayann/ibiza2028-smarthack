@@ -8,7 +8,7 @@
   <h1>{{ device_name(d.host) }} <span class="mono ip">{{ d.host.ip }}</span></h1>
   <dl class="facts">
     <div><dt>{{ T('mac') }}</dt><dd class="mono">{{ d.host.mac_masked or T('unknown') }}</dd></div>
-    <div><dt>{{ T('vendor') }}</dt><dd>{{ d.host.vendor or T('unknown') }}</dd></div>
+    <div><dt>{{ T('vendor') }}</dt><dd>{% if d.host.vendor %}{{ d.host.vendor }}{% if d.info and d.info.vendor_source == 'ieee' %} <span class="muted">({{ T('vendor_ieee') }})</span>{% endif %}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}{{ T('unknown') }}{% endif %}</dd></div>
     <div><dt>{{ T('hostname') }}</dt><dd>{{ d.host.hostname or T('unknown') }}</dd></div>
   </dl>
 </header>
