@@ -4,12 +4,12 @@
 {% set a = assistant %}
 {% set base_q = ('scan=' ~ a.scan_index ~ '&') if a.scan_index is not none else '' %}
 <a class="ai-fab" href="{{ a.action }}?{{ base_q }}ask=1#chat" data-chat-open aria-haspopup="dialog" aria-controls="chat">
-  <svg class="icon" aria-hidden="true"><use href="#i-ai"/></svg><span class="fab-text">{{ T('ai_open') }}</span>
+  <svg class="icon eel" aria-hidden="true"><use href="#i-eel"/></svg><span class="fab-text">{{ T('ai_open') }}</span>
 </a>
 
 <dialog class="chat" id="chat" aria-labelledby="chat-h"{% if a.open %} open{% endif %} data-api="{{ a.api }}" data-thinking="{{ T('ai_thinking') }}" data-error="{{ T('ai_error') }}" data-you="{{ T('ask_you') }}">
   <div class="chat-head">
-    <div class="chat-avatar" aria-hidden="true"><svg class="icon"><use href="#i-ai"/></svg></div>
+    <div class="chat-avatar" aria-hidden="true"><svg class="icon eel"><use href="#i-eel"/></svg></div>
     <div class="chat-title">
       <h2 id="chat-h">{{ T('ai_title') }}</h2>
       <p class="chat-badge{% if not a.llm_on %} off{% endif %}"><span class="dot" aria-hidden="true"></span>{{ T('ai_badge_on') if a.llm_on else T('ai_badge_off') }}</p>
@@ -25,7 +25,7 @@
       <p class="msg msg-user"><span class="sr-only">{{ T('ask_you') }} </span>{{ a.question }}</p>
       <div class="msg msg-bot" id="ask-answer" tabindex="-1">
         <p class="ask-a">{{ a.reply.text }}</p>
-        <p class="msg-src"><svg class="icon" aria-hidden="true"><use href="#i-{{ 'ai' if a.reply.source == 'llm' else 'info' }}"/></svg>{{ T('ask_src_llm') if a.reply.source == 'llm' else T('ask_src_fallback') }}</p>
+        <p class="msg-src"><svg class="icon" aria-hidden="true"><use href="#i-{{ 'eel' if a.reply.source == 'llm' else 'info' }}"/></svg>{{ T('ask_src_llm') if a.reply.source == 'llm' else T('ask_src_fallback') }}</p>
       </div>
     {% endif %}
   </div>

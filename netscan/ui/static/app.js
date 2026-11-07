@@ -148,7 +148,7 @@
     if (data && data.ok && data.source_label) {
       const src = document.createElement("p");
       src.className = "msg-src";
-      src.appendChild(svg(data.source === "llm" ? "ai" : "info"));
+      src.appendChild(svg(data.source === "llm" ? "eel" : "info"));
       src.appendChild(document.createTextNode(data.source_label));
       answer.appendChild(src);
     }
