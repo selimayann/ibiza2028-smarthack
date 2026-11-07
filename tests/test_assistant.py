@@ -150,6 +150,29 @@ def test_llm_bad_text_falls_back(bad):
     assert r.text == a.fallback_answer("Ce fac întâi?", V2)[0]
 
 
+@pytest.mark.parametrize("lang, generated", [
+    ("ro", "Close port 554 on the camera 192.168.1.40 and change your password first."),   # platformă RO, model EN
+    ("en", "Închide portul 554 pe camera 192.168.1.40 și schimbă parola."),               # platformă EN, model RO
+])
+def test_llm_answer_in_the_wrong_language_falls_back(lang, generated):
+    q = "Ce fac întâi?" if lang == "ro" else "What should I do first?"
+    r = a.answer(q, V2, lang=lang, llm=lambda ctx: generated)
+    assert r.source == "fallback" and r.problems == ["WRONG_LANG"]
+    assert r.text == a.fallback_answer(q, V2, lang)[0]
+
+
+def test_llm_answer_in_the_right_language_is_kept():
+    r = a.answer("What should I do first?", V2, lang="en",
+                 llm=lambda ctx: "Set a password on the camera 192.168.1.40 and close port 554.")
+    assert r.source == "llm"
+
+
+def test_prompt_ends_with_the_answer_language():
+    from netscan.scan.local_llm import build_prompt
+    assert build_prompt({"lang": "ro", "answer_from_scan": "x"}).endswith("DOAR în limba română.")
+    assert build_prompt({"lang": "en", "answer_from_scan": "x"}).endswith("ONLY in English.")
+
+
 def test_llm_error_falls_back():
     def broken(ctx):
         raise RuntimeError("fără rețea")

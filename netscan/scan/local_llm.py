@@ -66,7 +66,9 @@ def build_prompt(context: dict) -> str:
         "codurile care apar în text. Nu adăuga alte IP-uri, porturi, coduri, versiuni, CVE-uri, numere de telefon, "
         "link-uri sau sfaturi noi; poți folosi fragmentele din baza de cunoștințe doar ca să explici mai clar. "
         "Răspunde doar cu textul rescris.\n\n"
-        f"TEXT:\n{text}{background}"
+        f"TEXT:\n{text}{background}\n\n"
+        # la final, ca modelele mici să nu treacă singure pe engleză (bug găsit la mentor)
+        + ("Scrie răspunsul DOAR în limba română." if lang == "ro" else "Write the answer ONLY in English.")
     )
 
 
