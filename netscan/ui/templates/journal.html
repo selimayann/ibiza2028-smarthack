@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import alert_list with context %}
+{% from "_macros.html" import alert_list, empty_state, monitor_event with context %}
 {% block title %}{{ T('journal_title') }} · SafeEel{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -9,31 +9,46 @@
   </div>
 </div>
 
+<section class="section section-first" aria-labelledby="mon-h">
+  <div class="section-head">
+    <h2 id="mon-h">{{ T('monitor_title') }}</h2>
+    <p>{{ T('monitor_hint') }}</p>
+  </div>
+  {% if events %}
+    <ol class="monitor">{% for ev in events %}{{ monitor_event(ev, known) }}{% endfor %}</ol>
+  {% elif monitor_ran %}
+    <p class="notice">{{ T('monitor_none') }}</p>
+  {% else %}
+    <p class="notice">{{ T('monitor_empty') }} <code>python -m netscan watch --confirm</code></p>
+  {% endif %}
+</section>
+
+<section class="section" aria-labelledby="scans-h">
+<div class="section-head"><h2 id="scans-h">{{ T('scans_changes_title') }}</h2></div>
 {% if groups %}
   <ol class="timeline">
   {% for g in groups %}
     {% set n_bad = g.alerts|selectattr('tone', 'equalto', 'bad')|list|length %}
     {% set n_good = g.alerts|selectattr('tone', 'equalto', 'good')|list|length %}
     {% set n_info = g.alerts|selectattr('tone', 'equalto', 'info')|list|length %}
-    <li class="journal-day card" aria-labelledby="j-{{ g.scan_id }}">
+    <li class="journal-day" aria-labelledby="j-{{ g.scan_id }}">
       <div class="journal-day-head">
-        <h2 id="j-{{ g.scan_id }}">{% if g.scan %}{{ fmt_time(g.scan.started_at) }}<span class="file">{{ g.scan.file }}</span>{% endif %}</h2>
-        <p class="chips">
-          {% if n_bad %}<span class="chip chip-bad"><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('j_bad')|format(n_bad) }}</span>{% endif %}
-          {% if n_good %}<span class="chip chip-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('j_good')|format(n_good) }}</span>{% endif %}
-          {% if n_info %}<span class="chip chip-info"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('j_info')|format(n_info) }}</span>{% endif %}
+        <h3 id="j-{{ g.scan_id }}">{% if g.scan %}{{ fmt_time(g.scan.started_at) }}<span class="file">{{ g.scan.file }}</span>{% endif %}</h3>
+        <p class="journal-sum">
+          {%- set parts = [] -%}
+          {%- if n_bad %}{% set _ = parts.append(T('j_bad')|format(n_bad)) %}{% endif -%}
+          {%- if n_good %}{% set _ = parts.append(T('j_good')|format(n_good)) %}{% endif -%}
+          {%- if n_info %}{% set _ = parts.append(T('j_info')|format(n_info)) %}{% endif -%}
+          {{ parts|join(', ') }}
         </p>
       </div>
-      {{ alert_list(g.alerts, true) }}
+      {{ alert_list(g.alerts) }}
       <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id) }}">{{ T('see_in_history') }}</a></p>
     </li>
   {% endfor %}
   </ol>
 {% else %}
-  <section class="empty card">
-    <h2>{{ T('journal_empty_title') }}</h2>
-    <p class="muted">{{ T('journal_empty') }}</p>
-    <a class="button button-primary" href="{{ url_for('overview') }}">{{ T('go_overview') }}</a>
-  </section>
+  {{ empty_state(T('journal_empty_title'), T('journal_empty'), url_for('overview'), T('go_overview')) }}
 {% endif %}
+</section>
 {% endblock %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import score_pill with context %}
+{% from "_macros.html" import score_pill, empty_state with context %}
 {% block title %}{{ T('history_title') }} · SafeEel{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -8,10 +8,10 @@
     <p class="lead">{{ T('history_hint') }}</p>
   </div>
 </div>
-{% if deleted %}<p class="notice card" role="status">{{ T('history_deleted') }}</p>{% endif %}
+{% if deleted %}<p class="notice" role="status">{{ T('history_deleted') }}</p>{% endif %}
 
 {% if items %}
-  <section class="trend card" aria-labelledby="trend-h">
+  <section class="trend" aria-labelledby="trend-h">
     <h2 id="trend-h">{{ T('trend_title') }}</h2>
     {% if trend %}
       {% set n = trend.points|length %}
@@ -52,7 +52,7 @@
     {% endif %}
   </section>
 
-  <div class="table-wrap card">
+  <div class="table-wrap">
   <table>
     <caption class="sr-only">{{ T('history_title') }}</caption>
     <thead><tr>
@@ -83,15 +83,11 @@
     </tbody>
   </table>
   </div>
-  <div class="danger-zone card">
+  <div class="danger-zone">
     <p>{{ T('history_delete_hint') }}</p>
     <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
   </div>
 {% else %}
-  <section class="empty card">
-    <h2>{{ T('history_empty') }}</h2>
-    <p class="muted">{{ T('history_empty_hint') }}</p>
-    <a class="button button-primary" href="{{ url_for('overview') }}">{{ T('go_overview') }}</a>
-  </section>
+  {{ empty_state(T('history_empty'), T('history_empty_hint'), url_for('overview'), T('go_overview')) }}
 {% endif %}
 {% endblock %}

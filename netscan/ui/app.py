@@ -21,7 +21,7 @@ from flask import Flask, abort, g, redirect, render_template, request, url_for
 from netscan.cli import load_env_file
 from netscan.engine import analyze_folder
 from netscan.model import Scan
-from netscan.ui import i18n, storage
+from netscan.ui import extras, i18n, storage
 from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
 from netscan.ui.view import action_plan, current_action, ip_key, most_dangerous, rank_devices, score_band, score_trend
@@ -32,6 +32,7 @@ VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
 REPORT_CSS = Path(__file__).resolve().parent / "static" / "report.css"
 LOGO_SVG = Path(__file__).resolve().parent / "static" / "brand" / "safeeel-lockup-horizontal-light.svg"
 LANG_COOKIE = "lang"
+SEEN_COOKIE = "journal_seen"   # când a deschis utilizatorul ultima dată Jurnalul (pentru „N alerte noi”)
 
 
 def load_scan(path: str | Path) -> Scan:
@@ -117,6 +118,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.after_request
     def finish(resp):
+        if request.endpoint == "journal_page" and resp.status_code == 200:
+            resp.set_cookie(SEEN_COOKIE, str(int(time.time())), max_age=60 * 60 * 24 * 365, samesite="Strict", httponly=True)
         if request.args.get("lang") in i18n.LANGS:
             resp.set_cookie(LANG_COOKIE, g.lang, max_age=60 * 60 * 24 * 365, samesite="Strict", httponly=True)
         resp.headers["Content-Security-Policy"] = (
@@ -131,6 +134,13 @@ def create_app(test_config: dict | None = None) -> Flask:
     def helpers() -> dict:
         lang = g.get("lang", i18n.DEFAULT_LANG)
         other = "en" if lang == "ro" else "ro"
+        if "names" not in g:
+            g.names = extras.announced_names()          # numele anunțate (ascultare pasivă), o dată pe cerere
+        if "monitor" not in g:
+            g.monitor = extras.monitor_events()          # (evenimente, a rulat monitorul?)
+        seen = request.cookies.get(SEEN_COOKIE, "0")
+        seen = int(seen) if seen.isdigit() else 0
+        new_alerts = sum(1 for e in g.monitor[0] if (e.ts or 0) > seen)
         def lang_url() -> str:
             """Aceeași pagină, în cealaltă limbă (păstrează restul parametrilor)."""
             args = {k: (v[:MAX_QUESTION_LEN] if k == "q" else v) for k, v in request.args.items() if k != "lang"}
@@ -146,10 +156,13 @@ def create_app(test_config: dict | None = None) -> Flask:
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
+            "eavesdrop": lambda code: extras.eavesdrop(code, lang),
+            "announced": lambda ip: g.names.get(ip),
+            "new_alerts": new_alerts,
             "alert_text": lambda a: i18n.alert_text(lang, a),
             "code_name": lambda code: i18n.code_name(lang, code),
             "standards": lambda code: get_standards(code, lang),
-            "fmt_time": _fmt_time,
+            "fmt_time": lambda epoch: _fmt_time(epoch, lang),
             "score_band": score_band,
         }
 
@@ -267,7 +280,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         devices = rank_devices(scan) if scan.status == "ok" else []
         counts = {sev: sum(1 for f in scan.findings if f.severity == sev) for sev in ("high", "medium", "low", "info")}
         html = render_template(
-            "report.html", scan=scan, devices=devices, counts=counts, generated=_fmt_time(int(time.time())),
+            "report.html", scan=scan, devices=devices, counts=counts, generated=_fmt_time(int(time.time()), g.lang),
             back_url=back_url, download_url=download_url, inline_css=REPORT_CSS.read_text(encoding="utf-8") if download else None,
             # raportul descărcat trebuie să meargă singur, fără server: logo-ul intră în fișier ca data URI
             logo_src=("data:image/svg+xml;base64," + base64.b64encode(LOGO_SVG.read_bytes()).decode("ascii")) if download
@@ -297,6 +310,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/journal")
     def journal_page():
+        g.monitor = extras.monitor_events()
         db = app.config["DB_PATH"]
         by_id = {s.id: s for s in storage.list_scans(db)}
         groups: list[dict] = []
@@ -304,7 +318,14 @@ def create_app(test_config: dict | None = None) -> Flask:
             if not groups or groups[-1]["scan_id"] != a.scan_id:
                 groups.append({"scan_id": a.scan_id, "scan": by_id.get(a.scan_id), "alerts": []})
             groups[-1]["alerts"].append(a)
-        return render_template("journal.html", groups=groups)
+        events, monitor_ran = g.monitor if "monitor" in g else extras.monitor_events()
+        # Legătura spre pagina dispozitivului, dacă IP-ul apare în cea mai nouă scanare citibilă.
+        scan_list, known = scans(), {}
+        ok = [(i, s) for i, s in enumerate(scan_list) if s.status == "ok"]
+        if ok:
+            idx, latest = max(ok, key=lambda p: p[1].started_at or 0)
+            known = {h.ip: (h.device_id, idx, h.device_type) for h in latest.hosts}
+        return render_template("journal.html", groups=groups, events=events, monitor_ran=monitor_ran, known=known)
 
     @app.get("/history/delete")
     def history_delete_confirm():
@@ -371,10 +392,12 @@ def create_app(test_config: dict | None = None) -> Flask:
     return app
 
 
-def _fmt_time(epoch: int | None) -> str:
+def _fmt_time(epoch: int | None, lang: str = "ro") -> str:
+    """Data pe înțeles: „1 nov. 2026, 11:09” (RO) / „1 Nov 2026, 11:09” (EN)."""
     if epoch is None:
         return "—"
-    return datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M")
+    d = datetime.fromtimestamp(epoch)
+    return f"{d.day} {i18n.month_short(lang, d.month)} {d.year}, {d:%H:%M}"
 
 
 def run(port: int = 5000) -> None:

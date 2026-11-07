@@ -1,5 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<p class="notice card">{{ T(message_key) }}</p>
+<p class="notice">{{ T(message_key) }}</p>
 <p class="back"><a href="{{ url_for('overview') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back') }}</a></p>
 {% endblock %}

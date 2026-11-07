@@ -11,6 +11,54 @@
   {{ device_type_label(host.device_type) }}
 {%- endmacro %}
 
+{# Titlul unui dispozitiv: numele anunțat de el (dacă există, text nesigur), altfel tipul. #}
+{% macro device_title(host) -%}
+  {%- set an = announced(host.ip) -%}
+  {%- if an -%}<span class="announced" translate="no">{{ an.name }}</span>{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
+{%- endmacro %}
+
+{# Sub titlu, când există nume anunțat: tipul + eticheta mică. #}
+{% macro announced_sub(host) -%}
+  {%- set an = announced(host.ip) -%}
+  {%- if an -%}<span class="announced-sub">{{ device_type_label(host.device_type) }}{% if an.service %} · {{ an.service }}{% endif %} <span class="announced-tag">{{ T('announced_label') }}</span></span>{%- endif -%}
+{%- endmacro %}
+
+{# „Ce vede cineva care ascultă”: exemplu inventat, ca un terminal; rândul cu parola e marcat cu etichetă, nu doar culoare. #}
+{% macro eavesdrop_block(e) -%}
+  <figure class="eaves">
+    <figcaption class="eaves-title"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ e.title }}</figcaption>
+    <div class="eaves-term" role="img" aria-label="{{ T('eaves_label')|format(e.protocol) }}">
+      {% for line in e.lines %}
+        {% if loop.index0 == e.highlight %}
+          <p class="eaves-line eaves-hl"><span translate="no">{{ line }}</span><span class="eaves-tag"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('eaves_password') }}</span></p>
+        {% else %}
+          <p class="eaves-line" translate="no">{{ line }}</p>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% if e.caption %}<p class="eaves-caption">{{ e.caption }}</p>{% endif %}
+    {% if e.fix %}<p class="eaves-fix"><strong>{{ T('eaves_fix') }}</strong> {{ e.fix }}</p>{% endif %}
+  </figure>
+{%- endmacro %}
+
+{# Un eveniment al monitorului / al ușii-capcană. #}
+{% macro monitor_event(ev, known) -%}
+  {%- set icons = {'urgent': 'medium', 'good': 'good', 'info': 'info'} -%}
+  <li class="mon mon-{{ ev.tone }}{% if ev.kind == 'TRAP' %} mon-trap{% endif %}">
+    <svg class="icon icon-lg" aria-hidden="true"><use href="#i-{{ 'shield' if ev.kind == 'TRAP' else icons[ev.tone] }}"/></svg>
+    <div class="mon-body">
+      <p class="mon-head"><strong class="mon-kind">{{ T('ev_' ~ ev.kind) }}</strong><span class="mon-time">{{ fmt_time(ev.ts) }}</span></p>
+      {% if ev.kind == 'TRAP' %}
+        <p>{% if ev.port is not none %}{{ T('trap_text')|format(ev.ip, fmt_time(ev.ts), ev.port) }}{% else %}{{ T('trap_text_noport')|format(ev.ip, fmt_time(ev.ts)) }}{% endif %}</p>
+        {% if ev.ip in known %}<p><a href="{{ url_for('device', device_id=known[ev.ip][0], scan=known[ev.ip][1]) }}">{{ T('trap_device') }}<span class="sr-only"> {{ ev.ip }}</span></a></p>{% endif %}
+      {% else %}
+        <p>{{ ev.text_ro if lang == 'ro' else ev.text_en }}</p>
+      {% endif %}
+    </div>
+  </li>
+{%- endmacro %}
+
+
 {# Bara de scor: SVG cu atribute (nu style inline, din cauza CSP). Pragurile 50 și 80 sunt marcate. #}
 {% macro meter(score) -%}
   <svg class="meter" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true" focusable="false">
@@ -36,4 +84,16 @@
   {%- set b = score_band(score) -%}
   {%- set icon = {'good': 'good', 'fair': 'fair', 'poor': 'high'}[b] -%}
   <span class="score-pill b-{{ b }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ icon }}"/></svg><span class="num">{{ score }}</span> <span>{{ T('band_' ~ b) }}</span></span>
+{%- endmacro %}
+
+{# Starea goală, cu țiparul SafeEel. #}
+{% macro empty_state(title, body, button_url, button_label) -%}
+  <section class="empty">
+    <svg class="eel-big" aria-hidden="true" focusable="false"><use href="#i-eel"/></svg>
+    <div>
+      <h2>{{ title }}</h2>
+      <p>{{ body }}</p>
+      {% if button_url %}<a class="button button-primary" href="{{ button_url }}">{{ button_label }}</a>{% endif %}
+    </div>
+  </section>
 {%- endmacro %}

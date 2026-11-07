@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, device_name with context %}
+{% from "_macros.html" import sev, device_name, device_title, announced_sub with context %}
 {% block title %}{{ T('inv_title') }} · SafeEel{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -10,26 +10,26 @@
 </div>
 
 {% if scan is none %}
-  <p class="notice card">{{ T('no_data') }}</p>
+  <p class="notice">{{ T('no_data') }}</p>
 {% else %}
-  <div class="toolbar card">
-  <div class="toolbar-left">
-  {% if scan_list|length > 1 %}
-  <form class="picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
-    <label for="scan">{{ T('choose_scan') }}</label>
-    <div class="picker-row">
-      <select id="scan" name="scan" data-autosubmit>
-        {% for s in scan_list %}<option value="{{ loop.index0 }}"{% if loop.index0 == selected %} selected{% endif %}>{{ s.file }}</option>{% endfor %}
-      </select>
-      <button type="submit">{{ T('show') }}</button>
+  <div class="toolbar">
+    <div class="toolbar-left">
+    {% if scan_list|length > 1 %}
+      <form class="picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
+        <label for="scan">{{ T('choose_scan') }}</label>
+        <div class="picker-row">
+          <select id="scan" name="scan" data-autosubmit>
+            {% for s in scan_list %}<option value="{{ loop.index0 }}"{% if loop.index0 == selected %} selected{% endif %}>{{ s.file }}</option>{% endfor %}
+          </select>
+          <button type="submit">{{ T('show') }}</button>
+        </div>
+      </form>
+    {% endif %}
     </div>
-  </form>
-  {% endif %}
-  </div>
-  {% if scan.status != 'error' %}
-    {% set with_p = devices|selectattr('findings')|list|length %}
-    <p class="inv-summary">{{ T('inv_summary')|format(devices|length, with_p, devices|length - with_p) }}</p>
-  {% endif %}
+    {% if scan.status != 'error' %}
+      {% set with_p = devices|selectattr('findings')|list|length %}
+      <p class="inv-summary">{{ T('inv_summary')|format(devices|length, with_p, devices|length - with_p) }}</p>
+    {% endif %}
   </div>
 
   {% if scan.status == 'error' %}
@@ -38,26 +38,26 @@
       <p>{{ error_message(scan.error_code) }}</p>
     </section>
   {% else %}
-    <ul class="inventory">
+    <table class="rtable">
+      <caption class="sr-only">{{ T('inv_title') }}</caption>
+      <thead><tr>
+        <th scope="col">{{ T('type') }}</th><th scope="col">{{ T('ip') }}</th><th scope="col">{{ T('vendor') }}</th>
+        <th scope="col">{{ T('mac') }}</th><th scope="col">{{ T('inv_open_ports') }}</th><th scope="col">{{ T('inv_problems') }}</th>
+      </tr></thead>
+      <tbody>
       {% for d in devices %}
         {% set open_ports = d.host.ports|selectattr('state', 'equalto', 'open')|list %}
-        <li class="inv-item card rail-{{ d.max_severity or 'none' }}">
-          <div class="inv-head">
-            <h2><a href="{{ url_for('device', device_id=d.host.device_id, scan=selected) }}">{{ device_name(d.host) }}</a> <span class="mono ip" translate="no">{{ d.host.ip }}</span></h2>
-            <p class="inv-status">
-              {% if d.findings %}{{ sev(d.max_severity) }} <span class="muted">{{ d.findings|length }} {{ T('device_problem') if d.findings|length == 1 else T('device_problems') }}</span>
-              {% else %}<span class="inv-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('inv_ok') }}</span>{% endif %}
-            </p>
-          </div>
-          <dl class="facts">
-            <div><dt>{{ T('vendor') }}</dt><dd>{% if d.host.vendor %}{{ d.host.vendor }}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}{{ T('unknown') }}{% endif %}</dd></div>
-            <div><dt>{{ T('mac') }}</dt><dd class="mono" translate="no">{{ d.host.mac_masked or T('unknown') }}</dd></div>
-            {% if d.host.hostname %}<div><dt>{{ T('hostname') }}</dt><dd>{{ d.host.hostname }}</dd></div>{% endif %}
-            <div><dt>{{ T('inv_open_ports') }}</dt><dd>{% for p in open_ports %}<span class="mono" translate="no">{{ p.port }}/{{ p.proto }}</span>{% if p.service %} <span class="muted">{{ p.service }}</span>{% endif %}{% if not loop.last %}, {% endif %}{% else %}{{ T('inv_no_ports') }}{% endfor %}</dd></div>
-          </dl>
-        </li>
+        <tr>
+          <td class="rt-main"><span class="rt-name"><a href="{{ url_for('device', device_id=d.host.device_id, scan=selected) }}">{{ device_title(d.host) }}</a></span>{% if announced(d.host.ip) %}<br>{{ announced_sub(d.host) }}{% endif %}{% if d.host.hostname %}<br><span class="muted">{{ d.host.hostname }}</span>{% endif %}</td>
+          <td data-label="{{ T('ip') }}"><div><span class="mono" translate="no">{{ d.host.ip }}</span></div></td>
+          <td data-label="{{ T('vendor') }}"><div>{% if d.host.vendor %}{{ d.host.vendor }}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}<span class="muted">{{ T('unknown') }}</span>{% endif %}</div></td>
+          <td data-label="{{ T('mac') }}"><div><span class="mono" translate="no">{{ d.host.mac_masked or T('unknown') }}</span></div></td>
+          <td data-label="{{ T('inv_open_ports') }}"><div>{% for p in open_ports %}<span class="mono" translate="no">{{ p.port }}/{{ p.proto }}</span>{% if p.service %} <span class="muted">{{ p.service }}</span>{% endif %}{% if not loop.last %}<br>{% endif %}{% else %}<span class="muted">{{ T('inv_no_ports') }}</span>{% endfor %}</div></td>
+          <td data-label="{{ T('inv_problems') }}"><div>{% if d.findings %}{{ sev(d.max_severity) }}<br><span class="muted">{{ d.findings|length }} {{ T('device_problem') if d.findings|length == 1 else T('device_problems') }}</span>{% else %}<span class="sev sev-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('inv_ok') }}</span>{% endif %}</div></td>
+        </tr>
       {% endfor %}
-    </ul>
+      </tbody>
+    </table>
   {% endif %}
 {% endif %}
 {% endblock %}
