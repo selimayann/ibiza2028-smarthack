@@ -171,12 +171,16 @@ def find_scan(file: str, started_at: int | None, path: str | Path | None = None)
 
 
 def previous_scan_id(scan_id: int, path: str | Path | None = None) -> int | None:
-    """Scanarea dinaintea celei date, în ordinea istoricului."""
-    ids = [s.id for s in list_scans(path)]
+    """Ultima scanare citibilă (status "ok") dinaintea celei date, în ordinea istoricului.
+    Fișierele cu eroare n-au dispozitive, deci o comparație cu ele ar arăta totul ca „nou”."""
+    items = list_scans(path)
+    ids = [s.id for s in items]
     if scan_id not in ids:
         return None
-    i = ids.index(scan_id)
-    return ids[i - 1] if i > 0 else None
+    for s in reversed(items[: ids.index(scan_id)]):
+        if s.status == "ok":
+            return s.id
+    return None
 
 
 def delete_history(path: str | Path | None = None) -> None:

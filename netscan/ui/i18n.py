@@ -14,6 +14,42 @@ TEXTS: dict[str, dict[str, str]] = {
         "history_hint": "Deschide o scanare ca să vezi ce s-a schimbat față de cea dinainte.",
         "nav_overview": "Rezumat",
         "nav_history": "Istoric",
+        "nav_journal": "Jurnal",
+        "report_link": "Raport pentru furnizorul IT",
+        "report_title": "Raport de securitate a rețelei",
+        "report_for": "Pentru furnizorul IT sau persoana care administrează rețeaua.",
+        "report_generated": "Generat la",
+        "report_print": "Tipărește sau salvează ca PDF",
+        "report_download": "Descarcă raportul (HTML)",
+        "report_back": "Înapoi",
+        "report_summary": "Pe scurt",
+        "report_devices": "Dispozitive",
+        "report_problems": "Probleme",
+        "report_problems_detail": "Probleme și pași de reparare, în ordinea riscului",
+        "report_device": "Dispozitiv",
+        "report_none": "Nu am găsit nicio problemă din catalog.",
+        "report_footer": "Problemele, severitățile și scorul vin doar din reguli fixe (catalogul oficial de 15 coduri), nu din AI. Adresele MAC sunt mascate. Scorul standard = 100 minus suma punctelor, minimum 0.",
+        "report_std": "Standarde",
+        "report_fix_first": "Ce faci întâi",
+        "report_more": "Explicațiile pe înțeles și toți pașii de reparare sunt în aplicație, pe pagina fiecărui dispozitiv.",
+        "ask_title": "Întreabă despre rețeaua ta",
+        "ask_label": "Întrebarea ta",
+        "ask_button": "Întreabă",
+        "ask_examples": "De exemplu:",
+        "ask_ex1": "Care e cel mai periculos dispozitiv?",
+        "ask_ex2": "Ce fac întâi?",
+        "ask_ex3": "Ce înseamnă scorul?",
+        "ask_ex4": "Ce s-a schimbat?",
+        "ask_you": "Ai întrebat:",
+        "ask_src_fallback": "Răspuns construit doar din scanare, fără internet.",
+        "ask_src_llm": "Răspuns generat și verificat: orice IP, port sau cod din el există în scanare.",
+        "journal_title": "Jurnalul de securitate",
+        "journal_hint": "Ce s-a schimbat în rețea de la o scanare la alta, cele mai noi primele. Se completează când salvezi scanări în istoric.",
+        "journal_empty": "Încă nu e nimic în jurnal. Salvează cel puțin două scanări în istoric ca să vezi ce s-a schimbat.",
+        "journal_scan": "Scanarea din %s (%s)",
+        "journal_no_change": "Nicio schimbare față de scanarea dinainte.",
+        "alerts_title": "Ce s-a schimbat",
+        "alerts_count": "%s schimbări",
         "lang_switch": "English",
         "skip_link": "Sari la conținut",
         "score_label": "Scor standard",
@@ -106,6 +142,42 @@ TEXTS: dict[str, dict[str, str]] = {
         "history_hint": "Open a scan to see what changed since the one before.",
         "nav_overview": "Overview",
         "nav_history": "History",
+        "nav_journal": "Journal",
+        "report_link": "Report for your IT provider",
+        "report_title": "Network security report",
+        "report_for": "For the IT provider or the person who looks after the network.",
+        "report_generated": "Generated on",
+        "report_print": "Print or save as PDF",
+        "report_download": "Download the report (HTML)",
+        "report_back": "Back",
+        "report_summary": "Summary",
+        "report_devices": "Devices",
+        "report_problems": "Problems",
+        "report_problems_detail": "Problems and repair steps, highest risk first",
+        "report_device": "Device",
+        "report_none": "No problems from the catalog were found.",
+        "report_footer": "Problems, severities and the score come only from fixed rules (the official catalog of 15 codes), not from AI. MAC addresses are masked. Standard score = 100 minus the sum of points, minimum 0.",
+        "report_std": "Standards",
+        "report_fix_first": "What to do first",
+        "report_more": "Plain-language explanations and all repair steps are in the app, on each device page.",
+        "ask_title": "Ask about your network",
+        "ask_label": "Your question",
+        "ask_button": "Ask",
+        "ask_examples": "For example:",
+        "ask_ex1": "Which device is the most dangerous?",
+        "ask_ex2": "What should I do first?",
+        "ask_ex3": "What does the score mean?",
+        "ask_ex4": "What changed?",
+        "ask_you": "You asked:",
+        "ask_src_fallback": "Answer built only from the scan, without internet.",
+        "ask_src_llm": "Generated and checked answer: every IP, port or code in it exists in the scan.",
+        "journal_title": "Security journal",
+        "journal_hint": "What changed on the network from one scan to the next, newest first. It fills in as you save scans to history.",
+        "journal_empty": "Nothing in the journal yet. Save at least two scans to history to see what changed.",
+        "journal_scan": "Scan from %s (%s)",
+        "journal_no_change": "No changes since the previous scan.",
+        "alerts_title": "What changed",
+        "alerts_count": "%s changes",
         "lang_switch": "Română",
         "skip_link": "Skip to content",
         "score_label": "Standard score",
@@ -243,3 +315,60 @@ def error_message(lang: str, code: str | None) -> str:
 def device_type_label(lang: str, device_type: str | None) -> str:
     types = DEVICE_TYPES[normalize_lang(lang)]
     return types.get(device_type or "unknown", types["unknown"])
+
+
+# Nume scurte, pe înțeles, pentru cele 15 coduri (doar etichete în UI; explicațiile vin din netscan/explain).
+CODE_NAMES: dict[str, dict[str, str]] = {
+    "ro": {
+        "TELNET_OPEN": "Telnet deschis", "RDP_EXPOSED": "Desktop la distanță (RDP) expus",
+        "VNC_EXPOSED": "Control la distanță (VNC) expus", "DB_EXPOSED": "Bază de date expusă",
+        "CAMERA_STREAM_EXPOSED": "Imaginea camerei expusă", "OUTDATED_SERVICE": "Program învechit",
+        "FTP_CLEARTEXT": "FTP necriptat", "HTTP_ADMIN_CLEARTEXT": "Pagină de administrare necriptată",
+        "SMB_EXPOSED": "Partajare de fișiere (SMB) expusă", "MQTT_EXPOSED": "Mesagerie IoT (MQTT) expusă",
+        "UPNP_EXPOSED": "UPnP pornit", "SNMP_EXPOSED": "SNMP expus",
+        "PRINTER_RAW_EXPOSED": "Imprimantă accesibilă direct", "UNKNOWN_DEVICE": "Dispozitiv necunoscut",
+        "SSH_OPEN": "SSH deschis",
+    },
+    "en": {
+        "TELNET_OPEN": "Telnet open", "RDP_EXPOSED": "Remote desktop (RDP) exposed",
+        "VNC_EXPOSED": "Remote control (VNC) exposed", "DB_EXPOSED": "Database exposed",
+        "CAMERA_STREAM_EXPOSED": "Camera stream exposed", "OUTDATED_SERVICE": "Outdated software",
+        "FTP_CLEARTEXT": "Unencrypted FTP", "HTTP_ADMIN_CLEARTEXT": "Unencrypted admin page",
+        "SMB_EXPOSED": "File sharing (SMB) exposed", "MQTT_EXPOSED": "IoT messaging (MQTT) exposed",
+        "UPNP_EXPOSED": "UPnP enabled", "SNMP_EXPOSED": "SNMP exposed",
+        "PRINTER_RAW_EXPOSED": "Printer directly reachable", "UNKNOWN_DEVICE": "Unknown device",
+        "SSH_OPEN": "SSH open",
+    },
+}
+
+# Propozițiile din jurnal (FR-13). {dev} = tipul dispozitivului, {ip}, {port} = "443/tcp", {name} = numele problemei.
+ALERT_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "NEW_DEVICE": "Un dispozitiv nou a apărut în rețea: {dev}, {ip}.",
+        "DEVICE_GONE": "Un dispozitiv nu mai apare în rețea: {dev}, {ip}.",
+        "PORT_OPENED": "Un port nou s-a deschis: {port} pe {dev}, {ip}.",
+        "PORT_CLOSED": "Portul {port} s-a închis pe {dev}, {ip}.",
+        "FINDING_NEW": "Problemă nouă: „{name}” pe {dev}, {ip}.",
+        "FINDING_RESOLVED": "Problema „{name}” a fost rezolvată pe {dev}, {ip}.",
+    },
+    "en": {
+        "NEW_DEVICE": "A new device appeared on the network: {dev}, {ip}.",
+        "DEVICE_GONE": "A device is no longer on the network: {dev}, {ip}.",
+        "PORT_OPENED": "A new port opened: {port} on {dev}, {ip}.",
+        "PORT_CLOSED": "Port {port} closed on {dev}, {ip}.",
+        "FINDING_NEW": "New problem: “{name}” on {dev}, {ip}.",
+        "FINDING_RESOLVED": "The problem “{name}” was fixed on {dev}, {ip}.",
+    },
+}
+
+
+def code_name(lang: str, code: str | None) -> str:
+    return CODE_NAMES[normalize_lang(lang)].get(code or "", code or "")
+
+
+def alert_text(lang: str, alert) -> str:
+    """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template)."""
+    lang = normalize_lang(lang)
+    dev = device_type_label(lang, alert.device_type)
+    port = f"{alert.port}/{alert.proto}" if alert.proto else (str(alert.port) if alert.port is not None else "")
+    return ALERT_TEXTS[lang][alert.kind].format(dev=dev, ip=alert.ip, port=port, name=code_name(lang, alert.code))

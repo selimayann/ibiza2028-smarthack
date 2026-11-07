@@ -1,0 +1,60 @@
+/* Raportul pentru furnizorul IT (FR-14): sobru, tipăribil pe A4, fără resurse externe. */
+:root { --ink: #111a24; --muted: #4a5768; --line: #c9d1da; --high: #b3261e; --fair: #8f4700; --good: #16663a; --link: #0b5394; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #eef1f4; color: var(--ink); font: 16px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+a { color: var(--link); }
+:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.report-actions { max-width: 52rem; margin: 1rem auto 0; padding: 0 1rem; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; }
+.report-actions a, .report-actions button { min-height: 2.75rem; display: inline-flex; align-items: center; }
+.report-actions button { font: inherit; padding: .4rem .9rem; border: 2px solid var(--link); color: var(--link); background: #fff; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.report { max-width: 52rem; margin: 1rem auto 2rem; background: #fff; padding: 2rem 2.2rem; border-radius: 10px; }
+h1 { font-size: 1.75em; margin: 0; line-height: 1.2; }
+h2 { font-size: 1.2em; margin: 1.6rem 0 .6rem; padding-bottom: .25rem; border-bottom: 2px solid var(--ink); }
+h3 { font-size: 1.05em; margin: 0 0 .25rem; }
+p { margin: .3rem 0; }
+.r-muted { color: var(--muted); }
+.r-mono, .r-code { font-family: ui-monospace, Consolas, "Courier New", monospace; overflow-wrap: anywhere; }
+.r-code { color: var(--muted); font-size: .9em; font-weight: 400; }
+.r-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem 2rem; align-items: flex-start; }
+.r-meta { margin: 0; display: grid; grid-template-columns: auto auto; gap: .1rem .8rem; }
+.r-meta div { display: contents; }
+.r-meta dt { color: var(--muted); }
+.r-meta dd { margin: 0; overflow-wrap: anywhere; }
+.r-summary { display: grid; grid-template-columns: minmax(10rem, 14rem) 1fr; gap: 1.5rem; margin-top: 1.5rem; align-items: start; }
+.r-score { border: 2px solid currentColor; border-radius: 10px; padding: .8rem 1rem; }
+.r-score p { color: var(--ink); }
+.r-good { color: var(--good); } .r-fair { color: var(--fair); } .r-poor { color: var(--high); }
+.r-score .r-band { color: inherit; font-weight: 700; font-size: 1.15em; }
+.r-label { font-weight: 700; }
+.r-num { font-size: 2.6em; font-weight: 800; line-height: 1; }
+.r-counts ul { margin: .3em 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: .1em 1.2em; }
+.r-first { margin-top: .6rem; padding: .6rem .8rem; border-left: 5px solid var(--ink); background: #f3f5f7; }
+table { width: 100%; border-collapse: collapse; font-size: .95em; }
+th, td { text-align: left; vertical-align: top; padding: .4rem .5rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+th { color: var(--muted); }
+.r-small { font-size: .875em; }
+.r-nowrap { white-space: nowrap; overflow-wrap: normal; }
+.r-table tr { break-inside: avoid; }
+.r-table .r-n { width: 1.5em; }
+.r-box { padding: 1rem; border: 2px solid var(--high); border-radius: 10px; margin-top: 1.5rem; }
+.r-foot { margin-top: 1.6em; padding-top: .8em; border-top: 1px solid var(--line); color: var(--muted); font-size: .9em; }
+@media (max-width: 40rem) {
+  .report { padding: 1.2rem 1rem; border-radius: 0; }
+  .r-summary { grid-template-columns: 1fr; }
+  table, thead, tbody, tr, th, td { display: block; }
+  thead { position: absolute; left: -9999px; }
+  tr { border-bottom: 1px solid var(--line); padding: .4rem 0; }
+  td { border: 0; padding: .1rem 0; }
+}
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff; font-size: 9pt; line-height: 1.3; }
+  .r-table th:nth-child(2) { width: 40%; } .r-table th:nth-child(3) { width: 22%; }
+  h1 { font-size: 16pt; } h2 { font-size: 11.5pt; margin: 10pt 0 4pt; }
+  .r-summary { margin-top: 8pt; gap: 12pt; } .r-num { font-size: 22pt; }
+  th, td { padding: 2.5pt 4pt; } .r-foot { margin-top: 8pt; }
+  .report-actions, .r-std { display: none; }  /* standardele rămân în aplicație și în HTML; pe hârtie, o pagină */
+  .report { max-width: none; margin: 0; padding: 0; border-radius: 0; }
+  h2 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
