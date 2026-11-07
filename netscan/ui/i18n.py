@@ -1,0 +1,203 @@
+"""Toate textele UI, în RO și EN, într-un singur loc (nu împrăștiate prin template-uri)."""
+from __future__ import annotations
+
+LANGS = ("ro", "en")
+DEFAULT_LANG = "ro"
+
+TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "app_title": "Rețeaua ta, pe înțeles",
+        "nav_overview": "Rezumat",
+        "nav_history": "Istoric",
+        "lang_switch": "English",
+        "skip_link": "Sari la conținut",
+        "score_label": "Scor standard",
+        "score_of": "din 100",
+        "band_good": "Bun",
+        "band_fair": "De îmbunătățit",
+        "band_poor": "Risc mare",
+        "scan_file": "Fișier",
+        "scan_date": "Data scanării",
+        "choose_scan": "Alege scanarea",
+        "show": "Arată",
+        "worst_title": "Cel mai periculos dispozitiv",
+        "worst_problem": "Cea mai gravă problemă",
+        "do_first": "Fă asta întâi:",
+        "no_problems_title": "Nicio problemă găsită",
+        "no_problems_body": "Nu am găsit nimic din catalogul de probleme pe dispozitivele scanate.",
+        "devices_title": "Dispozitive, de la cel mai periculos",
+        "device_problems": "probleme",
+        "device_problem": "problemă",
+        "device_points": "puncte",
+        "no_findings": "Nicio problemă pe acest dispozitiv.",
+        "details": "Detalii",
+        "ip": "IP",
+        "mac": "MAC (mascat)",
+        "vendor": "Producător",
+        "hostname": "Nume în rețea",
+        "type": "Tip",
+        "unknown": "necunoscut",
+        "port": "Port",
+        "service": "Serviciu",
+        "state": "Stare",
+        "product": "Produs",
+        "page_title": "Titlul paginii",
+        "evidence": "Dovadă",
+        "severity": "Severitate",
+        "ports_title": "Porturi văzute",
+        "findings_title": "Probleme",
+        "what_it_means": "Ce înseamnă",
+        "how_to_fix": "Cum repari",
+        "back": "Înapoi la rezumat",
+        "history_title": "Istoricul scanărilor",
+        "history_empty": "Istoricul e gol. Nicio scanare salvată încă.",
+        "history_delete": "Șterge istoricul meu",
+        "history_delete_confirm_title": "Sigur ștergi tot istoricul?",
+        "history_delete_confirm_body": "Toate scanările salvate pe acest calculator vor fi șterse definitiv. Nu se poate anula.",
+        "history_delete_yes": "Da, șterge tot",
+        "history_delete_no": "Nu, înapoi",
+        "history_deleted": "Istoricul a fost șters.",
+        "open": "Deschide",
+        "compare_title": "Față de scanarea anterioară",
+        "compare_none": "Aceasta e prima scanare din istoric, nu am cu ce compara.",
+        "resolved": "Probleme rezolvate",
+        "new_findings": "Probleme noi",
+        "new_devices": "Dispozitive noi",
+        "removed_devices": "Dispozitive dispărute",
+        "opened_ports": "Porturi deschise acum",
+        "closed_ports": "Porturi închise acum",
+        "score_change": "Scor",
+        "none": "niciunul",
+        "not_found": "Nu am găsit pagina sau dispozitivul cerut.",
+        "error_title": "Fișierul nu poate fi analizat",
+        "no_data": "Nu există încă nicio scanare de afișat.",
+        "sev_high": "Ridicat",
+        "sev_medium": "Mediu",
+        "sev_low": "Scăzut",
+        "sev_info": "Informativ",
+    },
+    "en": {
+        "app_title": "Your network, simply explained",
+        "nav_overview": "Overview",
+        "nav_history": "History",
+        "lang_switch": "Română",
+        "skip_link": "Skip to content",
+        "score_label": "Standard score",
+        "score_of": "out of 100",
+        "band_good": "Good",
+        "band_fair": "Needs work",
+        "band_poor": "High risk",
+        "scan_file": "File",
+        "scan_date": "Scan date",
+        "choose_scan": "Choose scan",
+        "show": "Show",
+        "worst_title": "Most dangerous device",
+        "worst_problem": "Most serious problem",
+        "do_first": "Do this first:",
+        "no_problems_title": "No problems found",
+        "no_problems_body": "Nothing from the problem catalog was found on the scanned devices.",
+        "devices_title": "Devices, most dangerous first",
+        "device_problems": "problems",
+        "device_problem": "problem",
+        "device_points": "points",
+        "no_findings": "No problems on this device.",
+        "details": "Details",
+        "ip": "IP",
+        "mac": "MAC (masked)",
+        "vendor": "Vendor",
+        "hostname": "Network name",
+        "type": "Type",
+        "unknown": "unknown",
+        "port": "Port",
+        "service": "Service",
+        "state": "State",
+        "product": "Product",
+        "page_title": "Page title",
+        "evidence": "Evidence",
+        "severity": "Severity",
+        "ports_title": "Ports seen",
+        "findings_title": "Problems",
+        "what_it_means": "What it means",
+        "how_to_fix": "How to fix it",
+        "back": "Back to overview",
+        "history_title": "Scan history",
+        "history_empty": "History is empty. No scans saved yet.",
+        "history_delete": "Delete my history",
+        "history_delete_confirm_title": "Delete all history?",
+        "history_delete_confirm_body": "Every scan saved on this computer will be permanently deleted. This cannot be undone.",
+        "history_delete_yes": "Yes, delete everything",
+        "history_delete_no": "No, go back",
+        "history_deleted": "History deleted.",
+        "open": "Open",
+        "compare_title": "Compared with the previous scan",
+        "compare_none": "This is the first scan in history, there is nothing to compare with.",
+        "resolved": "Resolved problems",
+        "new_findings": "New problems",
+        "new_devices": "New devices",
+        "removed_devices": "Devices gone",
+        "opened_ports": "Newly open ports",
+        "closed_ports": "Newly closed ports",
+        "score_change": "Score",
+        "none": "none",
+        "not_found": "The page or device you asked for was not found.",
+        "error_title": "This file cannot be analysed",
+        "no_data": "There is no scan to show yet.",
+        "sev_high": "High",
+        "sev_medium": "Medium",
+        "sev_low": "Low",
+        "sev_info": "Info",
+    },
+}
+
+# Mesaje prietenoase per error_code (fără stack trace).
+ERROR_MESSAGES: dict[str, dict[str, str]] = {
+    "ro": {
+        "EMPTY": "Fișierul e gol.",
+        "TRUNCATED": "Fișierul nu poate fi citit: pare incomplet.",
+        "INVALID_XML": "Fișierul nu poate fi citit: nu e un XML valid.",
+        "XML_FORBIDDEN": "Fișierul conține construcții XML periculoase și a fost refuzat.",
+        "NOT_NMAP": "Fișierul nu pare a fi o scanare nmap.",
+        "TOO_LARGE": "Fișierul e prea mare pentru a fi analizat.",
+        "_default": "Fișierul nu poate fi citit.",
+    },
+    "en": {
+        "EMPTY": "The file is empty.",
+        "TRUNCATED": "The file cannot be read: it looks incomplete.",
+        "INVALID_XML": "The file cannot be read: it is not valid XML.",
+        "XML_FORBIDDEN": "The file contains dangerous XML constructs and was rejected.",
+        "NOT_NMAP": "The file does not look like an nmap scan.",
+        "TOO_LARGE": "The file is too large to analyse.",
+        "_default": "The file cannot be read.",
+    },
+}
+
+DEVICE_TYPES: dict[str, dict[str, str]] = {
+    "ro": {
+        "router": "Router", "camera": "Cameră", "printer": "Imprimantă", "tv": "Televizor",
+        "pc_windows": "Calculator Windows", "server": "Server", "phone_laptop": "Telefon sau laptop",
+        "iot": "Dispozitiv inteligent (IoT)", "unknown": "Dispozitiv necunoscut",
+    },
+    "en": {
+        "router": "Router", "camera": "Camera", "printer": "Printer", "tv": "TV",
+        "pc_windows": "Windows computer", "server": "Server", "phone_laptop": "Phone or laptop",
+        "iot": "Smart device (IoT)", "unknown": "Unknown device",
+    },
+}
+
+
+def normalize_lang(value: str | None) -> str:
+    return value if value in LANGS else DEFAULT_LANG
+
+
+def t(lang: str, key: str) -> str:
+    return TEXTS[normalize_lang(lang)].get(key, key)
+
+
+def error_message(lang: str, code: str | None) -> str:
+    msgs = ERROR_MESSAGES[normalize_lang(lang)]
+    return msgs.get(code or "", msgs["_default"])
+
+
+def device_type_label(lang: str, device_type: str | None) -> str:
+    types = DEVICE_TYPES[normalize_lang(lang)]
+    return types.get(device_type or "unknown", types["unknown"])

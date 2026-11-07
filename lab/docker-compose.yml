@@ -1,0 +1,41 @@
+# Țintele din lab (laptopul-țintă). Simulăm, nu expunem: fără date, fără parole reale.
+#
+# Porturile se publică DOAR pe IP-ul din LAB_BIND (implicit 127.0.0.1).
+# Pe hotspot:   LAB_BIND=<IP-ul laptopului-țintă din hotspot> docker compose -f lab/docker-compose.yml up -d
+# Oprire:       docker compose -f lab/docker-compose.yml down
+# Doar redis (pentru scanarea 3): docker compose -f lab/docker-compose.yml stop redis
+
+name: netscan-lab
+
+x-hardening: &hardening
+  restart: "no"
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  redis:
+    # DB_EXPOSED: imaginea oficială nu are parolă. Fără persistență, fără date.
+    image: redis
+    <<: *hardening
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${LAB_BIND:-127.0.0.1}:6379:6379"
+
+  mosquitto:
+    # MQTT_EXPOSED: 1.6 e intenționat (2.x ascultă implicit doar local).
+    image: eclipse-mosquitto:1.6
+    <<: *hardening
+    volumes:
+      # sys_interval 0: altfel nmap -sV raportează serviciul ca „mosquitto version 1.6.15”, nu „mqtt”
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "${LAB_BIND:-127.0.0.1}:1883:1883"
+
+  nginx:
+    # HTTP_ADMIN_CLEARTEXT: HTTP simplu, titlul paginii „Admin Login”.
+    image: nginx
+    <<: *hardening
+    volumes:
+      - ./nginx/index.html:/usr/share/nginx/html/index.html:ro
+    ports:
+      - "${LAB_BIND:-127.0.0.1}:8080:80"

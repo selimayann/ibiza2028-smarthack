@@ -1,0 +1,13 @@
+{# Severitatea: iconiță + etichetă text, niciodată doar culoare. #}
+{% macro sev(severity) -%}
+  {%- set icons = {'high': '🔴', 'medium': '🟠', 'low': '🟡', 'info': 'ℹ️'} -%}
+  <span class="sev sev-{{ severity }}"><span aria-hidden="true">{{ icons.get(severity, '•') }}</span> {{ T('sev_' ~ severity) }}</span>
+{%- endmacro %}
+
+{% macro port_label(f) -%}
+  {%- if f.port is not none -%}{{ T('port') }} {{ f.port }}{%- else -%}—{%- endif -%}
+{%- endmacro %}
+
+{% macro device_name(host) -%}
+  {{ device_type_label(host.device_type) }} · {{ host.ip }}
+{%- endmacro %}
