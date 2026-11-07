@@ -19,7 +19,7 @@ fișiere nmap XML (Validation / Test Set, lab) ───────┴─> pars
 | `netscan/explain/` | textele RO/EN pentru cele 15 coduri, glosar |
 | `netscan/ui/` | Flask + Jinja2 (autoescape), SQLite, diff, „cel mai periculos dispozitiv + ce fac întâi” |
 
-Stack: Python 3.11+, defusedxml, Flask, SQLite, psutil, pytest (470 de teste). Instalare: `pip install -e ".[dev]"`.
+Stack: Python 3.11+, defusedxml, Flask, SQLite, psutil, pytest (1 007 teste). Instalare: `pip install -e ".[dev]"`.
 
 ## Scanarea live: doar rețeaua noastră
 1. **Interfața:** cea cu ruta implicită; interfețele virtuale (Docker, WSL/Hyper-V, VirtualBox, VPN) sunt ignorate, inclusiv un adaptor VirtualBox numit „Ethernet 2” (după descriere). Două rețele fizice active → refuz.
@@ -36,6 +36,8 @@ Hotspot iPhone `RSH-Ibiza2028` (`172.20.10.0/28`), laptop-scanner (Windows, nmap
 ## Cifre
 - **Validation Set:** 24/24 de rânduri și 8/8 scoruri identice cu baremul (V7 = ERROR); două rulări identice byte cu byte.
 - **Analiză:** 0,27 s pentru cele 8 fișiere. **Scanare live:** 3 min 25 s pentru /28 cu 2 dispozitive.
+- **Fișier mare:** un XML de 17,7 MB (22 780 de dispozitive, 28 475 de findings), aproape de limita de 20 MB, e analizat în 4,5–5,2 s pe un laptop obișnuit (WSL).
+- **Explicații:** explicațiile trec un test automat de limbaj simplu (`tests/test_plain_language.py`): fără jargon neexplicat, propoziții de max. 20 de cuvinte, pași care încep cu o acțiune, LIX mediu 40,2 (RO) și 34,7 (EN). Fiecare cod are și un rând „ce poate face cineva rău intenționat”. Testul e automat; nu au fost testate cu un om netehnic.
 - **Securitate:** gitleaks pe istoric și pe fișiere: fără secrete. MAC real aruncat în parser (doar `AA:BB:CC:XX:XX:XX` și hash cu salt local). SQL parametrizat, autoescape, buton „șterge istoricul”.
 
 ## Presupuneri (confirmate de mentori, vezi questions.md)
