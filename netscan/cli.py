@@ -8,6 +8,7 @@ Fișier COMUN. Fiecare adaugă doar comanda lui, după ce anunță echipa:
 from __future__ import annotations
 
 import argparse
+import sys
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,6 +35,34 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _cmd_analyze(folder: str, out: str) -> int:
+    # Import local: celelalte comenzi nu au nevoie de motor la pornire.
+    from netscan.engine import analyze_folder, write_results
+    from netscan.engine.common import STATUS_ERROR
+
+    try:
+        scans = analyze_folder(folder)
+    except NotADirectoryError:
+        print(f"Eroare: '{folder}' nu este un folder.", file=sys.stderr)
+        return 2
+    if not scans:
+        print(f"Atenție: nu am găsit fișiere .xml în '{folder}'.", file=sys.stderr)
+    for scan in scans:
+        if scan.status == STATUS_ERROR:
+            print(f"{scan.file}: EROARE ({scan.error_code})")
+        else:
+            print(f"{scan.file}: scor {scan.score}, {len(scan.findings)} constatări")
+    findings_path, scores_path = write_results(scans, out)
+    print(f"Scrise: {findings_path} și {scores_path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    # Consola Windows poate avea o codare fără diacritice: print() nu trebuie să crape.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     args = build_parser().parse_args(argv)
+    if args.command == "analyze":
+        return _cmd_analyze(args.folder, args.out)
     raise NotImplementedError(f"Comanda '{args.command}' nu e implementată încă.")
