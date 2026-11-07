@@ -72,3 +72,16 @@ def test_journal_page(tmp_path):
     assert "Jurnalul de securitate" in html
     assert "a fost rezolvată pe Router, 192.168.1.1." in html
     assert html.count('class="alert alert-good"') >= 3
+
+
+def test_resolved_finding_keeps_device_type_from_old_scan():
+    """Dacă o imprimantă își pierde porturile, tipul estimat din scanarea nouă se schimbă; problema rezolvată
+    se spune totuși pe dispozitivul așa cum era când exista problema."""
+    old = Scan(file="a.xml", status="ok", score=95, started_at=1,
+               hosts=[_h("p", "10.0.0.10", (9100,), "PrintCo", "printer")],
+               findings=[_f("p", "10.0.0.10", 9100, "PRINTER_RAW_EXPOSED")])
+    new = Scan(file="b.xml", status="ok", score=100, started_at=2,
+               hosts=[_h("p", "10.0.0.10", (), "PrintCo", "phone_laptop")])
+    out = al.alerts_between(old, new)
+    resolved = [a for a in out if a.kind == al.FINDING_RESOLVED]
+    assert len(resolved) == 1 and resolved[0].device_type == "printer"

@@ -50,11 +50,16 @@ def alerts_between(old: Scan, new: Scan, scan_id: int | None = None) -> list[Ale
     d = storage.diff(old, new)
     hosts: dict[str, Host] = {h.device_id: h for h in old.hosts} | {h.device_id: h for h in new.hosts}
     mapping = storage.match_devices(old, new)
+    old_hosts: dict[str, Host] = {h.device_id: h for h in old.hosts}
 
-    def mk(kind: str, device_id: str, **kw) -> Alert:
+    def mk(kind: str, device_id: str, type_from: Host | None = None, **kw) -> Alert:
         h = hosts.get(device_id)
+        # O problemă rezolvată (sau un port închis) se spune pe dispozitivul așa cum era când exista problema:
+        # tipul estimat din scanarea nouă poate fi altul dacă dispozitivul și-a pierdut porturile.
+        shown = type_from or h
         return Alert(kind=kind, scan_id=scan_id, started_at=new.started_at, file=new.file, device_id=device_id,
-                     ip=kw.pop("ip", None) or (h.ip if h else ""), device_type=h.device_type if h else None, **kw)
+                     ip=kw.pop("ip", None) or (h.ip if h else ""), device_type=shown.device_type if shown else None,
+                     **kw)
 
     new_ids = {h.device_id for h in d.new_devices}
     gone_ids = {h.device_id for h in d.removed_devices}
@@ -63,12 +68,12 @@ def alerts_between(old: Scan, new: Scan, scan_id: int | None = None) -> list[Ale
     out += [mk(DEVICE_GONE, h.device_id) for h in d.removed_devices]
     # Porturile unui dispozitiv nou sau dispărut sunt deja spuse de alerta pentru dispozitiv.
     out += [mk(PORT_OPENED, dev, port=p, proto=pr) for dev, p, pr in d.opened_ports if dev not in new_ids]
-    out += [mk(PORT_CLOSED, dev, port=p, proto=pr) for dev, p, pr in d.closed_ports
+    out += [mk(PORT_CLOSED, dev, type_from=old_hosts.get(dev), port=p, proto=pr) for dev, p, pr in d.closed_ports
             if dev not in gone_ids and dev not in new_ids]
     out += [mk(FINDING_NEW, f.device_id, ip=f.ip, port=f.port, code=f.code, severity=f.severity)
             for f in d.new_findings]
-    out += [mk(FINDING_RESOLVED, mapping.get(f.device_id, f.device_id), ip=f.ip, port=f.port, code=f.code,
-               severity=f.severity) for f in d.resolved_findings]
+    out += [mk(FINDING_RESOLVED, mapping.get(f.device_id, f.device_id), type_from=old_hosts.get(f.device_id),
+               ip=f.ip, port=f.port, code=f.code, severity=f.severity) for f in d.resolved_findings]
     out.sort(key=lambda a: (KIND_ORDER.index(a.kind), ip_key(a.ip), a.port if a.port is not None else -1,
                             a.code or ""))
     return out
