@@ -1,0 +1,146 @@
+{
+  "file": "V2_smart_home.xml",
+  "started_at": 1762500000,
+  "status": "ok",
+  "error_code": null,
+  "score": 40,
+  "hosts": [
+    {
+      "ip": "192.168.1.1",
+      "device_id": "d1a2b3c4d5e6",
+      "mac_masked": "AA:BB:CC:XX:XX:XX",
+      "vendor": "ExempluVendor",
+      "hostname": null,
+      "device_type": "router",
+      "ports": [
+        {
+          "port": 80,
+          "proto": "tcp",
+          "state": "open",
+          "service": "http",
+          "product": null,
+          "version": null,
+          "extrainfo": null,
+          "tunnel": null,
+          "title": "Router Login"
+        },
+        {
+          "port": 1900,
+          "proto": "udp",
+          "state": "open",
+          "service": "upnp",
+          "product": null,
+          "version": null,
+          "extrainfo": null,
+          "tunnel": null,
+          "title": null
+        }
+      ]
+    },
+    {
+      "ip": "192.168.1.40",
+      "device_id": "e1f2a3b4c5d6",
+      "mac_masked": "DD:EE:FF:XX:XX:XX",
+      "vendor": "ExempluCam",
+      "hostname": null,
+      "device_type": "camera",
+      "ports": [
+        {
+          "port": 554,
+          "proto": "tcp",
+          "state": "open",
+          "service": "rtsp",
+          "product": null,
+          "version": null,
+          "extrainfo": null,
+          "tunnel": null,
+          "title": null
+        },
+        {
+          "port": 80,
+          "proto": "tcp",
+          "state": "open",
+          "service": "http",
+          "product": null,
+          "version": null,
+          "extrainfo": null,
+          "tunnel": null,
+          "title": "Camera Admin"
+        }
+      ]
+    },
+    {
+      "ip": "192.168.1.41",
+      "device_id": "f1a2b3c4d5e7",
+      "mac_masked": "11:22:33:XX:XX:XX",
+      "vendor": "ExempluHub",
+      "hostname": "smart-hub",
+      "device_type": "iot",
+      "ports": [
+        {
+          "port": 1883,
+          "proto": "tcp",
+          "state": "open",
+          "service": "mqtt",
+          "product": null,
+          "version": null,
+          "extrainfo": null,
+          "tunnel": null,
+          "title": null
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "file": "V2_smart_home.xml",
+      "ip": "192.168.1.1",
+      "device_id": "d1a2b3c4d5e6",
+      "port": 80,
+      "code": "HTTP_ADMIN_CLEARTEXT",
+      "severity": "medium",
+      "points": 10,
+      "evidence": "80/tcp http, titlu: Router Login"
+    },
+    {
+      "file": "V2_smart_home.xml",
+      "ip": "192.168.1.1",
+      "device_id": "d1a2b3c4d5e6",
+      "port": 1900,
+      "code": "UPNP_EXPOSED",
+      "severity": "medium",
+      "points": 10,
+      "evidence": "1900/udp upnp"
+    },
+    {
+      "file": "V2_smart_home.xml",
+      "ip": "192.168.1.40",
+      "device_id": "e1f2a3b4c5d6",
+      "port": 80,
+      "code": "HTTP_ADMIN_CLEARTEXT",
+      "severity": "medium",
+      "points": 10,
+      "evidence": "80/tcp http, titlu: Camera Admin"
+    },
+    {
+      "file": "V2_smart_home.xml",
+      "ip": "192.168.1.40",
+      "device_id": "e1f2a3b4c5d6",
+      "port": 554,
+      "code": "CAMERA_STREAM_EXPOSED",
+      "severity": "high",
+      "points": 20,
+      "evidence": "554/tcp rtsp"
+    },
+    {
+      "file": "V2_smart_home.xml",
+      "ip": "192.168.1.41",
+      "device_id": "f1a2b3c4d5e7",
+      "port": 1883,
+      "code": "MQTT_EXPOSED",
+      "severity": "medium",
+      "points": 10,
+      "evidence": "1883/tcp mqtt"
+    }
+  ]
+}
