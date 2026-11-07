@@ -149,6 +149,13 @@ button:disabled { opacity: .6; cursor: progress; }
 .saved { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; color: var(--good); font-weight: 700; min-height: 2.75rem; }
 .saved a { font-weight: 400; }
 
+/* ---------- fraza-rezumat: primul lucru pe pagină, înaintea oricărui card ---------- */
+.summary { margin: 0 0 1.5rem; padding: 1.1rem 1.4rem; background: var(--surface); border: 1px solid var(--line); border-left: .5rem solid var(--muted); border-radius: var(--radius); }
+.summary-problems { border-left-color: var(--high); }
+.summary-calm { border-left-color: var(--good); }
+.summary-text { margin: 0; max-width: 60ch; font-family: var(--head); font-size: 1.6rem; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+@media (max-width: 40rem) { .summary-text { font-size: 1.3rem; } }
+
 /* ---------- verdictul: scorul + cel mai periculos dispozitiv ---------- */
 .verdict { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 56rem) { .verdict { grid-template-columns: 21rem minmax(0, 1fr); align-items: stretch; } }

@@ -29,7 +29,7 @@
           <p class="steps-tally">{{ T('steps_tally')|format(steps.verified_count, steps.declared_count, steps.total) }}</p>
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
-            <form method="post" action="{{ url_for('action_done') }}" data-swap="#score, #worst" data-focus="#worst .verify-msg, #step-now">
+            <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .verify-msg, #step-now">
               {{ hidden }}
               <input type="hidden" name="device_id" value="{{ st.finding.device_id }}">
               <input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}">
@@ -38,13 +38,13 @@
             </form>
             {% endif %}
             <nav class="step-nav" aria-label="{{ T('step_nav') }}">
-              {% if st.number > 1 %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number - 1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
-              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number + 1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="next">{{ T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
+              {% if st.number > 1 %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number - 1) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
+              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number + 1) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
             </nav>
           </div>
           <p class="verify-note">{{ T('verify_note') }}</p>
           {% if steps.verified_count or steps.declared_count %}
-            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">
+            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
               {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
             </form>
           {% endif %}
@@ -54,8 +54,8 @@
           <p class="do-first-label" id="step-now" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('steps_all_done') }}</p>
           <p class="do-first-for">{{ T('steps_all_done_hint')|format(steps.verified_count, steps.declared_count) }}</p>
           <div class="do-first-actions">
-            <a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
-            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">
+            <a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=1) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
+            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
               {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
             </form>
           </div>
@@ -67,6 +67,13 @@
 {% if scan is none %}
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
+
+{# Fraza-rezumat: primul lucru pe care îl citești, înaintea oricărui card. Text simplu: se escapează (conține nume nesigure). #}
+{% if summary %}
+<section class="summary summary-{{ 'problems' if scan.status == 'ok' and worst else 'calm' }}" id="summary" aria-label="{{ T('summary_label') }}">
+  <p class="summary-text">{{ summary }}</p>
+</section>
+{% endif %}
 
 {# Bara scanării: ce scanare vezi (stânga) și ce poți face cu ea (dreapta). #}
 <div class="toolbar">

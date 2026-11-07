@@ -163,6 +163,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "scan_date": "Data scanării",
         "choose_scan": "Alege scanarea",
         "show": "Arată",
+        "summary_label": "Pe scurt",
         "worst_title": "Cel mai periculos dispozitiv",
         "worst_problem": "Cea mai gravă problemă",
         "do_first": "Fă asta întâi:",
@@ -398,6 +399,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "scan_date": "Scan date",
         "choose_scan": "Choose scan",
         "show": "Show",
+        "summary_label": "In short",
         "worst_title": "Most dangerous device",
         "worst_problem": "Most serious problem",
         "do_first": "Do this first:",
@@ -578,6 +580,80 @@ ALERT_TEXTS: dict[str, dict[str, str]] = {
 
 def code_name(lang: str, code: str | None) -> str:
     return CODE_NAMES[normalize_lang(lang)].get(code or "", code or "")
+
+
+# Propoziția-rezumat din capul paginii. Numărătoarea e scrisă cu grijă pentru singular/plural (în română,
+# de la 20 în sus apare „de”: „20 de probleme”).
+SUMMARY_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "serious_one": "o problemă gravă", "serious_many": "probleme grave",
+        "minor_only_one": "o problemă mai mică", "minor_only_many": "probleme mai mici",
+        "minor_one": "una mai mică", "minor_many": "mai mici",
+        "has": "Rețeaua ta are {counts}.",
+        "both": "{serious} și {minor}",
+        "start": "Începe cu {device}: {step}",
+        "start_no_step": "Începe cu {device}.",
+        "clean": "Nu am găsit probleme. Rețeaua ta arată bine.",
+        "info": "Nu am găsit probleme. Rețeaua ta arată bine. Am observat doar o informare („{name}”), care nu scade scorul.",
+        "fixed": "Ai rezolvat toate problemele pe care le-am găsit. Bravo!",
+        "error": "Nu pot spune nimic despre rețea din acest fișier. {message}",
+    },
+    "en": {
+        "serious_one": "1 serious problem", "serious_many": "serious problems",
+        "minor_only_one": "1 smaller problem", "minor_only_many": "smaller problems",
+        "minor_one": "1 smaller one", "minor_many": "smaller ones",
+        "has": "Your network has {counts}.",
+        "both": "{serious} and {minor}",
+        "start": "Start with {device}: {step}",
+        "start_no_step": "Start with {device}.",
+        "clean": "I didn't find any problems. Your network looks good.",
+        "info": "I didn't find any problems. Your network looks good. I only noticed one piece of information (“{name}”), which doesn't lower the score.",
+        "fixed": "You fixed all the problems I found. Well done!",
+        "error": "I can't tell anything about the network from this file. {message}",
+    },
+}
+
+
+def _count(lang: str, n: int, one: str, many: str) -> str:
+    """„o problemă gravă” / „3 probleme grave” / (RO) „20 de probleme grave”; `one` e deja complet."""
+    if n == 1:
+        return one
+    de = "de " if lang == "ro" and (n % 100 == 0 or n % 100 >= 20) and many.startswith("probleme") else ""
+    return f"{n} {de}{many}"
+
+
+def _sentence_end(text: str) -> str:
+    text = text.strip()
+    return text if text.endswith((".", "!", "?")) else text + "."
+
+
+def summary_sentence(lang: str, summary, device_label: str | None = None, step: str | None = None,
+                     error_text: str | None = None) -> str:
+    """Fraza mare din capul paginii. Rezultatul e text simplu: numele dispozitivului poate fi nesigur și se
+    escapează în template (niciodată |safe)."""
+    lang = normalize_lang(lang)
+    tx = SUMMARY_TEXTS[lang]
+    kind = summary.kind
+    if kind == "error":
+        return tx["error"].format(message=error_text or error_message(lang, summary.error_code))
+    if kind == "info":
+        return tx["info"].format(name=code_name(lang, summary.finding.code if summary.finding else None))
+    if kind in ("clean", "fixed"):
+        return tx[kind]
+    serious, minor = summary.serious, summary.minor
+    if serious and minor:
+        counts = tx["both"].format(serious=_count(lang, serious, tx["serious_one"], tx["serious_many"]),
+                                   minor=_count(lang, minor, tx["minor_one"], tx["minor_many"]))
+    elif serious:
+        counts = _count(lang, serious, tx["serious_one"], tx["serious_many"])
+    else:
+        counts = _count(lang, minor, tx["minor_only_one"], tx["minor_only_many"])
+    sentence = tx["has"].format(counts=counts)
+    if not device_label:
+        return sentence
+    if step:
+        return f"{sentence} " + tx["start"].format(device=device_label, step=_sentence_end(step))
+    return f"{sentence} " + tx["start_no_step"].format(device=device_label)
 
 
 def alert_text(lang: str, alert) -> str:

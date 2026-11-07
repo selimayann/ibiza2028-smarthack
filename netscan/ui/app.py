@@ -28,7 +28,7 @@ from netscan.ui import extras, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
 from netscan.ui.view import (action_plan, ip_key, most_dangerous, rank_devices, score_band, score_trend, steps_view,
-                             verified_by_newer)
+                             summary_of, verified_by_newer)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
@@ -222,6 +222,20 @@ def create_app(test_config: dict | None = None) -> Flask:
     def scans() -> list[Scan]:
         return app.config["SCAN_LOADER"]()
 
+    def summary_sentence(scan: Scan, worst, all_fixed: bool = False) -> str:
+        """Fraza mare din capul paginii (cu ce să începi). `scan` și `worst` sunt cele ale cardului de dedesubt."""
+        summary = summary_of(scan, worst, all_fixed)
+        label = step = None
+        if summary.device is not None and summary.finding is not None:
+            if "names" not in g:
+                g.names = extras.announced_names()
+            host = summary.device.host
+            announced = g.names.get(host.ip)
+            label = announced["name"] if announced else i18n.device_type_label(g.lang, host.device_type)
+            steps = get_explanation(summary.finding.code, g.lang).get("steps") or []
+            step = steps[0] if steps else None
+        return i18n.summary_sentence(g.lang, summary, label, step)
+
     def pick(scan_list: list[Scan]) -> tuple[Scan | None, int]:
         if not scan_list:
             return None, 0
@@ -250,12 +264,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         if check not in verify.RESULTS or steps is None or not (checked and 1 <= checked <= steps.total):
             check, checked = None, None
         reply = ask_assistant(question, scan, g.lang)
+        worst = most_dangerous(remaining) if remaining else None
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx,
             steps=steps, check=check, checked=steps.steps[checked - 1] if checked else None,
             show_steps=steps is not None and (request.args.get("step") is not None or not steps.all_resolved),
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", scan=idx), scan, idx, question, reply, False),
-            devices=rank_devices(scan) if scan else [], worst=most_dangerous(remaining) if remaining else None,
+            summary=summary_sentence(remaining, worst, bool(steps and steps.verified_count)) if remaining else None,
+            devices=rank_devices(scan) if scan else [], worst=worst,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
         )
 
@@ -439,9 +455,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None else None
         question = request.args.get("q", "")[:MAX_QUESTION_LEN] if same_site_request() else ""
         ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
+        worst = most_dangerous(scan)
         return render_template(
             "overview.html", scan=scan, scan_list=[], selected=0,
-            devices=rank_devices(scan), worst=most_dangerous(scan),
+            summary=summary_sentence(scan, worst),
+            devices=rank_devices(scan), worst=worst,
             history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts,
             assistant=assistant_ctx(url_for("history_scan", scan_id=scan_id), url_for("api_ask", history=scan_id),
                                     scan, None, question, ask_assistant(question, scan, g.lang, previous=prev), True),
