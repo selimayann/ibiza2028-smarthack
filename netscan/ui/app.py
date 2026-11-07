@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import hmac
 import json
+import os
 import secrets
 from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
 
+from netscan.cli import load_env_file
+from netscan.engine import analyze_folder
 from netscan.model import Scan
 from netscan.ui import i18n, storage
 from netscan.ui.explain_stub import get_explanation
@@ -21,6 +24,7 @@ from netscan.ui.view import most_dangerous, rank_devices, score_band
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
+VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
 LANG_COOKIE = "lang"
 
 
@@ -28,15 +32,21 @@ def load_scan(path: str | Path) -> Scan:
     return Scan.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
-def load_scans() -> list[Scan]:
-    """SURSA DE DATE pentru pagina principală, într-un singur loc.
+def scans_dir() -> Path:
+    """Folderul cu fișierele nmap XML afișate în UI (implicit Validation Set-ul)."""
+    return Path(os.environ.get("NETSCAN_SCANS_DIR") or VALIDATION_DIR)
 
-    Acum: fixtures/sample.json. După sincronizarea cu Radu: analyze_file() din netscan.engine.
-    """
-    return [load_scan(SAMPLE_PATH)]
+
+def load_scans() -> list[Scan]:
+    """SURSA DE DATE pentru pagina principală, într-un singur loc: motorul lui Radu."""
+    try:
+        return analyze_folder(scans_dir())
+    except NotADirectoryError:
+        return []
 
 
 def create_app(test_config: dict | None = None) -> Flask:
+    load_env_file(REPO_ROOT / ".env")  # NETSCAN_SALT, NETSCAN_DB_PATH; nu suprascrie ce e deja setat
     app = Flask(__name__)
     app.config.update(
         SCAN_LOADER=load_scans,

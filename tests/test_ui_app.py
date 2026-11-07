@@ -127,3 +127,39 @@ def test_delete_history_needs_token(tmp_path):
     resp = client.post("/history/delete", data={"token": app.config["DELETE_TOKEN"]})
     assert resp.status_code == 302
     assert storage.list_scans(db) == []
+
+
+# ---------- cu motorul lui Radu, pe Validation Set ----------
+
+def test_ui_on_validation_set_with_engine(tmp_path):
+    from netscan.ui.app import load_scans
+
+    scans = load_scans()
+    by_file = {s.file: i for i, s in enumerate(scans)}
+    client, _ = make_client(tmp_path, scans)
+    v1 = client.get(f"/?scan={by_file['V1_home_basic.xml']}").get_data(as_text=True)
+    assert ">90<" in v1 and "Bun" in v1
+    v2 = client.get(f"/?scan={by_file['V2_smart_home.xml']}").get_data(as_text=True)
+    assert ">40<" in v2 and "CAMERA_STREAM_EXPOSED" in v2
+    v6b = client.get(f"/?scan={by_file['V6b_after.xml']}").get_data(as_text=True)
+    assert "Nicio problemă găsită" in v6b
+    v7 = client.get(f"/?scan={by_file['V7_broken.xml']}")
+    assert v7.status_code == 200 and "pare incomplet" in v7.get_data(as_text=True)
+
+
+def test_history_v6a_to_v6b(tmp_path):
+    """Testul juriului: V6a -> V6b = 3 findings rezolvate, scorul 60 -> 100."""
+    from netscan.engine import analyze_file
+    from netscan.ui.app import VALIDATION_DIR
+
+    db = tmp_path / "h.db"
+    a = analyze_file(VALIDATION_DIR / "V6a_before.xml")
+    b = analyze_file(VALIDATION_DIR / "V6b_after.xml")
+    storage.save_scan(a, db)
+    b_id = storage.save_scan(b, db)
+    d = storage.diff(a, b)
+    assert len(d.resolved_findings) == 3 and not d.new_findings
+    assert (d.score_before, d.score_after) == (60, 100)
+    client, _ = make_client(tmp_path, [])
+    html = client.get(f"/scan/{b_id}").get_data(as_text=True)
+    assert "60 → 100" in html and "Probleme rezolvate (3)" in html
