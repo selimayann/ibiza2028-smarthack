@@ -173,6 +173,42 @@ TEXTS: dict[str, dict[str, str]] = {
         "devices_one": "1 dispozitiv",
         "devices_many": "%s dispozitive",
         "show": "Arată",
+        "summary_label": "Pe scurt",
+        "history_owner": "Istoric pentru utilizatorul %s pe acest calculator.",
+        "history_owner_unknown": "Istoric pe acest calculator.",
+        "history_empty_owner": "Te așteptai să vezi scanări aici? Poate ești conectat cu alt utilizator de Windows sau ai pornit aplicația din alt folder. Datele nu s-au pierdut: rămân în istoricul acelui utilizator sau al acelui folder.",
+        "history_file": "Caut istoricul în: %s",
+        "recheck_title": "Ai reparat ceva? Verifică din nou.",
+        "recheck_body": "Fă o scanare nouă sau încarcă un fișier nou. Îți arăt scorul de după și ce ai închis.",
+        "recheck_upload_label": "Fișierul scanării noi (.xml)",
+        "recheck_upload_btn": "Verifică din nou",
+        "recheck_newer": "Am găsit deja o scanare mai nouă: %s.",
+        "recheck_compare_btn": "Vezi înainte și după",
+        "recheck_how": "Cum fac o scanare nouă?",
+        "recheck_how_body": "Pe acest calculator, într-un terminal, scrie comanda de mai jos. Când se termină, încarcă aici fișierul făcut de ea.",
+        "upload_failed": "Nu am putut folosi fișierul ales.",
+        "upload_err_empty": "Nu ai ales niciun fișier.",
+        "upload_err_older": "Fișierul ales e mai vechi decât scanarea cu care îl compar. Alege scanarea făcută după reparații.",
+        "proof_title": "Dovada: înainte și după",
+        "proof_before": "Înainte",
+        "proof_after": "După",
+        "proof_better": "Mai bine",
+        "proof_worse": "Mai rău",
+        "proof_same": "La fel",
+        "proof_resolved": "Rezolvate (%s)",
+        "proof_remaining": "Au rămas (%s)",
+        "proof_new": "Probleme noi (%s)",
+        "proof_nothing": "Nimic aici.",
+        "proof_files": "Înainte: %s · După: %s",
+        "name_title": "Numele dispozitivului",
+        "name_hint": "Dă-i un nume ca să-l recunoști ușor, de exemplu „Camera din sufragerie”. Numele rămâne doar pe acest calculator.",
+        "name_label": "Nume (cel mult 40 de caractere)",
+        "name_placeholder": "de exemplu: Camera din sufragerie",
+        "name_save": "Salvează numele",
+        "name_clear": "Șterge numele",
+        "name_saved": "Am salvat numele.",
+        "name_cleared": "Am șters numele.",
+        "name_too_long": "Numele e prea lung. Folosește cel mult 40 de caractere.",
         "worst_title": "Cel mai periculos dispozitiv",
         "worst_problem": "Cea mai gravă problemă",
         "do_first": "Fă asta întâi:",
@@ -259,6 +295,68 @@ TEXTS: dict[str, dict[str, str]] = {
         "sev_medium": "Mediu",
         "sev_low": "Scăzut",
         "sev_info": "Informativ",
+        "g_start": "Începe depanarea",
+        "g_start_hint": "Te ținem de mână, pas cu pas, cu mici animații.",
+        "g_title": "Depanare pas cu pas",
+        "g_close": "Închide",
+        "g_back": "Înapoi",
+        "g_next": "Mai departe",
+        "g_count": "Pasul %s din %s",
+        "g_note": "Meniurile din aparatul tău pot arăta puțin altfel. Ideea e aceeași.",
+        "g_net_main": "Rețeaua casei",
+        "g_net_guest": "Rețea pentru oaspeți",
+        "g_find": "Găsește %s. Adresa lui în rețea este %s.",
+        "g_label": "Întoarce aparatul și uită-te la eticheta de pe spate. Acolo e adresa de administrare și, de obicei, parola de fabrică. Notează-le.",
+        "g_admin": "Scrie adresa în browser și intră cu numele și parola din etichetă. Dacă ai schimbat deja parola, folosește-o pe a ta.",
+        "g_toggle": "Caută în setări comutatorul pentru %s și trece-l pe oprit.",
+        "g_update": "Caută butonul de actualizare (Update) și apasă-l. Așteaptă până se termină și aparatul pornește din nou. Dacă nu mai există actualizări, oprește serviciul sau înlocuiește aparatul.",
+        "g_password": "Alege o parolă nouă, lungă și greu de ghicit, și salveaz-o. Nu o refolosi de la alt cont.",
+        "g_https": "În setări pornește accesul sigur (HTTPS) și intră doar cu adresa care începe cu https. Unele aparate nu au această opțiune; atunci treci la pasul următor.",
+        "g_windows": "Deschide setările din Windows: %s. Oprește opțiunea.",
+        "g_guest": "Dacă e un aparat al tău (un bec, o priză, o cameră), dă-i un nume în router și mută-l în rețeaua pentru oaspeți.",
+        "g_routerlist": "Intră în routerul tău și caută lista cu aparatele conectate. Vezi dacă îl recunoști pe cel cu adresa %s.",
+        "g_verify": "Gata! Apasă butonul, iar eu verific dacă ușa s-a închis.",
+        "g_svc_TELNET_OPEN": "Telnet",
+        "g_svc_FTP_CLEARTEXT": "FTP",
+        "g_svc_SNMP_EXPOSED": "SNMP",
+        "g_svc_UPNP_EXPOSED": "UPnP",
+        "g_svc_VNC_EXPOSED": "VNC",
+        "g_svc_SSH_OPEN": "SSH",
+        "g_svc_PRINTER_RAW_EXPOSED": "Port 9100",
+        "g_win_RDP_EXPOSED": "Setări, Sistem, Desktop la distanță",
+        "g_win_SMB_EXPOSED": "Setări, Rețea și internet, Setări de rețea avansate, Setări avansate de partajare",
+        "g_config": "Deschide fișierul de configurare și schimbă linia evidențiată. Apoi repornește programul.",
+        "g_svc_CAMERA_STREAM_EXPOSED": "RTSP",
+        "g_toggle_TELNET_OPEN": "Caută în setări comutatorul pentru %s și trece-l pe oprit. Dacă ai nevoie de acces de la distanță, folosește SSH în loc.",
+        "g_password_TELNET_OPEN": "Schimbă parola dispozitivului cu una nouă, lungă și unică. Parola veche a trecut necriptată prin rețea, deci s-ar putea să fi fost văzută.",
+        "g_toggle_FTP_CLEARTEXT": "Dacă nu folosești %s, oprește-l din setări. Dacă ai nevoie să muți fișiere, folosește SFTP, care e criptat.",
+        "g_toggle_SNMP_EXPOSED": "Dacă nu folosești %s, oprește-l. Dacă îl folosești, schimbă parola din fabrică „public” cu una nouă.",
+        "g_verify_SNMP_EXPOSED": "Apasă butonul ca să notezi pasul. Acest serviciu merge prin UDP, așa că se confirmă doar la o scanare nouă.",
+        "g_toggle_UPNP_EXPOSED": "Caută comutatorul pentru %s și trece-l pe oprit. Dacă un joc sau o aplicație are nevoie de un port, deschide-l manual doar pe acela.",
+        "g_verify_UPNP_EXPOSED": "Apasă butonul ca să notezi pasul. Acest serviciu merge prin UDP, așa că se confirmă doar la o scanare nouă.",
+        "g_toggle_VNC_EXPOSED": "Pe acel calculator, oprește programul %s (ecranul la distanță) dacă nu-l folosești. Dacă îl folosești, pune-i o parolă lungă și unică.",
+        "g_verify_VNC_EXPOSED": "Dacă ai oprit VNC, apasă butonul și verific. Dacă îl folosești în continuare, rămâne pe listă: e mai sigur să-l folosești doar prin VPN.",
+        "g_toggle_SSH_OPEN": "SSH e sigur în sine. Oprește %s doar dacă nu-l folosești pe acest aparat. Dacă îl folosești, lasă-l pornit și folosește chei SSH în loc de parolă.",
+        "g_verify_SSH_OPEN": "Dacă l-ai oprit, apasă butonul și verific. Dacă îl folosești și l-ai lăsat pornit, e în regulă: e doar o informare și nu scade scorul.",
+        "g_admin_PRINTER_RAW_EXPOSED": "Scrie adresa imprimantei în browser. Se deschide pagina ei de setări.",
+        "g_toggle_PRINTER_RAW_EXPOSED": "Caută printarea directă (RAW, %s). Oprește-o doar dacă imprimanta poate printa și altfel (de exemplu prin IPP sau AirPrint). Dacă după asta nu mai poți printa, pornește-o la loc.",
+        "g_password_PRINTER_RAW_EXPOSED": "Pune o parolă pe pagina de setări a imprimantei, ca să nu le poată schimba oricine.",
+        "g_config_DB_EXPOSED": "Pe calculatorul cu baza de date, deschide fișierul ei de configurare și pune adresa de ascultare 127.0.0.1, apoi repornește baza de date. Numele setării diferă puțin (MySQL, PostgreSQL, Redis, MongoDB). Dacă o aplicație de pe alt calculator are nevoie de ea, nu face asta: lasă în firewall doar acel calculator.",
+        "g_config_MQTT_EXPOSED": "În setările brokerului MQTT (de exemplu Mosquitto), oprește accesul fără cont și cere nume și parolă, apoi repornește brokerul. Dispozitivele tale vor avea nevoie de numele și parola noi.",
+        "g_verify_MQTT_EXPOSED": "Apasă butonul ca să notezi pasul. Cu parolă, portul rămâne deschis, deci o să vezi „răspunde încă”. Problema dispare din scanare doar dacă lași în firewall numai dispozitivele tale.",
+        "g_password_CAMERA_STREAM_EXPOSED": "Schimbă parola din fabrică a camerei cu una lungă și unică. Acesta e cel mai important pas.",
+        "g_toggle_CAMERA_STREAM_EXPOSED": "Dacă aplicația camerei merge și fără, oprește transmisia directă (%s). Dacă aplicația nu mai arată imaginea, pornește-o la loc.",
+        "g_verify_CAMERA_STREAM_EXPOSED": "Dacă ai oprit transmisia directă, apasă butonul și verific. Dacă ai păstrat-o, parola nouă te protejează, dar camera rămâne pe listă.",
+        "g_verify_OUTDATED_SERVICE": "Apasă butonul ca să notezi pasul. Programul rămâne pornit, deci versiunea nouă se confirmă doar la o scanare nouă.",
+        "g_password_HTTP_ADMIN_CLEARTEXT": "Schimbă parola din fabrică cu una lungă și unică. Oprește și administrarea din internet, dacă nu ai nevoie de ea.",
+        "g_verify_HTTP_ADMIN_CLEARTEXT": "Apasă butonul ca să notezi pasul. Multe aparate lasă pagina veche (http) deschisă și după HTTPS, deci confirmarea poate veni doar la o scanare nouă.",
+        "g_windows_RDP_EXPOSED": "Dacă nu folosești Desktop la distanță, oprește-l: %s, pe Dezactivat. Dacă îl folosești, lasă-l pornit, cu parole lungi, și nu-l deschide spre internet.",
+        "g_verify_RDP_EXPOSED": "Dacă l-ai oprit, apasă butonul și verific. Dacă îl folosești în continuare, e normal să rămână pe listă.",
+        "g_windows_SMB_EXPOSED": "Dacă nu partajezi fișiere, oprește partajarea: %s, apoi „Partajare fișiere și imprimante” pe Dezactivat. Dacă partajezi, lasă-o pornită și cere parolă.",
+        "g_verify_SMB_EXPOSED": "Dacă ai oprit partajarea, apasă butonul și verific. Dacă partajezi în continuare, e normal să rămână pe listă.",
+        "g_routerlist_UNKNOWN_DEVICE": "Intră în router și caută în lista aparatelor conectate adresa %s. Telefoanele și laptopurile noi își ascund adresa reală, deci verifică întâi dacă nu e unul de-al tău.",
+        "g_password_UNKNOWN_DEVICE": "Dacă aparatul NU e al tău, schimbă parola Wi-Fi din router; apoi reconectează aparatele tale cu parola nouă. Dacă e al tău, sari peste acest pas.",
+        "g_verify_UNKNOWN_DEVICE": "Apasă butonul ca să notezi pasul. Aici nu e un port de închis, deci se confirmă la o scanare nouă.",
     },
     "en": {
         "app_title": "Your network, simply explained",
@@ -428,6 +526,42 @@ TEXTS: dict[str, dict[str, str]] = {
         "devices_one": "1 device",
         "devices_many": "%s devices",
         "show": "Show",
+        "summary_label": "In short",
+        "history_owner": "History for user %s on this computer.",
+        "history_owner_unknown": "History on this computer.",
+        "history_empty_owner": "Expecting to see scans here? You may be signed in as a different Windows user, or you started the app from a different folder. Your data isn't lost: it stays in that user's or that folder's history.",
+        "history_file": "Looking for the history in: %s",
+        "recheck_title": "Fixed something? Check again.",
+        "recheck_body": "Run a new scan or upload a new file. I'll show you the new score and what you closed.",
+        "recheck_upload_label": "New scan file (.xml)",
+        "recheck_upload_btn": "Check again",
+        "recheck_newer": "I already found a newer scan: %s.",
+        "recheck_compare_btn": "See before and after",
+        "recheck_how": "How do I run a new scan?",
+        "recheck_how_body": "On this computer, type the command below in a terminal. When it finishes, upload the file it made here.",
+        "upload_failed": "I couldn't use the file you chose.",
+        "upload_err_empty": "You didn't choose a file.",
+        "upload_err_older": "The file you chose is older than the scan I compare it with. Choose the scan made after your fixes.",
+        "proof_title": "Proof: before and after",
+        "proof_before": "Before",
+        "proof_after": "After",
+        "proof_better": "Better",
+        "proof_worse": "Worse",
+        "proof_same": "The same",
+        "proof_resolved": "Fixed (%s)",
+        "proof_remaining": "Still open (%s)",
+        "proof_new": "New problems (%s)",
+        "proof_nothing": "Nothing here.",
+        "proof_files": "Before: %s · After: %s",
+        "name_title": "Device name",
+        "name_hint": "Give it a name so you can recognise it easily, for example “Living room camera”. The name stays on this computer only.",
+        "name_label": "Name (at most 40 characters)",
+        "name_placeholder": "for example: Living room camera",
+        "name_save": "Save name",
+        "name_clear": "Remove name",
+        "name_saved": "Name saved.",
+        "name_cleared": "Name removed.",
+        "name_too_long": "That name is too long. Use at most 40 characters.",
         "worst_title": "Most dangerous device",
         "worst_problem": "Most serious problem",
         "do_first": "Do this first:",
@@ -514,6 +648,68 @@ TEXTS: dict[str, dict[str, str]] = {
         "sev_medium": "Medium",
         "sev_low": "Low",
         "sev_info": "Info",
+        "g_start": "Start fixing it",
+        "g_start_hint": "We hold your hand, step by step, with small animations.",
+        "g_title": "Step-by-step fix",
+        "g_close": "Close",
+        "g_back": "Back",
+        "g_next": "Next",
+        "g_count": "Step %s of %s",
+        "g_note": "The menus on your device may look a little different. The idea is the same.",
+        "g_net_main": "Home network",
+        "g_net_guest": "Guest network",
+        "g_find": "Find %s. Its address on the network is %s.",
+        "g_label": "Turn the device around and look at the label on the back. It has the admin address and usually the factory password. Write them down.",
+        "g_admin": "Type the address in your browser and sign in with the name and password from the label. If you already changed the password, use yours.",
+        "g_toggle": "Look in the settings for the switch for %s and turn it off.",
+        "g_update": "Find the Update button and press it. Wait until it finishes and the device starts again. If there are no more updates, turn the service off or replace the device.",
+        "g_password": "Pick a new password that is long and hard to guess, and save it. Do not reuse it from another account.",
+        "g_https": "In the settings, turn on secure access (HTTPS) and only use the address that starts with https. Some devices don't have this option; then go to the next step.",
+        "g_windows": "Open the Windows settings: %s. Turn the option off.",
+        "g_guest": "If it is one of your devices (a bulb, a plug, a camera), give it a name in the router and move it to the guest network.",
+        "g_routerlist": "Sign in to your router and find the list of connected devices. See if you recognise the one with the address %s.",
+        "g_verify": "Done! Press the button and I will check that the door is closed.",
+        "g_svc_TELNET_OPEN": "Telnet",
+        "g_svc_FTP_CLEARTEXT": "FTP",
+        "g_svc_SNMP_EXPOSED": "SNMP",
+        "g_svc_UPNP_EXPOSED": "UPnP",
+        "g_svc_VNC_EXPOSED": "VNC",
+        "g_svc_SSH_OPEN": "SSH",
+        "g_svc_PRINTER_RAW_EXPOSED": "Port 9100",
+        "g_win_RDP_EXPOSED": "Settings, System, Remote Desktop",
+        "g_win_SMB_EXPOSED": "Settings, Network and internet, Advanced network settings, Advanced sharing settings",
+        "g_config": "Open the configuration file and change the highlighted line. Then restart the program.",
+        "g_svc_CAMERA_STREAM_EXPOSED": "RTSP",
+        "g_toggle_TELNET_OPEN": "Look in the settings for the switch for %s and turn it off. If you need remote access, use SSH instead.",
+        "g_password_TELNET_OPEN": "Change the device password to a new, long, unique one. The old one crossed the network unencrypted, so someone may have seen it.",
+        "g_toggle_FTP_CLEARTEXT": "If you don't use %s, turn it off in the settings. If you need to move files, use SFTP, which is encrypted.",
+        "g_toggle_SNMP_EXPOSED": "If you don't use %s, turn it off. If you use it, change the factory password “public” to a new one.",
+        "g_verify_SNMP_EXPOSED": "Press the button to note the step. This service uses UDP, so it is only confirmed by a new scan.",
+        "g_toggle_UPNP_EXPOSED": "Find the switch for %s and turn it off. If a game or an app needs a port, open only that one by hand.",
+        "g_verify_UPNP_EXPOSED": "Press the button to note the step. This service uses UDP, so it is only confirmed by a new scan.",
+        "g_toggle_VNC_EXPOSED": "On that computer, stop the %s program (remote screen) if you don't use it. If you use it, give it a long, unique password.",
+        "g_verify_VNC_EXPOSED": "If you stopped VNC, press the button and I will check. If you still use it, it stays on the list: it is safer to use it only through a VPN.",
+        "g_toggle_SSH_OPEN": "SSH is safe by itself. Turn %s off only if you don't use it on this device. If you use it, leave it on and use SSH keys instead of a password.",
+        "g_verify_SSH_OPEN": "If you turned it off, press the button and I will check. If you use it and left it on, that's fine: it is only a notice and doesn't lower the score.",
+        "g_admin_PRINTER_RAW_EXPOSED": "Type the printer's address in your browser. Its settings page opens.",
+        "g_toggle_PRINTER_RAW_EXPOSED": "Find direct printing (RAW, %s). Turn it off only if the printer can also print another way (for example IPP or AirPrint). If you can't print afterwards, turn it back on.",
+        "g_password_PRINTER_RAW_EXPOSED": "Put a password on the printer's settings page, so not just anyone can change them.",
+        "g_config_DB_EXPOSED": "On the computer with the database, open its configuration file, set the listening address to 127.0.0.1, then restart the database. The setting's name differs a little (MySQL, PostgreSQL, Redis, MongoDB). If an app on another computer needs it, don't do this: allow only that computer in the firewall.",
+        "g_config_MQTT_EXPOSED": "In the MQTT broker settings (for example Mosquitto), turn off access without an account and require a name and password, then restart the broker. Your devices will need the new name and password.",
+        "g_verify_MQTT_EXPOSED": "Press the button to note the step. With a password the port stays open, so you'll see “still answers”. The problem leaves the scan only if the firewall lets in just your devices.",
+        "g_password_CAMERA_STREAM_EXPOSED": "Change the camera's factory password to a long, unique one. This is the most important step.",
+        "g_toggle_CAMERA_STREAM_EXPOSED": "If the camera's app works without it, turn off direct streaming (%s). If the app no longer shows the picture, turn it back on.",
+        "g_verify_CAMERA_STREAM_EXPOSED": "If you turned off direct streaming, press the button and I will check. If you kept it, the new password protects you, but the camera stays on the list.",
+        "g_verify_OUTDATED_SERVICE": "Press the button to note the step. The program stays on, so the new version is only confirmed by a new scan.",
+        "g_password_HTTP_ADMIN_CLEARTEXT": "Change the factory password to a long, unique one. Also turn off admin from the internet if you don't need it.",
+        "g_verify_HTTP_ADMIN_CLEARTEXT": "Press the button to note the step. Many devices keep the old (http) page open even after HTTPS, so confirmation may only come with a new scan.",
+        "g_windows_RDP_EXPOSED": "If you don't use Remote Desktop, turn it off: %s, set to Off. If you use it, leave it on, with long passwords, and never open it to the internet.",
+        "g_verify_RDP_EXPOSED": "If you turned it off, press the button and I will check. If you still use it, it is normal for it to stay on the list.",
+        "g_windows_SMB_EXPOSED": "If you don't share files, turn sharing off: %s, then “File and printer sharing” to Off. If you share, leave it on and require a password.",
+        "g_verify_SMB_EXPOSED": "If you turned sharing off, press the button and I will check. If you still share, it is normal for it to stay on the list.",
+        "g_routerlist_UNKNOWN_DEVICE": "Sign in to your router and look for the address %s in the list of connected devices. New phones and laptops hide their real address, so first check it isn't one of yours.",
+        "g_password_UNKNOWN_DEVICE": "If the device is NOT yours, change the Wi-Fi password in the router; then reconnect your devices with the new password. If it is yours, skip this step.",
+        "g_verify_UNKNOWN_DEVICE": "Press the button to note the step. There is no port to close here, so a new scan confirms it.",
     },
 }
 
@@ -616,14 +812,148 @@ ALERT_TEXTS: dict[str, dict[str, str]] = {
 }
 
 
+DEVICE_TYPES_THE: dict[str, dict[str, str]] = {
+    "ro": {
+        "router": "routerul", "camera": "camera", "printer": "imprimanta", "tv": "televizorul",
+        "pc_windows": "calculatorul Windows", "server": "serverul", "phone_laptop": "telefonul sau laptopul",
+        "iot": "dispozitivul inteligent", "unknown": "dispozitivul necunoscut",
+    },
+    "en": {
+        "router": "the router", "camera": "the camera", "printer": "the printer", "tv": "the TV",
+        "pc_windows": "the Windows computer", "server": "the server", "phone_laptop": "the phone or laptop",
+        "iot": "the smart device", "unknown": "the unknown device",
+    },
+}
+
+
+def device_type_the(lang: str, device_type: str | None) -> str:
+    types = DEVICE_TYPES_THE[normalize_lang(lang)]
+    return types.get(device_type or "unknown", types["unknown"])
+
+
 def code_name(lang: str, code: str | None) -> str:
     return CODE_NAMES[normalize_lang(lang)].get(code or "", code or "")
 
 
-def alert_text(lang: str, alert) -> str:
-    """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template)."""
+# Propoziția-rezumat din capul paginii. Numărătoarea e scrisă cu grijă pentru singular/plural (în română,
+# de la 20 în sus apare „de”: „20 de probleme”).
+SUMMARY_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "serious_one": "o problemă gravă", "serious_many": "probleme grave",
+        "minor_only_one": "o problemă mai mică", "minor_only_many": "probleme mai mici",
+        "minor_one": "una mai mică", "minor_many": "mai mici",
+        "has": "Rețeaua ta are {counts}.",
+        "both": "{serious} și {minor}",
+        "start": "Începe cu {device}: {step}",
+        "start_no_step": "Începe cu {device}.",
+        "clean": "Nu am găsit probleme. Rețeaua ta arată bine.",
+        "info": "Nu am găsit probleme. Rețeaua ta arată bine. Am observat doar o informare („{name}”), care nu scade scorul.",
+        "fixed": "Ai rezolvat toate problemele pe care le-am găsit. Bravo!",
+        "error": "Nu pot spune nimic despre rețea din acest fișier. {message}",
+    },
+    "en": {
+        "serious_one": "1 serious problem", "serious_many": "serious problems",
+        "minor_only_one": "1 smaller problem", "minor_only_many": "smaller problems",
+        "minor_one": "1 smaller one", "minor_many": "smaller ones",
+        "has": "Your network has {counts}.",
+        "both": "{serious} and {minor}",
+        "start": "Start with {device}: {step}",
+        "start_no_step": "Start with {device}.",
+        "clean": "I didn't find any problems. Your network looks good.",
+        "info": "I didn't find any problems. Your network looks good. I only noticed one piece of information (“{name}”), which doesn't lower the score.",
+        "fixed": "You fixed all the problems I found. Well done!",
+        "error": "I can't tell anything about the network from this file. {message}",
+    },
+}
+
+
+# Fraza de sub scor în cardul „Dovada”: câte „uși” s-au închis, încotro a mers scorul, ce a apărut nou.
+PROOF_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "closed_none": "Nicio ușă închisă încă.", "closed_one": "Ai închis o ușă.", "closed_many": "uși",
+        "closed_prefix": "Ai închis",
+        "up": "Scorul a urcat de la {a} la {b}.", "down": "Scorul a coborât de la {a} la {b}.",
+        "same": "Scorul a rămas {a}.",
+        "new_one": "A apărut și o problemă nouă.", "new_many": "Au apărut și {n} probleme noi.",
+    },
+    "en": {
+        "closed_none": "No doors closed yet.", "closed_one": "You closed 1 door.", "closed_many": "doors",
+        "closed_prefix": "You closed",
+        "up": "The score went up from {a} to {b}.", "down": "The score went down from {a} to {b}.",
+        "same": "The score stayed at {a}.",
+        "new_one": "One new problem also appeared.", "new_many": "{n} new problems also appeared.",
+    },
+}
+
+
+def proof_sentence(lang: str, proof) -> str:
+    """Fraza cardului „Dovada”: ce ai închis și ce s-a întâmplat cu scorul. Text simplu, fără date din scanare."""
     lang = normalize_lang(lang)
-    dev = device_type_label(lang, alert.device_type)
+    tx = PROOF_TEXTS[lang]
+    n = proof.closed
+    if n == 0:
+        closed = tx["closed_none"]
+    elif n == 1:
+        closed = tx["closed_one"]
+    else:
+        de = "de " if lang == "ro" and (n % 100 == 0 or n % 100 >= 20) else ""   # „20 de uși”
+        closed = f"{tx['closed_prefix']} {n} {de}{tx['closed_many']}."
+    score = tx[proof.direction].format(a=proof.score_before, b=proof.score_after)
+    parts = [closed, score]
+    if len(proof.new) == 1:
+        parts.append(tx["new_one"])
+    elif proof.new:
+        parts.append(tx["new_many"].format(n=len(proof.new)))
+    return " ".join(parts)
+
+
+def _count(lang: str, n: int, one: str, many: str) -> str:
+    """„o problemă gravă” / „3 probleme grave” / (RO) „20 de probleme grave”; `one` e deja complet."""
+    if n == 1:
+        return one
+    de = "de " if lang == "ro" and (n % 100 == 0 or n % 100 >= 20) and many.startswith("probleme") else ""
+    return f"{n} {de}{many}"
+
+
+def _sentence_end(text: str) -> str:
+    text = text.strip()
+    return text if text.endswith((".", "!", "?")) else text + "."
+
+
+def summary_sentence(lang: str, summary, device_label: str | None = None, step: str | None = None,
+                     error_text: str | None = None) -> str:
+    """Fraza mare din capul paginii. Rezultatul e text simplu: numele dispozitivului poate fi nesigur și se
+    escapează în template (niciodată |safe)."""
+    lang = normalize_lang(lang)
+    tx = SUMMARY_TEXTS[lang]
+    kind = summary.kind
+    if kind == "error":
+        return tx["error"].format(message=error_text or error_message(lang, summary.error_code))
+    if kind == "info":
+        return tx["info"].format(name=code_name(lang, summary.finding.code if summary.finding else None))
+    if kind in ("clean", "fixed"):
+        return tx[kind]
+    serious, minor = summary.serious, summary.minor
+    if serious and minor:
+        counts = tx["both"].format(serious=_count(lang, serious, tx["serious_one"], tx["serious_many"]),
+                                   minor=_count(lang, minor, tx["minor_one"], tx["minor_many"]))
+    elif serious:
+        counts = _count(lang, serious, tx["serious_one"], tx["serious_many"])
+    else:
+        counts = _count(lang, minor, tx["minor_only_one"], tx["minor_only_many"])
+    sentence = tx["has"].format(counts=counts)
+    if not device_label:
+        return sentence
+    if step:
+        return f"{sentence} " + tx["start"].format(device=device_label, step=_sentence_end(step))
+    return f"{sentence} " + tx["start_no_step"].format(device=device_label)
+
+
+def alert_text(lang: str, alert, names: dict[str, str] | None = None) -> str:
+    """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template).
+    `names`: numele date de utilizator, pe device_id; când există, înlocuiește tipul dispozitivului."""
+    lang = normalize_lang(lang)
+    dev = (names or {}).get(alert.device_id) or device_type_label(lang, alert.device_type)
     port = f"{alert.port}/{alert.proto}" if alert.proto else (str(alert.port) if alert.port is not None else "")
     return ALERT_TEXTS[lang][alert.kind].format(dev=dev, ip=alert.ip, port=port, name=code_name(lang, alert.code))
 

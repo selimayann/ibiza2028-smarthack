@@ -408,7 +408,7 @@ def test_pages_use_local_js_and_enhanced_forms(tmp_path):
     resp = client.get("/")
     html = resp.get_data(as_text=True)
     assert '<script src="/static/app.js" defer></script>' in html
-    assert 'data-swap="#score, #worst"' in html and 'data-chat-form' in html and 'data-swap="#save-area"' in html
+    assert 'data-swap="#summary, #score, #worst"' in html and 'data-chat-form' in html and 'data-swap="#save-area"' in html
     assert 'class="ai-fab"' in html and 'aria-haspopup="dialog"' in html
     assert "script-src 'self'" in resp.headers["Content-Security-Policy"]
     js = client.get("/static/app.js").get_data(as_text=True)

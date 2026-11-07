@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_guide.html" import guide_dialog with context %}
 {% from "_macros.html" import sev, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list with context %}
 {% block content %}
 {# D5: pașii de reparare, cu starea fiecăruia (verificat pe date reale / bifat / de făcut) #}
@@ -29,7 +30,8 @@
           <p class="steps-tally">{{ T('steps_tally')|format(steps.verified_count, steps.declared_count, steps.total) }}</p>
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
-            <form method="post" action="{{ url_for('action_done') }}" data-swap="#score, #worst" data-focus="#worst .verify-msg, #step-now">
+            <a class="button button-primary guide-open" href="{{ url_for('device', device_id=st.finding.device_id) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
+            <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .verify-msg, #step-now">
               {{ hidden }}
               <input type="hidden" name="device_id" value="{{ st.finding.device_id }}">
               <input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}">
@@ -38,13 +40,14 @@
             </form>
             {% endif %}
             <nav class="step-nav" aria-label="{{ T('step_nav') }}">
-              {% if st.number > 1 %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number - 1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
-              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number + 1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="next">{{ T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
+              {% if st.number > 1 %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number - 1) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
+              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number + 1) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
             </nav>
           </div>
           <p class="verify-note">{{ T('verify_note') }}</p>
+          {% if st.status != 'verified' %}{{ guide_dialog(st, hidden, guide_icon(st.device.device_type)) }}{% endif %}
           {% if steps.verified_count or steps.declared_count %}
-            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">
+            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
               {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
             </form>
           {% endif %}
@@ -54,22 +57,63 @@
           <p class="do-first-label" id="step-now" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('steps_all_done') }}</p>
           <p class="do-first-for">{{ T('steps_all_done_hint')|format(steps.verified_count, steps.declared_count) }}</p>
           <div class="do-first-actions">
-            <a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
-            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">
+            <a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=1) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
+            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
               {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
             </form>
           </div>
         </div>
         {% endif %}
+        {{ recheck_panel() }}
 {% endmacro %}
 
-{# Rețeaua ta acum (protecția live) #}
+{# Pasul de după bifare: „Verifică din nou”. Un fișier nou sau o scanare mai nouă care există deja; apoi vine dovada. #}
+{% macro recheck_panel() %}
+  {% if recheck %}
+  <section class="recheck" aria-labelledby="recheck-h">
+    <h3 id="recheck-h" tabindex="-1">{{ T('recheck_title') }}</h3>
+    {% if upload_error %}
+      <p class="verify-msg verify-warn" role="alert">
+        <svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>
+        <span>{{ T('upload_failed') }} {{ T('upload_err_empty') if upload_error == 'NO_FILE' else T('upload_err_older') if upload_error == 'OLDER' else error_message(upload_error) }}</span>
+      </p>
+    {% endif %}
+    <p>{{ T('recheck_body') }}</p>
+    {% if recheck.newer_ref %}
+      <p class="recheck-newer">{{ T('recheck_newer')|format(recheck.newer_file) }}</p>
+      <form method="post" action="{{ url_for('compare_scans') }}">
+        <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+        <input type="hidden" name="after" value="{{ recheck.newer_ref }}">
+        <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('recheck_compare_btn') }}</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('scan_upload') }}" enctype="multipart/form-data" class="recheck-form">
+      <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+      <label for="scanfile">{{ T('recheck_upload_label') }}</label>
+      <div class="name-row">
+        <input id="scanfile" name="scanfile" type="file" accept=".xml,text/xml,application/xml" required>
+        <button type="submit" class="{{ 'button-secondary' if recheck.newer_ref else 'button-primary' }}">{{ T('recheck_upload_btn') }}</button>
+      </div>
+    </form>
+    <details class="recheck-how">
+      <summary>{{ T('recheck_how') }}</summary>
+      <p>{{ T('recheck_how_body') }}</p>
+      <p><code class="mono" translate="no">python -m netscan scan --confirm</code></p>
+    </details>
+  </section>
+  {% endif %}
+{% endmacro %}
+
+{# Rețeaua ta acum (protecția live): sub fraza-rezumat, ca cel mai periculos dispozitiv să se vadă fără derulare #}
+{% macro live_panel() %}
 {% if live %}
   {% include "_live.html" %}
   <p id="live-announce" class="sr-only" aria-live="polite"></p>
 {% endif %}
+{% endmacro %}
 
 {% if scan is none %}
+  {{ live_panel() }}
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
 
@@ -80,6 +124,18 @@
   <p class="back"><a href="{{ url_for('history') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back_history') }}</a></p>
   {% endif %}
 {% endif %}
+
+{# După „Verifică din nou” (și la orice scanare din istoric cu una dinainte): dovada înainte/după, prima pe pagină #}
+{% if proof %}{% include "_proof.html" %}{% endif %}
+
+{# Fraza-rezumat: primul lucru pe care îl citești, înaintea oricărui card. Text simplu: se escapează (conține nume nesigure). #}
+{% if summary %}
+<section class="summary summary-{{ 'problems' if scan.status == 'ok' and worst else 'calm' }}" id="summary" aria-label="{{ T('summary_label') }}">
+  <p class="summary-text">{{ summary }}</p>
+</section>
+{% endif %}
+
+{{ live_panel() }}
 
 {# Bara scanării, pe un rând: ce scanare vezi, când a fost făcută (stânga) și ce poți face cu ea (dreapta). #}
 <div class="toolbar card">

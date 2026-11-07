@@ -7,20 +7,28 @@
   {%- if f.port is not none -%}{{ T('port') }} <span class="mono" translate="no">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
 {%- endmacro %}
 
+{# Numele scurt, ca text: numele dat de utilizator (text nesigur, escapat), altfel tipul. #}
 {% macro device_name(host) -%}
-  {{ device_type_label(host.device_type) }}
+  {%- set cn = custom_name(host.device_id) -%}
+  {%- if cn -%}{{ cn }}{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
 {%- endmacro %}
 
-{# Titlul unui dispozitiv: numele anunțat de el (dacă există, text nesigur), altfel tipul. #}
+{# Titlul unui dispozitiv: numele dat de utilizator, apoi numele anunțat de el (ambele text nesigur), apoi tipul. #}
 {% macro device_title(host) -%}
+  {%- set cn = custom_name(host.device_id) -%}
   {%- set an = announced(host.ip) -%}
-  {%- if an -%}<span class="announced" translate="no">{{ an.name }}</span>{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
+  {%- if cn -%}<span class="custom-name">{{ cn }}</span>
+  {%- elif an -%}<span class="announced" translate="no">{{ an.name }}</span>
+  {%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
 {%- endmacro %}
 
-{# Sub titlu, când există nume anunțat: tipul + eticheta mică. #}
+{# Sub titlu: când dispozitivul are un nume dat de utilizator, tipul (și numele anunțat, dacă există); când are
+   doar un nume anunțat, tipul + eticheta mică. #}
 {% macro announced_sub(host) -%}
+  {%- set cn = custom_name(host.device_id) -%}
   {%- set an = announced(host.ip) -%}
-  {%- if an -%}<span class="announced-sub">{{ device_type_label(host.device_type) }}{% if an.service %} · {{ an.service }}{% endif %} <span class="announced-tag">{{ T('announced_label') }}</span></span>{%- endif -%}
+  {%- if cn -%}<span class="announced-sub">{{ device_type_label(host.device_type) }}{% if an %} · <span translate="no">{{ an.name }}</span> <span class="announced-tag">{{ T('announced_label') }}</span>{% endif %}</span>
+  {%- elif an -%}<span class="announced-sub">{{ device_type_label(host.device_type) }}{% if an.service %} · {{ an.service }}{% endif %} <span class="announced-tag">{{ T('announced_label') }}</span></span>{%- endif -%}
 {%- endmacro %}
 
 {# „Ce vede cineva care ascultă”: exemplu inventat, ca un terminal; rândul cu parola e marcat cu etichetă, nu doar culoare. #}
