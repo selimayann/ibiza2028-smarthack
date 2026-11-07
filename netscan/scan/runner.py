@@ -315,7 +315,18 @@ def execute(plan: ScanPlan, nmap_path: Optional[str] = None) -> ScanPlan:
 # `-v` afișează porturile deschise pe măsură ce sunt găsite, `--stats-every` afișează procentul. Ambele schimbă
 # doar ce scrie nmap pe ecran, nu și ce trimite în rețea: restul comenzii rămâne exact cea de la `scan --confirm`.
 PROGRESS_ARGS = ["-v", "--stats-every", "5s"]
+# Viteza pe hotspot (doar scanarea din aplicație): ritm CONSTANT de 100 pachete/s (min = max, deci tot în regula
+# de ≤100/s; altfel nmap încetinește mult când laptopurile cu firewall nu răspund), cel mult 2 reîncercări și
+# timp de așteptare de rețea locală (pe hotspot răspunsurile vin în milisecunde). Nu schimbă CE se verifică:
+# aceleași porturi, aceeași detecție de versiuni (-sV), același script.
+SPEED_ARGS = ["--min-rate", MAX_RATE, "--max-retries", "2", "--max-rtt-timeout", "300ms"]
 STOPPED = "STOPPED"
+
+
+def speed_args(plan: ScanPlan) -> list[str]:
+    """SPEED_ARGS + laptopul care scanează exclus din țintă (nu are rost să ne scanăm pe noi)."""
+    own = plan.network.ip if plan.network is not None else None
+    return [*SPEED_ARGS, *(["--exclude", own] if own else [])]
 MAX_LINE = 500
 
 
@@ -327,7 +338,7 @@ def execute_streaming(plan: ScanPlan, on_line: Callable[[str], None],
     nmap_path, refused = _ready(plan, nmap_path)
     if refused is not None:
         return refused
-    args = [nmap_path, *PROGRESS_ARGS, *plan.args[1:]]
+    args = [nmap_path, *PROGRESS_ARGS, *speed_args(plan), *plan.args[1:]]
     kwargs = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if sys.platform == "win32" else {}
     try:
         proc = popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,

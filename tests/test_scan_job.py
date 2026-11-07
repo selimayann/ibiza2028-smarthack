@@ -234,7 +234,7 @@ def test_execute_streaming_only_adds_display_flags(tmp_path, monkeypatch):
 
     assert runner.execute_streaming(plan, lines.append, nmap_path="C:/nmap.exe", popen=popen, poll_s=0.01).ok
     args, kw = calls[0]
-    assert args == ["C:/nmap.exe", "-v", "--stats-every", "5s", *plan.args[1:]]
+    assert args == ["C:/nmap.exe", "-v", "--stats-every", "5s", *runner.SPEED_ARGS, *plan.args[1:]]
     assert kw.get("shell") is False and lines == NMAP_OUT[:3]
 
 
