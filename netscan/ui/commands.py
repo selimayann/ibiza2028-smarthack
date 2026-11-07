@@ -15,11 +15,13 @@ _TXT = {
         "score": "Scor standard: {a} → {b}",
         "resolved": "Probleme rezolvate",
         "new": "Probleme noi",
+        "persistent": "Probleme rămase",
         "new_dev": "Dispozitive noi",
         "gone_dev": "Dispozitive dispărute",
         "opened": "Porturi deschise acum",
         "closed": "Porturi închise acum",
         "none": "niciuna",
+        "none_m": "niciunul",
         "saved": "Salvate în istoric (id {a} și {b}). Le vezi în UI la „Istoric”.",
         "confirm": "Ștergi definitiv tot istoricul de pe acest calculator? Scrie DA ca să confirmi: ",
         "confirm_word": "DA",
@@ -33,11 +35,13 @@ _TXT = {
         "score": "Standard score: {a} → {b}",
         "resolved": "Resolved problems",
         "new": "New problems",
+        "persistent": "Problems still there",
         "new_dev": "New devices",
         "gone_dev": "Devices gone",
         "opened": "Newly open ports",
         "closed": "Newly closed ports",
         "none": "none",
+        "none_m": "none",
         "saved": "Saved to history (ids {a} and {b}). See them in the UI under “History”.",
         "confirm": "Permanently delete all history on this computer? Type YES to confirm: ",
         "confirm_word": "YES",
@@ -59,21 +63,22 @@ def cmd_ui(port: int = 5000, lang: str = "ro") -> int:
     return 0
 
 
-def format_diff(d: ScanDiff, lang: str = "ro") -> str:
-    none = _t(lang, "none")
+def format_diff(d: ScanDiff, lang: str = "ro", ip_of: dict[str, str] | None = None) -> str:
+    ip_of = ip_of or {}
     lines = [_t(lang, "score", a=d.score_before, b=d.score_after), ""]
 
-    def section(title: str, items: list[str]) -> None:
+    def section(title: str, items: list[str], none_key: str = "none") -> None:
         lines.append(f"{title} ({len(items)}):")
-        lines.extend(f"  - {i}" for i in items) if items else lines.append(f"  {none}")
+        lines.extend(f"  - {i}" for i in items) if items else lines.append(f"  {_t(lang, none_key)}")
 
     port = lambda f: "-" if f.port is None else str(f.port)  # noqa: E731
     section(_t(lang, "resolved"), [f"{f.code}  {f.ip}  port {port(f)}" for f in d.resolved_findings])
     section(_t(lang, "new"), [f"{f.code}  {f.ip}  port {port(f)}" for f in d.new_findings])
-    section(_t(lang, "new_dev"), [f"{h.ip}  {i18n.device_type_label(lang, h.device_type)}" for h in d.new_devices])
-    section(_t(lang, "gone_dev"), [f"{h.ip}  {i18n.device_type_label(lang, h.device_type)}" for h in d.removed_devices])
-    section(_t(lang, "opened"), [f"{p}/{proto}  ({dev})" for dev, p, proto in d.opened_ports])
-    section(_t(lang, "closed"), [f"{p}/{proto}  ({dev})" for dev, p, proto in d.closed_ports])
+    section(_t(lang, "persistent"), [f"{f.code}  {f.ip}  port {port(f)}" for f in d.persistent_findings])
+    section(_t(lang, "new_dev"), [f"{h.ip}  {i18n.device_type_label(lang, h.device_type)}" for h in d.new_devices], "none_m")
+    section(_t(lang, "gone_dev"), [f"{h.ip}  {i18n.device_type_label(lang, h.device_type)}" for h in d.removed_devices], "none_m")
+    section(_t(lang, "opened"), [f"{p}/{proto}  {ip_of.get(dev, dev)}" for dev, p, proto in d.opened_ports], "none_m")
+    section(_t(lang, "closed"), [f"{p}/{proto}  {ip_of.get(dev, dev)}" for dev, p, proto in d.closed_ports], "none_m")
     return "\n".join(lines)
 
 
@@ -94,7 +99,9 @@ def cmd_diff(old_path: str, new_path: str, lang: str = "ro", save: bool = False)
             print(_t(lang, "cannot_read", file=s.file, msg=i18n.error_message(lang, s.error_code)), file=sys.stderr)
             return 2
     print(f"{old.file} → {new.file}")
-    print(format_diff(storage.diff(old, new), lang))
+    d = storage.diff(old, new)
+    ip_of = {h.device_id: h.ip for h in old.hosts} | {h.device_id: h.ip for h in new.hosts}
+    print(format_diff(d, lang, ip_of))
     if save:
         a, b = storage.save_scan(old), storage.save_scan(new)
         print()

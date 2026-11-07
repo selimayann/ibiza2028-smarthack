@@ -188,6 +188,7 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 .compare-col h3 { font-size: 1.0625rem; padding-bottom: .3rem; border-bottom: 3px solid var(--line); }
 .compare-good h3 { border-bottom-color: var(--good); }
 .compare-bad h3 { border-bottom-color: var(--high); }
+.compare-warn h3 { border-bottom-color: var(--medium); }
 .compare-col ul { list-style: none; padding: 0; margin: .5rem 0 0; display: flex; flex-direction: column; gap: .55rem; }
 .compare-col li { line-height: 1.4; }
 

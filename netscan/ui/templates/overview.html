@@ -104,6 +104,10 @@
           <h3>{{ T('new_findings') }} ({{ compare.new_findings|length }})</h3>
           <ul>{% for f in compare.new_findings %}<li><span class="code">{{ f.code }}</span><br><span class="mono">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
         </div>
+        <div class="compare-col compare-warn">
+          <h3>{{ T('persistent') }} ({{ compare.persistent_findings|length }})</h3>
+          <ul>{% for f in compare.persistent_findings %}<li><span class="code">{{ f.code }}</span><br><span class="mono">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+        </div>
         <div class="compare-col">
           <h3>{{ T('new_devices') }} ({{ compare.new_devices|length }})</h3>
           <ul>{% for h in compare.new_devices %}<li>{{ device_name(h) }} <span class="mono">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
