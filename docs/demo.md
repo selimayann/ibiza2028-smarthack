@@ -24,7 +24,7 @@
 - [ ] Laptopul-țintă pornit cu serviciile din `docs/lab.md` (redis, mosquitto, nginx, telnet și FTP false, SSH).
 - [ ] **Ușa-capcană:** regula de firewall doar pe Private (comanda o afișează `python -m netscan trap`), apoi `python -m netscan trap --confirm`.
   Demo: de pe laptopul-țintă, `telnet <IP-laptop-demo> 2323` → alerta apare live.
-- [ ] (Opțional) `python -m netscan listen --confirm` și `python -m netscan watch --every 10 --confirm` (terminal de Administrator).
+- [ ] (Opțional) `python -m netscan listen --confirm` și `python -m netscan watch --every 10 --confirm` (terminal de Administrator); apoi, în terminalul normal, `python -m netscan import-scans` ca alertele și scanările să apară în UI.
 - [ ] **UI:** `NETSCAN_SCANS_DIR=fixtures/lab` (pentru istoricul înainte/după al lab-ului) și `python -m netscan ui`.
 
 ## 4. Cele 7 verificări live, în ordinea juriului
