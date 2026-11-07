@@ -9,10 +9,10 @@
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
   {% if scan_list|length > 1 %}
-  <form class="picker inv-picker" method="get" action="{{ url_for('inventory') }}">
+  <form class="picker inv-picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top nav" data-focus="#scan">
     <label for="scan">{{ T('choose_scan') }}</label>
     <div class="picker-row">
-      <select id="scan" name="scan">
+      <select id="scan" name="scan" data-autosubmit>
         {% for s in scan_list %}<option value="{{ loop.index0 }}"{% if loop.index0 == selected %} selected{% endif %}>{{ s.file }}</option>{% endfor %}
       </select>
       <button type="submit">{{ T('show') }}</button>

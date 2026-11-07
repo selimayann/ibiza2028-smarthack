@@ -71,7 +71,8 @@ body {
   font-size: 1.0625rem;
   line-height: 1.55;
 }
-.wrap { max-width: 62rem; margin: 0 auto; padding: 0 1rem; }
+.wrap { max-width: 80rem; margin: 0 auto; padding: 0 1rem; }
+@media (min-width: 48rem) { .wrap { padding: 0 2rem; } }
 main { padding-top: 1.75rem; padding-bottom: 4rem; }
 h1, h2, h3, h4 { line-height: 1.2; margin: 0; font-weight: 700; }
 h2 { font-size: 1.5rem; }
@@ -91,6 +92,11 @@ a:hover { text-decoration-thickness: 2px; }
 
 .icon { width: 1.05em; height: 1.05em; flex: none; vertical-align: -.15em; }
 .icon-lg { width: 1.25em; height: 1.25em; }
+
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 160ms; }
+.do-first-step:focus, .ask-a:focus, #step-now:focus { outline: none; }
+.do-first-step:focus-visible, .ask-a:focus-visible, #step-now:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+button:disabled { opacity: .6; cursor: progress; }
 
 /* ---------- top bar ---------- */
 .top { background: var(--surface); border-bottom: 1px solid var(--line); }
@@ -126,7 +132,7 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 
 /* ---------- verdict: score + most dangerous ---------- */
 .verdict { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 52rem) { .verdict { grid-template-columns: 17rem minmax(0, 1fr); align-items: start; } }
+@media (min-width: 52rem) { .verdict { grid-template-columns: 18rem minmax(0, 1fr); align-items: start; } }
 
 .score { background: var(--surface); border-radius: var(--radius); padding: 1.25rem 1.4rem; border-top: 6px solid currentColor; display: flex; flex-direction: column; gap: .6rem; }
 .score-good { color: var(--good); }
@@ -141,6 +147,9 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 .meter-fill { fill: currentColor; }
 .meter-tick { stroke: var(--surface); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .score-band { display: flex; align-items: center; gap: .45rem; font-size: 1.375rem; font-weight: 700; }
+.score-facts { color: var(--ink); border-top: 1px solid var(--line); padding-top: .7rem; margin-top: .2rem; display: flex; flex-direction: column; gap: .25rem; }
+.score-facts p { display: flex; align-items: center; gap: .35rem; }
+.score-facts .muted { margin-left: auto; }
 
 .worst { background: var(--surface); border-radius: var(--radius); padding: 1.25rem 1.4rem 1.4rem; border-top: 6px solid var(--high); display: flex; flex-direction: column; gap: .7rem; }
 .worst-label { font-size: 1.125rem; color: var(--muted); display: flex; align-items: center; gap: .45rem; }
@@ -314,4 +323,11 @@ tbody tr:last-child td { border-bottom: 0; }
   .do-first-step { font-size: 1.25rem; }
   .scanbar-save { margin-left: 0; }
   select { min-width: 0; flex: 1; }
+}
+
+/* Ecrane late: listele trec pe două coloane; textele lungi rămân la o lungime de rând ușor de citit. */
+@media (min-width: 70rem) {
+  .devices, .inventory { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  .compare-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .journal-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; align-items: start; }
 }
