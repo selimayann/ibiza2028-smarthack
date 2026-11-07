@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ T('report_title') }} · {{ scan.file }}</title>
+  <title>{{ T('report_title') }} · {{ scan.file }} · SafeEel</title>
   {% if inline_css %}<style>{{ inline_css }}</style>{% else %}<link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">{% endif %}
 </head>
 <body>
@@ -17,6 +17,7 @@
 <main class="report">
   <header class="r-head">
     <div>
+      <img class="r-logo" src="{{ logo_src }}" alt="SafeEel" width="141" height="36">
       <h1>{{ T('report_title') }}</h1>
       <p class="r-muted">{{ T('report_for') }}</p>
     </div>

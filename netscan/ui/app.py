@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import base64
 import hmac
 import json
 import os
@@ -29,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
 VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
 REPORT_CSS = Path(__file__).resolve().parent / "static" / "report.css"
+LOGO_SVG = Path(__file__).resolve().parent / "static" / "brand" / "safeeel-lockup-horizontal-light.svg"
 LANG_COOKIE = "lang"
 
 
@@ -52,18 +54,47 @@ def load_scans() -> list[Scan]:
 MAX_QUESTION_LEN = 500
 
 
+def local_ai_enabled() -> bool:
+    """D8: modelul AI local (Ollama pe 127.0.0.1) e pornit doar explicit, cu NETSCAN_LOCAL_LLM=1."""
+    try:
+        from netscan.scan import local_llm
+
+        return local_llm.is_enabled()
+    except Exception:
+        return False
+
+
 def ask_assistant(question: str, scan: Scan | None, lang: str, previous: Scan | None = None):
-    """FR-12: asistentul lui Ayan (netscan/scan/assistant.py). Răspunde doar din scanare, fără rețea.
-    Întrebarea e text nesigur: se trimite doar asistentului și nu se afișează ca HTML."""
+    """FR-12: asistentul lui Ayan (netscan/scan/assistant.py). Răspunsul e construit din scanare, fără rețea.
+    D8: dacă modelul local e pornit, îl reformulează, iar validatorul lui Ayan verifică textul; altfel rămâne
+    răspunsul predefinit. Întrebarea e text nesigur: se trimite doar asistentului și nu se afișează ca HTML."""
     question = (question or "").strip()[:MAX_QUESTION_LEN]
     if not question or scan is None:
         return None
     try:
         from netscan.scan.assistant import answer
 
-        return answer(question, scan, lang=lang, previous=previous)
+        llm = None
+        if local_ai_enabled():
+            try:
+                from netscan.scan import local_llm
+
+                llm = local_llm.make_llm()
+            except Exception:  # model indisponibil sau adresă nelocală: rămâne textul predefinit
+                llm = None
+        return answer(question, scan, lang=lang, previous=previous, llm=llm)
     except Exception:  # asistentul nu are voie să strice pagina
         return None
+
+
+def assistant_ctx(action: str, api: str, scan: Scan | None, scan_index: int | None, question: str, reply,
+                  show_changes: bool) -> dict | None:
+    """Datele pentru fereastra asistentului (templates/_assistant.html)."""
+    if scan is None or scan.status != "ok":
+        return None
+    return {"action": action, "api": api, "scan_index": scan_index, "question": question, "reply": reply,
+            "open": bool(request.args.get("ask")) or bool(question), "llm_on": local_ai_enabled(),
+            "file": scan.file, "show_changes": show_changes}
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -145,10 +176,11 @@ def create_app(test_config: dict | None = None) -> Flask:
             done = storage.done_keys(scan, app.config["DB_PATH"])
             step, plan_total = current_action(scan, done), len(action_plan(scan))
             all_done = step is None
+        reply = ask_assistant(question, scan, g.lang)
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx,
             step=step, plan_total=plan_total, all_done=all_done,
-            question=question, reply=ask_assistant(question, scan, g.lang),
+            assistant=assistant_ctx(url_for("overview"), url_for("api_ask", scan=idx), scan, idx, question, reply, False),
             devices=rank_devices(scan) if scan else [], worst=most_dangerous(scan) if scan else None,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
         )
@@ -219,8 +251,14 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.get("/history")
     def history():
         items = storage.list_scans(app.config["DB_PATH"])
+        # Pentru coloana „față de anterioara”: scorul ultimei scanări citibile de dinainte (doar afișare, din motor).
+        rows, prev = [], None
+        for it in items:
+            rows.append({"item": it, "prev": prev})
+            if it.status == "ok":
+                prev = it.score
         return render_template(
-            "history.html", items=items, trend=score_trend(items),
+            "history.html", items=items, rows=rows, trend=score_trend(items),
             deleted=request.args.get("deleted") == "1",
         )
 
@@ -231,6 +269,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         html = render_template(
             "report.html", scan=scan, devices=devices, counts=counts, generated=_fmt_time(int(time.time())),
             back_url=back_url, download_url=download_url, inline_css=REPORT_CSS.read_text(encoding="utf-8") if download else None,
+            # raportul descărcat trebuie să meargă singur, fără server: logo-ul intră în fișier ca data URI
+            logo_src=("data:image/svg+xml;base64," + base64.b64encode(LOGO_SVG.read_bytes()).decode("ascii")) if download
+            else url_for("static", filename="brand/safeeel-lockup-horizontal-light.svg"),
         )
         if not download:
             return html
@@ -293,8 +334,30 @@ def create_app(test_config: dict | None = None) -> Flask:
             "overview.html", scan=scan, scan_list=[], selected=0,
             devices=rank_devices(scan), worst=most_dangerous(scan),
             history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts,
-            question=question, reply=ask_assistant(question, scan, g.lang, previous=prev),
+            assistant=assistant_ctx(url_for("history_scan", scan_id=scan_id), url_for("api_ask", history=scan_id),
+                                    scan, None, question, ask_assistant(question, scan, g.lang, previous=prev), True),
         )
+
+    @app.get("/api/ask")
+    def api_ask():
+        """Răspunsul asistentului ca JSON, pentru fereastra de chat (app.js îl pune în pagină doar cu textContent)."""
+        question = request.args.get("q", "")[:MAX_QUESTION_LEN]
+        prev = None
+        if request.args.get("history") is not None:
+            db = app.config["DB_PATH"]
+            hid = request.args.get("history", type=int)
+            scan = storage.get_scan(hid, db) if hid is not None else None
+            prev_id = storage.previous_scan_id(hid, db) if scan is not None else None
+            prev = storage.get_scan(prev_id, db) if prev_id is not None else None
+        else:
+            scan, _ = pick(scans())
+        reply = ask_assistant(question, scan, g.lang, previous=prev)
+        if reply is None:
+            return {"ok": False, "text": i18n.t(g.lang, "ai_error")}, 200
+        return {
+            "ok": True, "text": reply.text, "source": reply.source,
+            "source_label": i18n.t(g.lang, "ask_src_llm" if reply.source == "llm" else "ask_src_fallback"),
+        }
 
     @app.errorhandler(400)
     @app.errorhandler(404)

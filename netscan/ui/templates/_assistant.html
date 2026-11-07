@@ -1,0 +1,49 @@
+{# FR-12 + D8: asistentul AI, ca buton fix + fereastră de chat (<dialog> nativ).
+   Fără JavaScript: butonul reîncarcă pagina cu fereastra deschisă, iar formularele sunt GET obișnuite.
+   Întrebarea și răspunsul sunt text simplu (autoescape); în JS se pun doar cu textContent. #}
+{% set a = assistant %}
+{% set base_q = ('scan=' ~ a.scan_index ~ '&') if a.scan_index is not none else '' %}
+<a class="ai-fab" href="{{ a.action }}?{{ base_q }}ask=1#chat" data-chat-open aria-haspopup="dialog" aria-controls="chat">
+  <svg class="icon" aria-hidden="true"><use href="#i-ai"/></svg><span class="fab-text">{{ T('ai_open') }}</span>
+</a>
+
+<dialog class="chat" id="chat" aria-labelledby="chat-h"{% if a.open %} open{% endif %} data-api="{{ a.api }}" data-thinking="{{ T('ai_thinking') }}" data-error="{{ T('ai_error') }}" data-you="{{ T('ask_you') }}">
+  <div class="chat-head">
+    <div class="chat-avatar" aria-hidden="true"><svg class="icon"><use href="#i-ai"/></svg></div>
+    <div class="chat-title">
+      <h2 id="chat-h">{{ T('ai_title') }}</h2>
+      <p class="chat-badge{% if not a.llm_on %} off{% endif %}"><span class="dot" aria-hidden="true"></span>{{ T('ai_badge_on') if a.llm_on else T('ai_badge_off') }}</p>
+    </div>
+    <form method="dialog">
+      <button class="chat-close" type="submit" value="close" aria-label="{{ T('ai_close') }}" title="{{ T('ai_close') }}"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </form>
+  </div>
+
+  <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="{{ T('ai_log') }}" tabindex="-1">
+    <p class="msg msg-bot">{{ T('ai_welcome')|format(a.file) }}</p>
+    {% if a.question and a.reply %}
+      <p class="msg msg-user"><span class="sr-only">{{ T('ask_you') }} </span>{{ a.question }}</p>
+      <div class="msg msg-bot" id="ask-answer" tabindex="-1">
+        <p class="ask-a">{{ a.reply.text }}</p>
+        <p class="msg-src"><svg class="icon" aria-hidden="true"><use href="#i-{{ 'ai' if a.reply.source == 'llm' else 'info' }}"/></svg>{{ T('ask_src_llm') if a.reply.source == 'llm' else T('ask_src_fallback') }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <form class="chat-suggest" method="get" action="{{ a.action }}#chat" data-chat-form aria-label="{{ T('ask_examples') }}">
+    {% if a.scan_index is not none %}<input type="hidden" name="scan" value="{{ a.scan_index }}">{% endif %}
+    <input type="hidden" name="ask" value="1">
+    {% for k in ('ask_ex1', 'ask_ex2', 'ask_ex5') + (('ask_ex4',) if a.show_changes else ()) + ('ask_ex3', 'ask_ex6') %}
+      <button type="submit" name="q" value="{{ T(k) }}">{{ T(k) }}</button>
+    {% endfor %}
+  </form>
+
+  <form class="chat-form" method="get" action="{{ a.action }}#chat" data-chat-form>
+    {% if a.scan_index is not none %}<input type="hidden" name="scan" value="{{ a.scan_index }}">{% endif %}
+    <input type="hidden" name="ask" value="1">
+    <label for="q" class="sr-only">{{ T('ask_title') }}</label>
+    <input id="q" name="q" type="text" maxlength="500" autocomplete="off" placeholder="{{ T('ask_title') }}…" required>
+    <button type="submit" class="button-primary" aria-label="{{ T('ask_send') }}" title="{{ T('ask_send') }}"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg></button>
+  </form>
+  <p class="chat-note">{{ T('ai_note') }}</p>
+</dialog>

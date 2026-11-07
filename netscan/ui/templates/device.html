@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import sev, port_label, device_name with context %}
-{% block title %}{{ device_name(d.host) }} {{ d.host.ip }} · {{ T('app_title') }}{% endblock %}
+{% block title %}{{ device_name(d.host) }} {{ d.host.ip }} · SafeEel{% endblock %}
 {% block content %}
-<p class="back"><a href="{{ url_for('overview', scan=selected) }}">{{ T('back') }}</a></p>
+<p class="back"><a href="{{ url_for('overview', scan=selected) }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back') }}</a></p>
 
-<header class="device-page-head rail-{{ d.max_severity or 'none' }}">
+<header class="device-page-head card rail-{{ d.max_severity or 'none' }}">
   <h1>{{ device_name(d.host) }} <span class="mono ip" translate="no">{{ d.host.ip }}</span></h1>
   <dl class="facts">
     <div><dt>{{ T('mac') }}</dt><dd class="mono">{{ d.host.mac_masked or T('unknown') }}</dd></div>
@@ -17,8 +17,8 @@
   <h2 id="f-h">{{ T('findings_title') }}</h2>
   {% for f in d.findings %}
     {% set ex = explain(f.code) %}
-    <article class="problem rail-{{ f.severity }}">
-      <h3>{{ sev(f.severity) }} <span class="code" translate="no">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
+    <article class="problem card rail-{{ f.severity }}">
+      <h3>{{ sev(f.severity) }} {{ code_name(f.code) }} <span class="code" translate="no">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
       <p class="problem-text">{{ ex.text }}</p>
       <h4>{{ T('how_to_fix') }}</h4>
       <ol class="steps">{% for s in ex.steps %}<li>{{ s }}</li>{% endfor %}</ol>
@@ -37,13 +37,13 @@
       <p class="evidence"><span class="muted">{{ T('evidence') }}:</span> <code>{{ f.evidence }}</code></p>
     </article>
   {% else %}
-    <p class="notice">{{ T('no_findings') }}</p>
+    <p class="notice card">{{ T('no_findings') }}</p>
   {% endfor %}
 </section>
 
 <section aria-labelledby="p-h">
   <h2 id="p-h">{{ T('ports_title') }}</h2>
-  <div class="table-wrap">
+  <div class="table-wrap card">
   <table>
     <thead><tr><th scope="col">{{ T('port') }}</th><th scope="col">{{ T('state') }}</th><th scope="col">{{ T('service') }}</th><th scope="col">{{ T('product') }}</th><th scope="col">{{ T('page_title') }}</th></tr></thead>
     <tbody>

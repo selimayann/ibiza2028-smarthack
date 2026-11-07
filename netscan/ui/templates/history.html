@@ -1,11 +1,17 @@
 {% extends "base.html" %}
-{% block title %}{{ T('history_title') }} · {{ T('app_title') }}{% endblock %}
+{% from "_macros.html" import score_pill with context %}
+{% block title %}{{ T('history_title') }} · SafeEel{% endblock %}
 {% block content %}
-<h1 class="page-title">{{ T('history_title') }}</h1>
-{% if deleted %}<p class="notice" role="status">{{ T('history_deleted') }}</p>{% endif %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ T('history_title') }}</h1>
+    <p class="lead">{{ T('history_hint') }}</p>
+  </div>
+</div>
+{% if deleted %}<p class="notice card" role="status">{{ T('history_deleted') }}</p>{% endif %}
 
 {% if items %}
-  <section class="trend" aria-labelledby="trend-h">
+  <section class="trend card" aria-labelledby="trend-h">
     <h2 id="trend-h">{{ T('trend_title') }}</h2>
     {% if trend %}
       {% set n = trend.points|length %}
@@ -14,6 +20,7 @@
         {% elif trend.direction == 'down' %}{{ T('trend_down')|format(trend.first.score, trend.last.score, n) }}
         {% else %}{{ T('trend_same')|format(trend.last.score, n) }}{% endif %}
       </p>
+      <div class="trend-body">
       <svg class="trend-chart" viewBox="0 0 {{ trend.width }} {{ trend.height }}" role="img" aria-labelledby="trend-h">
         {# zonele de prag: sub 50 risc mare, 50-79 de îmbunătățit, de la 80 bun #}
         {% for v in (0, 50, 80, 100) %}
@@ -32,29 +39,59 @@
         <text class="trend-axis trend-date" x="{{ trend.first.x }}" y="{{ trend.height - 8 }}" text-anchor="start">{{ fmt_time(trend.first.started_at) }}</text>
         <text class="trend-axis trend-date" x="{{ trend.last.x }}" y="{{ trend.height - 8 }}" text-anchor="end">{{ fmt_time(trend.last.started_at) }}</text>
       </svg>
+      {% set ok_items = items|selectattr('status', 'equalto', 'ok')|list %}
+      {% set best = ok_items|sort(attribute='score')|last %}
+      <dl class="trend-aside">
+        <div class="stat"><dt>{{ T('stat_last') }}</dt><dd>{{ score_pill(trend.last.score) }}<br><span class="muted">{{ trend.last.file }}</span></dd></div>
+        <div class="stat"><dt>{{ T('stat_best') }}</dt><dd>{{ score_pill(best.score) }}<br><span class="muted">{{ best.file }}</span></dd></div>
+        <div class="stat"><dt>{{ T('stat_saved') }}</dt><dd><strong>{{ items|length }}</strong></dd></div>
+      </dl>
+      </div>
     {% else %}
       <p class="muted">{{ T('trend_need_two') }}</p>
     {% endif %}
   </section>
 
-  <p class="muted">{{ T('history_hint') }}</p>
-  <div class="table-wrap">
+  <div class="table-wrap card">
   <table>
-    <thead><tr><th scope="col">{{ T('scan_date') }}</th><th scope="col">{{ T('scan_file') }}</th><th scope="col">{{ T('score_label') }}</th><th scope="col"><span class="sr-only">{{ T('open') }}</span></th></tr></thead>
+    <caption class="sr-only">{{ T('history_title') }}</caption>
+    <thead><tr>
+      <th scope="col">{{ T('scan_date') }}</th><th scope="col">{{ T('scan_file') }}</th>
+      <th scope="col">{{ T('score_label') }}</th><th scope="col">{{ T('hist_change') }}</th>
+      <th scope="col"><span class="sr-only">{{ T('open') }}</span></th>
+    </tr></thead>
     <tbody>
-      {% for s in items %}
+      {% for r in rows %}
+        {% set s = r.item %}
         <tr>
           <td>{{ fmt_time(s.started_at) }}</td>
           <td>{{ s.file }}</td>
-          <td>{% if s.status == 'error' %}{{ error_message(s.error_code) }}{% else %}<strong class="mono">{{ s.score }}</strong>{% endif %}</td>
-          <td><a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('open') }}<span class="sr-only"> {{ s.file }}</span></a></td>
+          <td>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_pill(s.score) }}{% endif %}</td>
+          <td>
+            {% if s.status == 'error' %}<span class="muted">{{ error_message(s.error_code) }}</span>
+            {% elif r.prev is none %}<span class="delta delta-same">{{ T('hist_first') }}</span>
+            {% elif s.score > r.prev %}<span class="delta delta-up"><span aria-hidden="true">▲</span> {{ T('hist_up') }}: {{ r.prev }} → {{ s.score }}</span>
+            {% elif s.score < r.prev %}<span class="delta delta-down"><span aria-hidden="true">▼</span> {{ T('hist_down') }}: {{ r.prev }} → {{ s.score }}</span>
+            {% else %}<span class="delta delta-same">{{ T('hist_same') }}: {{ s.score }}</span>{% endif %}
+          </td>
+          <td><span class="row-links">
+            <a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('open') }}<span class="sr-only"> {{ s.file }}</span></a>
+            {% if s.status == 'ok' %}<a href="{{ url_for('history_report', scan_id=s.id) }}">{{ T('report_short') }}<span class="sr-only"> {{ s.file }}</span></a>{% endif %}
+          </span></td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
-  <p class="danger-zone"><a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a></p>
+  <div class="danger-zone card">
+    <p>{{ T('history_delete_hint') }}</p>
+    <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
+  </div>
 {% else %}
-  <p class="notice">{{ T('history_empty') }}</p>
+  <section class="empty card">
+    <h2>{{ T('history_empty') }}</h2>
+    <p class="muted">{{ T('history_empty_hint') }}</p>
+    <a class="button button-primary" href="{{ url_for('overview') }}">{{ T('go_overview') }}</a>
+  </section>
 {% endif %}
 {% endblock %}

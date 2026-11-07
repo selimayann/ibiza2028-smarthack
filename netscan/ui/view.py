@@ -129,7 +129,7 @@ class Trend:
         return "up" if b > a else "down" if b < a else "same"
 
 
-def score_trend(items, width: int = 640, height: int = 220) -> Trend | None:
+def score_trend(items, width: int = 800, height: int = 260) -> Trend | None:
     """Scorul în timp, din istoricul salvat (în ordinea istoricului). Doar scanările cu scor;
     fișierele cu eroare nu au scor și nu apar pe grafic. Nevoie de cel puțin 2 puncte."""
     scored = [s for s in items if s.status == "ok" and s.score is not None]

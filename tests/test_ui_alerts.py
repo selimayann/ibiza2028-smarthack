@@ -65,7 +65,7 @@ def test_journal_page(tmp_path):
     db = tmp_path / "h.db"
     app = create_app({"DB_PATH": db, "SCAN_LOADER": lambda: [], "TESTING": True})
     client = app.test_client()
-    assert "Încă nu e nimic în jurnal" in client.get("/journal").get_data(as_text=True)
+    assert "Jurnalul e încă gol" in client.get("/journal").get_data(as_text=True)
     for name in ("V6a_before.xml", "V6b_after.xml"):
         storage.save_scan(analyze_file(VAL / name), db)
     html = client.get("/journal").get_data(as_text=True)

@@ -1,15 +1,16 @@
 /* Raportul pentru furnizorul IT (FR-14): sobru, tipăribil pe A4, fără resurse externe. */
-:root { --ink: #111a24; --muted: #4a5768; --line: #c9d1da; --high: #b3261e; --fair: #8f4700; --good: #16663a; --link: #0b5394; }
+:root { --ink: #343A40; --muted: #5B6570; --line: #CDD8E6; --high: #b3261e; --fair: #8f4700; --good: #16663a; --link: #3333FF; --brand: #3333FF; --bg: #F0F8FF; color-scheme: light; }
 * { box-sizing: border-box; }
-body { margin: 0; background: #eef1f4; color: var(--ink); font: 16px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
 a { color: var(--link); }
 :focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
 .report-actions { max-width: 52rem; margin: 1rem auto 0; padding: 0 1rem; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; }
 .report-actions a, .report-actions button { min-height: 2.75rem; display: inline-flex; align-items: center; }
-.report-actions button { font: inherit; padding: .4rem .9rem; border: 2px solid var(--link); color: var(--link); background: #fff; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.report-actions button { font: inherit; padding: .4rem .9rem; border: 2px solid var(--brand); color: var(--brand); background: #fff; border-radius: 8px; cursor: pointer; font-weight: 700; }
 .report { max-width: 52rem; margin: 1rem auto 2rem; background: #fff; padding: 2rem 2.2rem; border-radius: 10px; }
 h1 { font-size: 1.75em; margin: 0; line-height: 1.2; }
-h2 { font-size: 1.2em; margin: 1.6rem 0 .6rem; padding-bottom: .25rem; border-bottom: 2px solid var(--ink); }
+.r-logo { height: 2.25em; width: auto; display: block; margin-bottom: .6em; }
+h2 { font-size: 1.2em; margin: 1.6rem 0 .6rem; padding-bottom: .25rem; border-bottom: 2px solid var(--brand); }
 h3 { font-size: 1.05em; margin: 0 0 .25rem; }
 p { margin: .3rem 0; }
 .r-muted { color: var(--muted); }
@@ -28,7 +29,7 @@ p { margin: .3rem 0; }
 .r-label { font-weight: 700; }
 .r-num { font-size: 2.6em; font-weight: 800; line-height: 1; }
 .r-counts ul { margin: .3em 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: .1em 1.2em; }
-.r-first { margin-top: .6rem; padding: .6rem .8rem; border-left: 5px solid var(--ink); background: #f3f5f7; }
+.r-first { margin-top: .6rem; padding: .6rem .8rem; border-left: 5px solid var(--brand); background: var(--bg); }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: .4rem .5rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 th { color: var(--muted); }
@@ -50,7 +51,7 @@ th { color: var(--muted); }
   body { background: #fff; font-size: 9pt; line-height: 1.3; }
   .r-table th:nth-child(2) { width: 40%; } .r-table th:nth-child(3) { width: 22%; }
   h1 { font-size: 16pt; } h2 { font-size: 11.5pt; margin: 10pt 0 4pt; }
-  .r-summary { margin-top: 8pt; gap: 12pt; } .r-num { font-size: 22pt; }
+  .r-summary { margin-top: 8pt; gap: 12pt; } .r-num { font-size: 22pt; } .r-logo { height: 18pt; margin-bottom: 4pt; }
   th, td { padding: 2.5pt 4pt; } .r-foot { margin-top: 8pt; }
   /* Doar pe hârtie (A4, o pagină): standardele se ascund (rămân în aplicație și în HTML), textul secundar e mai mic. */
   .report-actions, .r-std { display: none; }

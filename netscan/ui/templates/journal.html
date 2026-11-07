@@ -1,23 +1,39 @@
 {% extends "base.html" %}
 {% from "_macros.html" import alert_list with context %}
-{% block title %}{{ T('journal_title') }} · {{ T('app_title') }}{% endblock %}
+{% block title %}{{ T('journal_title') }} · SafeEel{% endblock %}
 {% block content %}
-<h1 class="page-title">{{ T('journal_title') }}</h1>
-<p class="muted lead">{{ T('journal_hint') }}</p>
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ T('journal_title') }}</h1>
+    <p class="lead">{{ T('journal_hint') }}</p>
+  </div>
+</div>
 
 {% if groups %}
-  <div class="journal-groups">
+  <ol class="timeline">
   {% for g in groups %}
-    <section class="journal-day" aria-labelledby="j-{{ g.scan_id }}">
-      <h2 id="j-{{ g.scan_id }}">
-        {% if g.scan %}{{ T('journal_scan')|format(fmt_time(g.scan.started_at), g.scan.file) }}{% endif %}
-      </h2>
-      {{ alert_list(g.alerts) }}
+    {% set n_bad = g.alerts|selectattr('tone', 'equalto', 'bad')|list|length %}
+    {% set n_good = g.alerts|selectattr('tone', 'equalto', 'good')|list|length %}
+    {% set n_info = g.alerts|selectattr('tone', 'equalto', 'info')|list|length %}
+    <li class="journal-day card" aria-labelledby="j-{{ g.scan_id }}">
+      <div class="journal-day-head">
+        <h2 id="j-{{ g.scan_id }}">{% if g.scan %}{{ fmt_time(g.scan.started_at) }}<span class="file">{{ g.scan.file }}</span>{% endif %}</h2>
+        <p class="chips">
+          {% if n_bad %}<span class="chip chip-bad"><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('j_bad')|format(n_bad) }}</span>{% endif %}
+          {% if n_good %}<span class="chip chip-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('j_good')|format(n_good) }}</span>{% endif %}
+          {% if n_info %}<span class="chip chip-info"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('j_info')|format(n_info) }}</span>{% endif %}
+        </p>
+      </div>
+      {{ alert_list(g.alerts, true) }}
       <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id) }}">{{ T('see_in_history') }}</a></p>
-    </section>
+    </li>
   {% endfor %}
-  </div>
+  </ol>
 {% else %}
-  <p class="notice">{{ T('journal_empty') }}</p>
+  <section class="empty card">
+    <h2>{{ T('journal_empty_title') }}</h2>
+    <p class="muted">{{ T('journal_empty') }}</p>
+    <a class="button button-primary" href="{{ url_for('overview') }}">{{ T('go_overview') }}</a>
+  </section>
 {% endif %}
 {% endblock %}

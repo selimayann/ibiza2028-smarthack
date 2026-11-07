@@ -263,7 +263,8 @@ def test_ask_box_answers_from_scan(tmp_path):
     assert "Întreabă despre rețeaua ta" in html and 'name="q"' in html
     html = client.get("/?q=" + quote("Ce fac întâi?")).get_data(as_text=True)
     assert "Ai întrebat:" in html and "Fă asta întâi" in html
-    assert "Răspuns construit doar din scanare" in html
+    assert "Răspuns construit direct din scanare" in html
+    assert '<dialog class="chat" id="chat"' in html and " open data-api=" in html   # fără JS: fereastra vine deschisă
 
 
 def test_ask_question_is_escaped_and_not_obeyed(tmp_path):
@@ -414,7 +415,8 @@ def test_pages_use_local_js_and_enhanced_forms(tmp_path):
     resp = client.get("/")
     html = resp.get_data(as_text=True)
     assert '<script src="/static/app.js" defer></script>' in html
-    assert 'data-swap="#worst"' in html and 'data-swap="#ask"' in html and 'data-swap="#save-area"' in html
+    assert 'data-swap="#worst"' in html and 'data-chat-form' in html and 'data-swap="#save-area"' in html
+    assert 'class="ai-fab"' in html and 'aria-haspopup="dialog"' in html
     assert "script-src 'self'" in resp.headers["Content-Security-Policy"]
     js = client.get("/static/app.js").get_data(as_text=True)
     assert "innerHTML" not in js and "eval(" not in js and "https://" not in js
@@ -427,3 +429,46 @@ def test_save_via_fetch_stays_on_overview(tmp_path):
     assert resp.status_code == 302 and resp.headers["Location"].endswith("/?scan=0")
     resp = client.post("/history/save", data={"token": app.config["FORM_TOKEN"], "scan": 0})
     assert "/scan/" in resp.headers["Location"]                 # fără JS: duce la istoric, ca înainte
+
+
+# ---------- asistentul în fereastra de chat (FR-12 + D8) ----------
+
+def test_api_ask_returns_plain_text_json(tmp_path):
+    from urllib.parse import quote
+
+    client, _ = make_client(tmp_path, [sample()])
+    data = client.get("/api/ask?scan=0&q=" + quote("Ce fac întâi?")).get_json()
+    assert data["ok"] and data["source"] == "fallback" and "Fă asta întâi" in data["text"]
+    assert data["source_label"].startswith("Răspuns construit direct din scanare")
+    data = client.get("/api/ask?scan=0&q=" + quote(XSS)).get_json()
+    assert data["ok"] and "<script" not in data["text"]
+
+
+def test_api_ask_on_history_and_empty_question(tmp_path):
+    from urllib.parse import quote
+
+    client, app = make_client(tmp_path, [])
+    _, b_id = _save_validation(app.config["DB_PATH"], "V6a_before.xml", "V6b_after.xml")
+    data = client.get(f"/api/ask?history={b_id}&q=" + quote("Ce s-a schimbat?")).get_json()
+    assert data["ok"] and data["text"]
+    assert client.get(f"/api/ask?history={b_id}&q=").get_json()["ok"] is False
+
+
+def test_local_ai_is_off_by_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("NETSCAN_LOCAL_LLM", raising=False)
+    client, _ = make_client(tmp_path, [sample()])
+    html = client.get("/?ask=1").get_data(as_text=True)
+    assert "Răspunde din scanarea ta · fără internet" in html
+
+
+def test_local_ai_used_only_when_enabled_and_checked(tmp_path, monkeypatch):
+    """D8: cu NETSCAN_LOCAL_LLM=1, textul modelului trece prin validator; un IP inventat e respins."""
+    from urllib.parse import quote
+    import netscan.scan.local_llm as local_llm
+
+    monkeypatch.setenv("NETSCAN_LOCAL_LLM", "1")
+    monkeypatch.setattr(local_llm, "make_llm", lambda *a, **k: (lambda ctx: "Schimbă parola camerei 10.9.9.9 acum."))
+    client, _ = make_client(tmp_path, [sample()])
+    assert "AI local pornit" in client.get("/?ask=1").get_data(as_text=True)
+    data = client.get("/api/ask?scan=0&q=" + quote("Ce fac întâi?")).get_json()
+    assert data["source"] == "fallback" and "10.9.9.9" not in data["text"]   # validatorul a respins IP-ul inventat

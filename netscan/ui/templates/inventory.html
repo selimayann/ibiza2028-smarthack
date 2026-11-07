@@ -1,15 +1,21 @@
 {% extends "base.html" %}
 {% from "_macros.html" import sev, device_name with context %}
-{% block title %}{{ T('inv_title') }} · {{ T('app_title') }}{% endblock %}
+{% block title %}{{ T('inv_title') }} · SafeEel{% endblock %}
 {% block content %}
-<h1 class="page-title">{{ T('inv_title') }}</h1>
-<p class="muted lead">{{ T('inv_hint') }}</p>
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ T('inv_title') }}</h1>
+    <p class="lead">{{ T('inv_hint') }}</p>
+  </div>
+</div>
 
 {% if scan is none %}
-  <p class="notice">{{ T('no_data') }}</p>
+  <p class="notice card">{{ T('no_data') }}</p>
 {% else %}
+  <div class="toolbar card">
+  <div class="toolbar-left">
   {% if scan_list|length > 1 %}
-  <form class="picker inv-picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top nav" data-focus="#scan">
+  <form class="picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
     <label for="scan">{{ T('choose_scan') }}</label>
     <div class="picker-row">
       <select id="scan" name="scan" data-autosubmit>
@@ -19,19 +25,23 @@
     </div>
   </form>
   {% endif %}
+  </div>
+  {% if scan.status != 'error' %}
+    {% set with_p = devices|selectattr('findings')|list|length %}
+    <p class="inv-summary">{{ T('inv_summary')|format(devices|length, with_p, devices|length - with_p) }}</p>
+  {% endif %}
+  </div>
 
   {% if scan.status == 'error' %}
-    <section class="panel panel-error" role="alert">
+    <section class="panel panel-error card" role="alert">
       <h2><svg class="icon icon-lg" aria-hidden="true"><use href="#i-high"/></svg>{{ T('error_title') }}</h2>
       <p>{{ error_message(scan.error_code) }}</p>
     </section>
   {% else %}
-    {% set with_p = devices|selectattr('findings')|list|length %}
-    <p class="inv-summary">{{ T('inv_summary')|format(devices|length, with_p, devices|length - with_p) }}</p>
     <ul class="inventory">
       {% for d in devices %}
         {% set open_ports = d.host.ports|selectattr('state', 'equalto', 'open')|list %}
-        <li class="inv-item rail-{{ d.max_severity or 'none' }}">
+        <li class="inv-item card rail-{{ d.max_severity or 'none' }}">
           <div class="inv-head">
             <h2><a href="{{ url_for('device', device_id=d.host.device_id, scan=selected) }}">{{ device_name(d.host) }}</a> <span class="mono ip" translate="no">{{ d.host.ip }}</span></h2>
             <p class="inv-status">

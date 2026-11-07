@@ -1,50 +1,55 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, port_label, device_name, meter, alert_list, ask_box with context %}
+{% from "_macros.html" import sev, port_label, device_name, meter, alert_list with context %}
 {% block content %}
 
 {% if scan is none %}
-  <p class="notice">{{ T('no_data') }}</p>
+  <p class="notice card">{{ T('no_data') }}</p>
 {% else %}
 
-<div class="scanbar">
-  {% if scan_list|length > 1 %}
-  <form class="picker" method="get" action="{{ url_for('overview') }}" data-swap="#main, .top nav" data-focus="#scan">
-    <label for="scan">{{ T('choose_scan') }}</label>
-    <div class="picker-row">
-      <select id="scan" name="scan" data-autosubmit>
-        {% for s in scan_list %}
-          <option value="{{ loop.index0 }}"{% if loop.index0 == selected %} selected{% endif %}>{{ s.file }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit">{{ T('show') }}</button>
-    </div>
-  </form>
-  {% else %}
-  <dl class="scanmeta">
-    <div><dt>{{ T('scan_file') }}</dt><dd>{{ scan.file }}</dd></div>
-  </dl>
-  {% endif %}
-  <dl class="scanmeta">
-    <div><dt>{{ T('scan_date') }}</dt><dd>{{ fmt_time(scan.started_at) }}</dd></div>
-  </dl>
-  <p class="scanbar-report"><a href="{{ url_for('history_report', scan_id=history_id) if history_id is not none else url_for('report', scan=selected) }}">{{ T('report_link') }}</a></p>
-  {% if history_id is none and scan.status == 'ok' %}
-    <div class="scanbar-save" id="save-area">
-    {% if saved_id %}
-      <p class="saved"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('saved_history') }}. <a href="{{ url_for('history_scan', scan_id=saved_id) }}">{{ T('see_in_history') }}</a></p>
+{# Bara scanării: ce scanare vezi (stânga) și ce poți face cu ea (dreapta). #}
+<div class="toolbar card">
+  <div class="toolbar-left">
+    {% if scan_list|length > 1 %}
+    <form class="picker" method="get" action="{{ url_for('overview') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
+      <label for="scan">{{ T('choose_scan') }}</label>
+      <div class="picker-row">
+        <select id="scan" name="scan" data-autosubmit>
+          {% for s in scan_list %}
+            <option value="{{ loop.index0 }}"{% if loop.index0 == selected %} selected{% endif %}>{{ s.file }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">{{ T('show') }}</button>
+      </div>
+    </form>
     {% else %}
-      <form method="post" action="{{ url_for('history_save') }}" data-swap="#save-area">
-        <input type="hidden" name="token" value="{{ token }}">
-        <input type="hidden" name="scan" value="{{ selected }}">
-        <button type="submit" class="button-quiet">{{ T('save_history') }}</button>
-      </form>
+    <dl class="scanmeta">
+      <div><dt>{{ T('scan_file') }}</dt><dd>{{ scan.file }}</dd></div>
+    </dl>
     {% endif %}
-    </div>
-  {% endif %}
+    <dl class="scanmeta">
+      <div><dt>{{ T('scan_date') }}</dt><dd>{{ fmt_time(scan.started_at) }}</dd></div>
+    </dl>
+  </div>
+  <div class="toolbar-actions">
+    <a class="button button-secondary" href="{{ url_for('history_report', scan_id=history_id) if history_id is not none else url_for('report', scan=selected) }}"><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>{{ T('report_link') }}</a>
+    {% if history_id is none and scan.status == 'ok' %}
+      <div class="toolbar-save" id="save-area">
+      {% if saved_id %}
+        <p class="saved"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('saved_history') }}. <a href="{{ url_for('history_scan', scan_id=saved_id) }}">{{ T('see_in_history') }}</a></p>
+      {% else %}
+        <form method="post" action="{{ url_for('history_save') }}" data-swap="#save-area" data-focus="#save-area .saved">
+          <input type="hidden" name="token" value="{{ token }}">
+          <input type="hidden" name="scan" value="{{ selected }}">
+          <button type="submit" class="button-quiet"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg>{{ T('save_history') }}</button>
+        </form>
+      {% endif %}
+      </div>
+    {% endif %}
+  </div>
 </div>
 
 {% if scan.status == 'error' %}
-  <section class="panel panel-error" role="alert">
+  <section class="panel panel-error card" role="alert">
     <h1><svg class="icon icon-lg" aria-hidden="true"><use href="#i-high"/></svg>{{ T('error_title') }}</h1>
     <p>{{ error_message(scan.error_code) }}</p>
     <p class="muted">{{ T('error_hint') }}</p>
@@ -55,17 +60,25 @@
 {% set band_icon = {'good': 'good', 'fair': 'fair', 'poor': 'high'}[band] %}
 
 <div class="verdict">
-  {# 1. Scorul standard #}
-  <section class="score score-{{ band }}" aria-labelledby="score-h">
+  {# 1. Scorul standard, cu scala pe care se citește #}
+  <section class="score card score-{{ band }}" aria-labelledby="score-h">
     <h1 id="score-h" class="score-label">{{ T('score_label') }}</h1>
     <p class="score-value"><span class="score-num">{{ scan.score }}</span><span class="score-of">{{ T('score_of') }}</span></p>
     {{ meter(scan.score) }}
     <p class="score-band"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-{{ band_icon }}"/></svg>{{ T('band_' ~ band) }}</p>
+    <ul class="scale" aria-label="{{ T('scale_title') }}">
+      {% for b, icon, rng in (('good', 'good', '80–100'), ('fair', 'fair', '50–79'), ('poor', 'high', '0–49')) %}
+        <li class="s-{{ b }}{% if b == band %} is-current{% endif %}"{% if b == band %} aria-current="true"{% endif %}>
+          <svg class="icon" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>{{ T('band_' ~ b) }}<span class="range">{{ rng }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="score-formula">{{ T('score_formula') }}</p>
     <div class="score-facts">
-      <p>{{ T('inv_summary_short')|format(devices|length, scan.findings|length) }}</p>
+      <p>{{ T('facts_devices') }}<span class="count">{{ devices|length }}</span></p>
       {% for sev_name in ('high', 'medium', 'low', 'info') %}
         {% set n = scan.findings|selectattr('severity', 'equalto', sev_name)|list|length %}
-        {% if n %}<p>{{ sev(sev_name) }}<span class="muted">{{ n }}</span></p>{% endif %}
+        {% if n %}<p>{{ sev(sev_name) }}<span class="count">{{ n }}</span></p>{% endif %}
       {% endfor %}
     </div>
   </section>
@@ -74,42 +87,50 @@
   {% if worst %}
     {% set w = worst.worst %}
     {% set ex = explain(w.code) %}
-    <section class="worst" id="worst" aria-labelledby="worst-h">
+    <section class="worst card sev-top-{{ worst.max_severity }}" id="worst" aria-labelledby="worst-h">
       <h2 id="worst-h" class="worst-label">{{ T('worst_title') }}</h2>
       <p class="worst-device">{{ device_name(worst.host) }} <span class="mono ip" translate="no">{{ worst.host.ip }}</span></p>
-      <p class="worst-problem">{{ sev(w.severity) }} <span class="code" translate="no">{{ w.code }}</span> <span class="muted">{{ port_label(w) }}</span></p>
+      <p class="worst-problem">{{ sev(w.severity) }} <strong>{{ code_name(w.code) }}</strong> <span class="code" translate="no">{{ w.code }}</span> <span class="muted">{{ port_label(w) }}</span></p>
       <p class="worst-text">{{ ex.text }}</p>
       {% if history_id is none and step %}
         {# D5: un singur pas pe rând, în ordinea riscului; după bifă apare următorul #}
         {% set sx = explain(step.finding.code) %}
         <div class="do-first">
-          <p class="do-first-label">{{ T('do_first') if step.number == 1 else T('next_step') }} <span class="do-first-count">{{ T('step_of')|format(step.number, step.total) }}</span></p>
+          <div class="do-first-head">
+            <p class="do-first-label">{{ T('do_first') if step.number == 1 else T('next_step') }}</p>
+            <p class="do-first-count">{{ T('step_of')|format(step.number, step.total) }}</p>
+          </div>
           <p class="do-first-step" id="step-now" tabindex="-1">{{ sx.steps[0] }}</p>
           <p class="do-first-for">{{ T('step_on')|format(code_name(step.finding.code), device_type_label(step.device.device_type), step.device.ip) }}</p>
-          <form method="post" action="{{ url_for('action_done') }}" class="do-first-actions" data-swap="#worst" data-focus="#step-now">
-            <input type="hidden" name="token" value="{{ token }}">
-            <input type="hidden" name="scan" value="{{ selected }}">
-            <input type="hidden" name="device_id" value="{{ step.finding.device_id }}">
-            <input type="hidden" name="port" value="{{ step.finding.port if step.finding.port is not none else '' }}">
-            <input type="hidden" name="code" value="{{ step.finding.code }}">
-            <button type="submit" class="button-check"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') }}</button>
-          </form>
+          <div class="steps-progress" aria-hidden="true">{% for i in range(step.total) %}<span{% if i < step.done_count %} class="done"{% endif %}></span>{% endfor %}</div>
+          <div class="do-first-actions">
+            <form method="post" action="{{ url_for('action_done') }}" data-swap="#worst" data-focus="#step-now">
+              <input type="hidden" name="token" value="{{ token }}">
+              <input type="hidden" name="scan" value="{{ selected }}">
+              <input type="hidden" name="device_id" value="{{ step.finding.device_id }}">
+              <input type="hidden" name="port" value="{{ step.finding.port if step.finding.port is not none else '' }}">
+              <input type="hidden" name="code" value="{{ step.finding.code }}">
+              <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') }}</button>
+            </form>
+            {% if step.done_count %}
+              <form method="post" action="{{ url_for('action_reset') }}" data-swap="#worst" data-focus="#step-now">
+                <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+                <button type="submit" class="button-link">{{ T('step_reset') }}</button>
+              </form>
+            {% endif %}
+          </div>
         </div>
-        {% if step.done_count %}
-          <form method="post" action="{{ url_for('action_reset') }}" class="do-first-reset" data-swap="#worst" data-focus="#step-now">
-            <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
-            <button type="submit" class="button-link">{{ T('step_reset') }}</button>
-          </form>
-        {% endif %}
       {% elif history_id is none and all_done %}
         <div class="do-first do-first-done">
           <p class="do-first-label" id="step-now" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('steps_all_done') }}</p>
           <p class="do-first-for">{{ T('steps_all_done_hint') }}</p>
+          <div class="do-first-actions">
+            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#worst" data-focus="#step-now">
+              <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+              <button type="submit" class="button-link">{{ T('step_reset') }}</button>
+            </form>
+          </div>
         </div>
-        <form method="post" action="{{ url_for('action_reset') }}" class="do-first-reset" data-swap="#worst" data-focus="#step-now">
-          <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
-          <button type="submit" class="button-link">{{ T('step_reset') }}</button>
-        </form>
       {% else %}
         <div class="do-first">
           <p class="do-first-label">{{ T('do_first') }}</p>
@@ -117,33 +138,27 @@
         </div>
       {% endif %}
       {% if history_id is none %}
-        <p class="worst-more"><a href="{{ url_for('device', device_id=worst.host.device_id, scan=selected) }}">{{ T('all_steps') }}</a></p>
+        <p class="worst-links"><a class="device-link" href="{{ url_for('device', device_id=worst.host.device_id, scan=selected) }}">{{ T('all_steps') }}</a></p>
       {% endif %}
     </section>
   {% else %}
-    <section class="worst worst-ok">
+    <section class="worst worst-ok card">
       <h2 class="worst-label"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-good"/></svg>{{ T('no_problems_title') }}</h2>
       <p class="worst-text">{{ T('no_problems_body') }}</p>
     </section>
   {% endif %}
 </div>
 
-{% if history_id is none %}
-  {{ ask_box(url_for('overview'), selected, question, reply, false) }}
-{% else %}
-  {{ ask_box(url_for('history_scan', scan_id=history_id), none, question, reply, true) }}
-{% endif %}
-
 {# Comparația cu scanarea anterioară (doar în istoric) #}
 {% if history_id is not none %}
-  <section class="compare" aria-labelledby="cmp-h">
+  <section class="compare card" aria-labelledby="cmp-h">
     <h2 id="cmp-h">{{ T('compare_title') }}</h2>
     {% if compare is none %}
       <p>{{ T('compare_none') }}</p>
     {% else %}
-      <h3 class="alerts-title">{{ T('alerts_title') }}</h3>
-      {% if alerts %}{{ alert_list(alerts) }}{% else %}<p class="muted">{{ T('journal_no_change') }}</p>{% endif %}
       <p class="compare-score">{{ T('score_change') }}: <strong class="mono">{{ compare.score_before }} → {{ compare.score_after }}</strong></p>
+      <h3 class="alerts-title">{{ T('alerts_title') }}</h3>
+      {% if alerts %}{{ alert_list(alerts, true) }}{% else %}<p class="muted">{{ T('journal_no_change') }}</p>{% endif %}
       {% if compare.matched_by_ip %}
         <div class="ip-note" role="note">
           <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('matched_ip_title') }} ({{ compare.matched_by_ip|length }})</h3>
@@ -154,15 +169,15 @@
       <div class="compare-grid">
         <div class="compare-col compare-good">
           <h3>{{ T('resolved') }} ({{ compare.resolved_findings|length }})</h3>
-          <ul>{% for f in compare.resolved_findings %}<li><span class="code" translate="no">{{ f.code }}</span><br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+          <ul>{% for f in compare.resolved_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col compare-bad">
           <h3>{{ T('new_findings') }} ({{ compare.new_findings|length }})</h3>
-          <ul>{% for f in compare.new_findings %}<li><span class="code" translate="no">{{ f.code }}</span><br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+          <ul>{% for f in compare.new_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col compare-warn">
           <h3>{{ T('persistent') }} ({{ compare.persistent_findings|length }})</h3>
-          <ul>{% for f in compare.persistent_findings %}<li><span class="code" translate="no">{{ f.code }}</span><br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+          <ul>{% for f in compare.persistent_findings %}<li>{{ code_name(f.code) }}<br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col">
           <h3>{{ T('opened_ports') }} ({{ compare.opened_ports|length }})</h3>
@@ -186,11 +201,14 @@
 {% endif %}
 
 {# 3. Lista dispozitivelor, în aceeași ordine #}
-<section class="devices-section" aria-labelledby="dev-h">
-  <h2 id="dev-h">{{ T('devices_title') }}</h2>
+<section class="section" aria-labelledby="dev-h">
+  <div class="section-head">
+    <h2 id="dev-h">{{ T('devices_title') }}</h2>
+    {% if history_id is none %}<a href="{{ url_for('inventory', scan=selected) }}">{{ T('see_inventory') }}</a>{% endif %}
+  </div>
   <ol class="devices">
     {% for d in devices %}
-      <li class="device rail-{{ d.max_severity or 'none' }}">
+      <li class="device card rail-{{ d.max_severity or 'none' }}">
         <div class="device-head">
           <h3><span>{{ device_name(d.host) }}</span> <span class="mono ip" translate="no">{{ d.host.ip }}</span></h3>
           <p class="device-sum">
@@ -200,7 +218,7 @@
         {% if d.findings %}
           <ul class="findings">
             {% for f in d.findings %}
-              <li>{{ sev(f.severity) }} <span class="code" translate="no">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></li>
+              <li>{{ sev(f.severity) }} {{ code_name(f.code) }} <span class="muted">{{ port_label(f) }}</span></li>
             {% endfor %}
           </ul>
         {% endif %}
