@@ -131,11 +131,12 @@ button:disabled { opacity: .6; cursor: progress; }
 /* Limba: două coduri simple; cea activă e marcată (aria-current), cealaltă e link în limba ei. */
 .lang-switch { display: inline-flex; align-items: center; gap: .4rem; padding-left: 1.5rem; border-left: 1px solid var(--line); }
 .lang-switch .icon { color: var(--muted); width: 1.2em; height: 1.2em; }
-.lang-pill { display: inline-flex; align-items: center; }
-.lang-pill a, .lang-pill span { min-height: 2.75rem; min-width: 2.75rem; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; text-decoration: none; }
-.lang-pill span[aria-current] { color: var(--brand); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: .45em; }
-.lang-pill a { color: var(--muted); }
-.lang-pill a:hover { color: var(--brand); }
+/* Limba: comutator cu două poziții (limba curentă plină), ca să nu semene cu tabul activ din meniu */
+.lang-pill { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); }
+.lang-pill a, .lang-pill span { min-height: 2.25rem; min-width: 2.75rem; padding: 0 .6rem; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; text-decoration: none; }
+.lang-pill span[aria-current] { background: var(--brand); color: var(--brand-ink); }
+.lang-pill a { color: var(--ink); }
+.lang-pill a:hover { background: var(--brand-tint); color: var(--brand-dark); }
 .lang-pill a + span::before, .lang-pill span + a::before { content: ""; }
 
 /* ---------- bara scanării (deschisă, nu în cutie) ---------- */
@@ -670,3 +671,11 @@ body:has(.ai-fab) .foot { padding-bottom: 4.75rem; }
 .alert-sev-medium .icon, .alert-sev-medium .alert-sev { color: var(--medium); }
 .alert-sev-low .icon, .alert-sev-low .alert-sev { color: var(--low); }
 .alert-sev-info .icon, .alert-sev-info .alert-sev { color: var(--info); }
+/* Pe ecran lat, coloanele tabelelor au lățimi fixe: nu mai sar dintr-o parte în alta la schimbarea limbii */
+@media (min-width: 48rem) {
+  .inv-table, .hist-table { table-layout: fixed; }
+  .inv-table th:nth-child(1) { width: 17%; } .inv-table th:nth-child(2) { width: 11%; } .inv-table th:nth-child(3) { width: 22%; }
+  .inv-table th:nth-child(4) { width: 15%; } .inv-table th:nth-child(5) { width: 20%; } .inv-table th:nth-child(6) { width: 15%; }
+  .hist-table th:nth-child(1) { width: 20%; } .hist-table th:nth-child(2) { width: 22%; } .hist-table th:nth-child(3) { width: 17%; }
+  .hist-table th:nth-child(4) { width: 25%; } .hist-table th:nth-child(5) { width: 16%; }
+}
