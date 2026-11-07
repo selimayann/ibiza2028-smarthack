@@ -255,7 +255,9 @@ button:disabled { opacity: .6; cursor: progress; }
 .do-first-done .do-first-label { color: var(--good); display: flex; align-items: center; gap: .4rem; }
 
 /* ---------- severitate ---------- */
-.sev { display: inline-flex; align-items: center; gap: .3rem; font-weight: 700; white-space: nowrap; }
+.sev { display: inline-flex; align-items: baseline; gap: .3rem; font-weight: 700; white-space: nowrap; }
+/* iconița e centrată, dar linia de bază a etichetei e a textului („Mediu”), ca să stea pe aceeași linie cu restul rândului */
+.sev .icon { align-self: center; }
 .sev-high { color: var(--high); }
 .sev-medium { color: var(--medium); }
 .sev-low { color: var(--low); }
