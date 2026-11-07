@@ -14,3 +14,4 @@
 | 8 | Laptopul care scanează (apare fără MAC) trebuie raportat ca UNKNOWN_DEVICE în scanările noastre? | | Radu, Ayan |
 | 9 | Scanările din lab pot fi puse în repo cu MAC-urile reale, sau trebuie altfel? | | Ayan |
 | 10 | Numele hotspotului: confirmăm formatul `RSH-<nume-echipă>`? | | Ayan, Oneata |
+| 11 | La scanarea noastră, nmap 7.993 cu `-sV` raportează mosquitto 1.6.15 pe 1883/tcp ca `<service name="mosquitto version 1.6.15" method="probed" conf="10"/>`, nu `name="mqtt"` (probabil scriptul `mqtt-subscribe` suprascrie numele). Pentru MQTT_EXPOSED contează doar numele exact `mqtt`, sau și un astfel de nume (care conține „mosquitto” / pe 1883)? Fișierele din Test Set pot avea această formă? | | Radu, Ayan |
