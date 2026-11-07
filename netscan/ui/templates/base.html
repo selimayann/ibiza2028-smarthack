@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ T('app_title') }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a class="skip" href="#main">{{ T('skip_link') }}</a>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="{{ url_for('overview') }}">{{ T('app_title') }}</a>
+      <nav aria-label="{{ T('nav_overview') }}">
+        <a href="{{ url_for('overview') }}"{% if request.endpoint == 'overview' %} aria-current="page"{% endif %}>{{ T('nav_overview') }}</a>
+        <a href="{{ url_for('history') }}"{% if request.endpoint in ('history', 'history_scan') %} aria-current="page"{% endif %}>{{ T('nav_history') }}</a>
+        <a href="{{ lang_url() }}" lang="{{ other_lang }}">{{ T('lang_switch') }}</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

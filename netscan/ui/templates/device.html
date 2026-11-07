@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sev, port_label, device_name with context %}
+{% block title %}{{ device_name(d.host) }} · {{ T('app_title') }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('overview', scan=selected) }}">← {{ T('back') }}</a></p>
+<h1>{{ device_name(d.host) }}</h1>
+
+<dl class="facts">
+  <div><dt>{{ T('ip') }}</dt><dd>{{ d.host.ip }}</dd></div>
+  <div><dt>{{ T('mac') }}</dt><dd>{{ d.host.mac_masked or T('unknown') }}</dd></div>
+  <div><dt>{{ T('vendor') }}</dt><dd>{{ d.host.vendor or T('unknown') }}</dd></div>
+  <div><dt>{{ T('hostname') }}</dt><dd>{{ d.host.hostname or T('unknown') }}</dd></div>
+  <div><dt>{{ T('type') }}</dt><dd>{{ device_type_label(d.host.device_type) }}</dd></div>
+</dl>
+
+<section aria-labelledby="f-h">
+  <h2 id="f-h">{{ T('findings_title') }}</h2>
+  {% for f in d.findings %}
+    {% set ex = explain(f.code) %}
+    <article class="card">
+      <h3>{{ sev(f.severity) }} <span class="code">{{ f.code }}</span> · {{ port_label(f) }}</h3>
+      <p><strong>{{ T('evidence') }}:</strong> <code>{{ f.evidence }}</code></p>
+      <h4>{{ T('what_it_means') }}</h4>
+      <p>{{ ex.text }}</p>
+      <h4>{{ T('how_to_fix') }}</h4>
+      <ol>{% for s in ex.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+    </article>
+  {% else %}
+    <p>{{ T('no_findings') }}</p>
+  {% endfor %}
+</section>
+
+<section aria-labelledby="p-h">
+  <h2 id="p-h">{{ T('ports_title') }}</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">{{ T('port') }}</th><th scope="col">{{ T('state') }}</th><th scope="col">{{ T('service') }}</th><th scope="col">{{ T('product') }}</th><th scope="col">{{ T('page_title') }}</th></tr></thead>
+    <tbody>
+      {% for p in d.host.ports %}
+        <tr>
+          <td>{{ p.port }}/{{ p.proto }}</td>
+          <td>{{ p.state }}</td>
+          <td>{{ p.service or '—' }}{% if p.tunnel %} ({{ p.tunnel }}){% endif %}</td>
+          <td>{{ [p.product, p.version, p.extrainfo]|select|join(' ') or '—' }}</td>
+          <td>{{ p.title or '—' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}
