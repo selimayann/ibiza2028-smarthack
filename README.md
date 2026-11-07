@@ -95,6 +95,35 @@ python -m netscan scan --lang en             # mesajele în engleză
 2. **Ținta** (`check_target`): doar adrese IPv4 din subnetul hotspotului (plus `NETSCAN_ALLOWLIST`). Refuză IP-uri publice, `100.64.0.0/10`, subneturi mai mari decât al nostru, rețele private străine (venue), nume de dispozitive (fără DNS) și orice text care nu e o adresă.
 3. **Comanda nmap** e o listă de argumente (fără shell), cu `--max-rate 100` și ținta normalizată de guardrail.
 
+### Lab-ul (ținta), pas cu pas
+
+Laptopul-țintă rulează serviciile vulnerabile simulate; laptopul-scanner le scanează. Detalii, findings așteptate și probleme: [docs/lab.md](docs/lab.md).
+
+**Pe laptopul-țintă** (Docker + Python, conectat doar la `RSH-Ibiza2028`):
+```
+docker ps                                            # oprește orice alt container care publică porturi
+export LAB_BIND=<IP-ul laptopului-țintă din hotspot> # porturile se publică DOAR pe acest IP
+docker compose -f lab/docker-compose.yml up -d       # redis 6379, mosquitto 1883, nginx 8080
+python3 lab/fake_services/fake_telnet.py --bind "$LAB_BIND"   # telnet fals 2323 (terminal separat)
+python3 lab/fake_services/fake_ftp.py    --bind "$LAB_BIND"   # FTP fals 2121 (terminal separat)
+sudo systemctl start sshd                            # SSH 22 (Windows: OpenSSH Server, macOS: Remote Login)
+```
+
+**Pe laptopul-scanner**, verificarea înainte de capturi:
+```
+nmap -Pn -sV --script http-title -p 22,1883,2121,2323,6379,8080 --max-rate 100 <IP-țintă>
+```
+Trebuie să apară: `ssh`, `mqtt`, `ftp vsftpd 2.3.4`, `telnet BusyBox telnetd`, `redis`, `http` cu titlul „Admin Login”.
+
+**Oprire** (obligatoriu când plecați): `docker compose -f lab/docker-compose.yml down`, Ctrl+C pe cele două servicii false, `sudo systemctl stop sshd`.
+
+De știut:
+- Fără `LAB_BIND`, totul ascultă doar pe `127.0.0.1` (sigur pe Wi-Fi-ul venue, dar invizibil pentru scanner).
+- Serviciile false nu execută și nu salvează nimic; orice login eșuează. Teste: `pytest tests/test_lab_fake_services.py`.
+- Mosquitto rulează cu `sys_interval 0` (`lab/mosquitto/mosquitto.conf`). Fără asta, scriptul nmap `mqtt-subscribe` schimbă numele serviciului din `mqtt` în `mosquitto version 1.6.15` (vezi întrebarea 11).
+- Laptopul-țintă poate apărea cu MAC randomizat (vendor necunoscut) și fără hostname → motorul raportează și UNKNOWN_DEVICE pentru el.
+- XML-urile din lab conțin MAC-uri: nu intră în repo până la răspunsul la întrebarea 9.
+
 ## Reguli care nu se negociază
 
 - Scanăm **doar** hotspotul nostru (`RSH-<nume-echipă>`). Orice altceva = descalificare (Art. 360 Cod Penal).
