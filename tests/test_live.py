@@ -334,6 +334,45 @@ def test_full_scan_launch_once_then_busy_and_denied(tmp_path):
     assert (tmp_path / "scans").is_dir()                      # creat de utilizator, nu de procesul de admin
 
 
+def _wait_not_waiting(m):
+    for _ in range(200):
+        if m.full_scan_status()["state"] != "waiting_permission":
+            break
+        time.sleep(0.01)
+    return m.full_scan_status()["state"]
+
+
+@pytest.mark.parametrize("code,state", [(elevate.DENIED, "denied"), (elevate.AUTH_FAILED, "auth_failed"),
+                                        (elevate.FAILED, "launch_failed")])
+def test_full_scan_permission_outcomes_do_not_stay_waiting(tmp_path, code, state):
+    """Fereastra închisă / parola greșită / pornire eșuată: starea nu rămâne „aștept permisiunea”."""
+    got = {}
+
+    def launcher(job, started=None):
+        got["started"] = started
+        return elevate.Launch(False, code)
+
+    m = make(Net(), tmp_path, launcher=launcher)
+    assert m.request_full_scan("scan") == "OK"
+    assert _wait_not_waiting(m) == state
+    assert callable(got["started"]) and got["started"]() is False   # niciun progres scris
+
+
+def test_full_scan_started_predicate_sees_progress_of_this_launch(tmp_path):
+    seen = {}
+
+    def launcher(job, started=None):
+        (tmp_path / "scans" / scan_job.PROGRESS_FILE).write_text(json.dumps(
+            {"state": "running", "job": "scan", "started": time.time(), "percent": 1}))
+        seen["ok"] = started()
+        return elevate.Launch(True, elevate.STARTED)
+
+    m = make(Net(), tmp_path, launcher=launcher)
+    assert m.request_full_scan("scan") == "OK"
+    _wait_not_waiting(m)
+    assert seen["ok"] is True
+
+
 def test_finished_scan_is_imported_once_with_alerts(tmp_path):
     scans = tmp_path / "scans"
     scans.mkdir()

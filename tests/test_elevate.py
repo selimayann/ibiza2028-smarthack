@@ -63,3 +63,68 @@ def test_entry_point_refuses_unknown_jobs_from_any_folder(tmp_path):
     r = subprocess.run([sys.executable, "-I", str(elevate.ENTRY), "bogus"], cwd=tmp_path, capture_output=True,
                        timeout=60)
     assert r.returncode == 2 and not any(tmp_path.iterdir())
+
+
+# ---------- Linux (pkexec): fereastra închisă / parola greșită nu lasă UI-ul „în aer” ----------
+
+class FakeProc:
+    """pkexec simulat: `poll()` întoarce None de `running` ori, apoi codul de ieșire."""
+
+    def __init__(self, rc, running=2):
+        self.rc, self.running, self.waited = rc, running, False
+
+    def poll(self):
+        if self.running > 0:
+            self.running -= 1
+            return None
+        return self.rc
+
+    def wait(self):
+        self.waited = True
+        return self.rc
+
+
+def _linux(proc, started):
+    calls = []
+
+    def popen(args, **kw):
+        calls.append((args, kw))
+        return proc
+
+    res = elevate.launch("scan", platform="linux", started=started, popen=popen, sleep=lambda s: None)
+    return res, calls
+
+
+def test_linux_dialog_closed_is_denied():
+    res, calls = _linux(FakeProc(126), started=lambda: False)
+    assert res == elevate.Launch(False, elevate.DENIED)
+    assert calls[0][0][0] == "pkexec" and calls[0][1]["shell"] is False
+
+
+def test_linux_wrong_password_is_auth_failed():
+    res, _ = _linux(FakeProc(127), started=lambda: False)
+    assert res == elevate.Launch(False, elevate.AUTH_FAILED)
+
+
+def test_linux_exit_without_progress_is_failed():
+    res, _ = _linux(FakeProc(1), started=lambda: False)
+    assert res == elevate.Launch(False, elevate.FAILED)
+
+
+def test_linux_quick_exit_with_progress_is_started():
+    # procesul de admin a scris progresul (de ex. „refuzat” de guardrail) și s-a terminat: UI-ul arată progresul
+    res, _ = _linux(FakeProc(0, running=0), started=lambda: True)
+    assert res == elevate.Launch(True, elevate.STARTED)
+
+
+def test_linux_started_when_progress_appears_and_process_is_reaped():
+    proc = FakeProc(None, running=10**6)          # scanarea rulează în continuare
+    seen = iter([False, False, True])
+    res, _ = _linux(proc, started=lambda: next(seen))
+    assert res == elevate.Launch(True, elevate.STARTED)
+    for _ in range(100):                          # firul care așteaptă procesul (fără zombie)
+        if proc.waited:
+            break
+        import time
+        time.sleep(0.01)
+    assert proc.waited
