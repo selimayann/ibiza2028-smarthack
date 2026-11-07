@@ -58,6 +58,15 @@ ibiza2028-smarthack/
 └── tests/
 ```
 
+## Pornire rapidă
+
+După instalare (secțiunea Setup), interfața pornește dintr-un **dublu-click**:
+
+- **Windows:** `start.bat` (din terminal: `.\start.bat`; scris doar `start.bat`, cmd îl confundă cu comanda internă `start`).
+- **macOS:** `start.command` (prima dată: click dreapta → Open, ca macOS să permită rularea).
+
+Scriptul folosește mediul virtual `.venv` dacă există, pornește `python -m netscan ui --port 5055` și deschide browserul pe `http://127.0.0.1:5055/`. Ascultă doar pe 127.0.0.1, fără drepturi de administrator, fără scanare și fără instalări. Portul 5055 (nu 5000), pentru că pe macOS portul 5000 e folosit de AirPlay Receiver. Oprire: închide fereastra.
+
 ## Setup
 
 Necesită Python 3.11+ și nmap (pe Windows, cu Npcap).
