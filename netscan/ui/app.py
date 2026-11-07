@@ -34,6 +34,7 @@ VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
 REPORT_CSS = Path(__file__).resolve().parent / "static" / "report.css"
 LOGO_SVG = Path(__file__).resolve().parent / "static" / "brand" / "safeeel-lockup-horizontal-light.svg"
 LANG_COOKIE = "lang"
+LOCAL_HOSTS = ("127.0.0.1", "localhost")   # serverul ascultă doar pe 127.0.0.1 (IPv4)
 SEEN_COOKIE = "journal_seen"   # când a deschis utilizatorul ultima dată Jurnalul (pentru „N alerte noi”)
 
 
@@ -121,12 +122,20 @@ def create_app(test_config: dict | None = None) -> Flask:
         MAX_CONTENT_LENGTH=1024 * 1024,
         # DNS rebinding: o pagină rea poate face ca numele ei să ducă la 127.0.0.1. Acceptăm doar cereri adresate
         # explicit calculatorului local; orice alt Host primește 400 (portul nu contează).
-        TRUSTED_HOSTS=["127.0.0.1", "localhost"],   # serverul ascultă doar pe 127.0.0.1 (IPv4)
+        TRUSTED_HOSTS=list(LOCAL_HOSTS),   # Flask >= 3.1; verificarea proprie only_local_host() acoperă versiunile vechi
     )
     if test_config:
         app.config.update(test_config)
 
     # ---------- limbă și helperi pentru template-uri ----------
+
+    @app.before_request
+    def only_local_host():
+        """DNS rebinding: verificare proprie, pe orice versiune de Flask (TRUSTED_HOSTS există doar din 3.1)."""
+        host = (request.host or "").rsplit(":", 1)[0] if not (request.host or "").startswith("[") else ""
+        if host.lower() not in LOCAL_HOSTS:
+            return "400 Bad Request", 400, {"Content-Type": "text/plain; charset=utf-8"}
+        return None
 
     @app.before_request
     def pick_language() -> None:

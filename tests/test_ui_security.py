@@ -53,3 +53,14 @@ def test_delete_page_says_raw_scans_are_not_deleted(tmp_path):
     c, _ = client(tmp_path)
     html = c.get("/history/delete").get_data(as_text=True)
     assert "Nu se șterg fișierele brute ale scanărilor" in html and "scans/" in html
+
+
+def test_host_check_works_without_flask_trusted_hosts(tmp_path, monkeypatch):
+    """Și pe Flask 3.0 (fără TRUSTED_HOSTS) cererile cu alt Host sunt refuzate de verificarea proprie."""
+    scan = Scan.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
+    app = create_app({"SCAN_LOADER": lambda: [scan], "DB_PATH": tmp_path / "h.db", "TESTING": True, "TRUSTED_HOSTS": None})
+    c = app.test_client()
+    assert c.get("/", headers={"Host": "evil.example:5000"}).status_code == 400
+    assert c.get("/api/ask?scan=0&q=x", headers={"Host": "127.0.0.1.evil.example"}).status_code == 400
+    assert c.get("/", headers={"Host": "127.0.0.1:5000"}).status_code == 200
+    assert c.get("/", headers={"Host": "LOCALHOST:5000"}).status_code == 200
