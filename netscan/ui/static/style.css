@@ -895,3 +895,7 @@ dialog.guide .mono { font-family: ui-monospace, Consolas, monospace; }
 }
 @keyframes g-cfgold { 0% { text-decoration-color: transparent; } 40% { text-decoration-color: currentColor; opacity: 1; } 80% { opacity: .4; width: auto; } 100% { opacity: 0; width: 0; } }
 @keyframes g-cfgnew { from { width: 0; } to { width: 22ch; } }
+/* „Ce poate face cineva rău intenționat”: un rând separat, sub explicație */
+.harm { display: flex; align-items: flex-start; gap: .5rem; margin-top: .6rem; max-width: 65ch; padding: .55rem .8rem; border-left: 3px solid var(--high); background: var(--tint); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.harm .icon { flex: none; margin-top: .2em; color: var(--high); }
+.harm strong { color: var(--ink); }

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_guide.html" import guide_dialog with context %}
-{% from "_macros.html" import sev, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list with context %}
+{% from "_macros.html" import harm_line, sev, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list with context %}
 {% block content %}
 {# D5: pașii de reparare, cu starea fiecăruia (verificat pe date reale / bifat / de făcut) #}
 {% macro steps_panel() %}
@@ -300,6 +300,7 @@
       {{ announced_sub(worst.host) }}
       <p class="worst-problem">{{ sev(w.severity) }} <strong>{{ code_name(w.code) }}</strong> <span class="code" translate="no">{{ w.code }}</span> <span class="muted">{{ port_label(w) }}</span></p>
       <p class="worst-text">{{ ex.text }}</p>
+      {{ harm_line(w.code) }}
       {% if history_id is none and steps %}
         {{ steps_panel() }}
       {% else %}

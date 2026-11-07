@@ -110,3 +110,11 @@
     </div>
   </section>
 {%- endmacro %}
+
+{# Ce poate face cineva rău intenționat: un rând, cu eticheta scrisă (nu doar iconiță sau culoare). #}
+{% macro harm_line(code) -%}
+  {%- set h = harm(code) -%}
+  {%- if h -%}
+  <p class="harm"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><strong>{{ T('harm_label') }}</strong> {{ h }}</span></p>
+  {%- endif -%}
+{%- endmacro %}
