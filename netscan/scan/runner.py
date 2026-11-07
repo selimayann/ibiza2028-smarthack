@@ -22,6 +22,8 @@ from typing import Callable, Optional
 from netscan.scan import guardrail, network
 
 UDP_PORTS = "53,123,161,1900,5353"
+# Porturile din catalog care lipsesc din top 1000 nmap (mqtt, redis, mongodb)
+CATALOG_EXTRA_TCP = [1883, 6379, 27017]
 MAX_RATE = "100"  # regula de ≤100 pachete/secundă
 TOP_PORTS_FILE = Path(__file__).with_name("top1000_tcp.txt")
 DEFAULT_SCANS_DIR = Path("scans")
@@ -33,6 +35,7 @@ NMAP_NOT_FOUND = "NMAP_NOT_FOUND"
 NMAP_IFACE_NOT_FOUND = "NMAP_IFACE_NOT_FOUND"
 NOT_ADMIN = "NOT_ADMIN"
 NMAP_FAILED = "NMAP_FAILED"
+NO_SERVICE_PROBES = "NO_SERVICE_PROBES"
 
 MESSAGES: dict[str, tuple[str, str]] = {
     NO_TOP_PORTS: (
@@ -54,6 +57,10 @@ MESSAGES: dict[str, tuple[str, str]] = {
         "on Linux/macOS use sudo.",
     ),
     NMAP_FAILED: ("Scanarea nmap a eșuat.", "The nmap scan failed."),
+    NO_SERVICE_PROBES: (
+        "Nu găsesc fișierul nmap-service-probes al nmap. Reinstalează nmap.",
+        "I can't find nmap's nmap-service-probes file. Reinstall nmap.",
+    ),
 }
 
 
@@ -67,6 +74,8 @@ class ScanPlan:
     target: Optional[str] = None          # ținta normalizată de guardrail
     args: list[str] = field(default_factory=list)
     out_path: Optional[str] = None
+    service_probes: Optional[str] = None   # nmap-service-probes original
+    versiondb: Optional[str] = None        # copia fără sonde pe portul 53
 
     def message(self, lang: str = "ro") -> str:
         return self.msg_ro if lang == "ro" else self.msg_en
@@ -79,13 +88,77 @@ def _refuse(code: str, info=None, target=None, ro: Optional[str] = None, en: Opt
 
 # --- argumentele nmap -----------------------------------------------------------------------
 
-def build_nmap_args(target: str, iface: str, tcp_ports: str, out_path: str) -> list[str]:
-    """Exact comanda din instrucțiuni. Fiecare valoare e un argument separat; nimic nu trece prin shell."""
-    return [
-        "nmap", "-sS", "-sU", "-sV", "--script", "http-title",
-        "-p", f"T:{tcp_ports},U:{UDP_PORTS}",
-        "--max-rate", MAX_RATE, "-e", iface, "-oX", out_path, target,
+def _port_in_list(port: int, ports: str) -> bool:
+    for part in ports.split(","):
+        a, _, b = part.partition("-")
+        if a.isdigit() and int(a) <= port <= int(b or a):
+            return True
+    return False
+
+
+def tcp_port_spec(top_ports: str) -> str:
+    """Lista top 1000 (neatinsă) + porturile din CATALOG_EXTRA_TCP care nu sunt deja în ea."""
+    extra = [str(p) for p in CATALOG_EXTRA_TCP if not _port_in_list(p, top_ports)]
+    return ",".join([top_ports, *extra])
+
+
+def build_nmap_args(target: str, iface: str, tcp_ports: str, out_path: str,
+                    versiondb: Optional[str] = None) -> list[str]:
+    """Comanda din instrucțiuni, cu porturile CATALOG_EXTRA_TCP adăugate la T:.
+    `-n`: fără DNS invers (cererile ar ieși din hotspot prin DNS-ul operatorului).
+    `--versiondb`: baza de sonde fără detecție de versiune pe portul 53 (vezi write_versiondb).
+    Fiecare valoare e un argument separat; nimic nu trece prin shell."""
+    args = [
+        "nmap", "-n", "-sS", "-sU", "-sV", "--script", "http-title",
+        "-p", f"T:{tcp_port_spec(tcp_ports)},U:{UDP_PORTS}",
+        "--max-rate", MAX_RATE, "-e", iface,
     ]
+    if versiondb:
+        args += ["--versiondb", versiondb]
+    return args + ["-oX", out_path, target]
+
+
+# --- portul 53 fără sonde de versiune ---------------------------------------------------------
+# La -sV, nmap trimite pe portul 53 interogări DNS (version.bind, DNS-SD, ...). Gateway-ul hotspotului
+# (telefonul) le trimite mai departe la DNS-ul operatorului, deci ar ieși trafic din rețeaua noastră.
+# Portul 53 rămâne scanat (U:53 e cerut), dar fără detecția de versiune: nicio regulă din catalog nu
+# depinde de DNS. Folosim directiva oficială „Exclude” din nmap-service-probes, într-o copie locală.
+
+NO_VERSION_PROBE_PORTS = "T:53,U:53"
+VERSIONDB_NAME = "nmap-service-probes.netscan"
+
+
+def find_service_probes(nmap_path: str) -> Optional[Path]:
+    """Fișierul nmap-service-probes instalat odată cu nmap (Windows, Linux, macOS/Homebrew)."""
+    exe_dir = Path(nmap_path).resolve().parent if nmap_path else None
+    candidates = []
+    if exe_dir is not None:
+        candidates += [exe_dir / "nmap-service-probes", exe_dir.parent / "share" / "nmap" / "nmap-service-probes"]
+    candidates += [Path(p) / "nmap-service-probes" for p in
+                   ("/usr/share/nmap", "/usr/local/share/nmap", "/opt/homebrew/share/nmap")]
+    return next((c for c in candidates if c.is_file()), None)
+
+
+def make_versiondb(text: str) -> str:
+    """Adaugă NO_VERSION_PROBE_PORTS la directiva Exclude (sau o creează înaintea primei sonde)."""
+    lines = text.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.startswith("Exclude "):
+            end = line[len(line.rstrip("\r\n")):]
+            lines[i] = line.rstrip("\r\n") + "," + NO_VERSION_PROBE_PORTS + end
+            return "".join(lines)
+    for i, line in enumerate(lines):
+        if line.startswith("Probe "):
+            lines.insert(i, f"Exclude {NO_VERSION_PROBE_PORTS}\n")
+            return "".join(lines)
+    return text + f"\nExclude {NO_VERSION_PROBE_PORTS}\n"
+
+
+def write_versiondb(src: Path, dst: Path) -> Path:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(make_versiondb(src.read_text(encoding="utf-8", errors="surrogateescape")),
+                   encoding="utf-8", errors="surrogateescape")
+    return dst
 
 
 def load_top_ports(path: Path = TOP_PORTS_FILE) -> Optional[str]:
@@ -164,6 +237,7 @@ def prepare_scan(
     nmap_path: Optional[str] = None,
     top_ports: Optional[str] = None,
     out_path: Optional[Path] = None,
+    service_probes: Optional[Path] = None,
 ) -> ScanPlan:
     """network -> check_target -> argumentele nmap. Nu pornește nicio scanare."""
     env = os.environ if env is None else env
@@ -191,10 +265,16 @@ def prepare_scan(
     if not nmap_iface:
         return _refuse(NMAP_IFACE_NOT_FOUND, info, decision.network)
 
+    probes = service_probes or find_service_probes(nmap_path)
+    if probes is None or not Path(probes).is_file():
+        return _refuse(NO_SERVICE_PROBES, info, decision.network)
+
     out = str(out_path or default_out_path())
-    args = build_nmap_args(decision.network, nmap_iface, ports, out)
+    versiondb = str(Path(out).parent / VERSIONDB_NAME)
+    args = build_nmap_args(decision.network, nmap_iface, ports, out, versiondb)
     return ScanPlan(True, guardrail.OK, decision.msg_ro, decision.msg_en,
-                    network=info, target=decision.network, args=args, out_path=out)
+                    network=info, target=decision.network, args=args, out_path=out,
+                    service_probes=str(probes), versiondb=versiondb)
 
 
 def execute(plan: ScanPlan, nmap_path: Optional[str] = None) -> ScanPlan:
@@ -208,6 +288,11 @@ def execute(plan: ScanPlan, nmap_path: Optional[str] = None) -> ScanPlan:
         return _refuse(NMAP_NOT_FOUND, plan.network, plan.target)
 
     Path(plan.out_path).parent.mkdir(parents=True, exist_ok=True)
+    if plan.versiondb:
+        try:
+            write_versiondb(Path(plan.service_probes), Path(plan.versiondb))
+        except OSError:
+            return _refuse(NO_SERVICE_PROBES, plan.network, plan.target)
     args = [nmap_path, *plan.args[1:]]
     try:
         result = subprocess.run(args, shell=False, check=False)
