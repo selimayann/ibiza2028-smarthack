@@ -83,7 +83,17 @@ def test_closed_port_is_verified_and_engine_rescores(tmp_path):
     html = client.get(resp.headers["Location"]).get_data(as_text=True)
     expected = compute_score(f for f in s.findings if f.key() not in same_port)
     assert expected > s.score and f">{expected}<" in html
-    assert "Verificat: portul 554" in html and "Scanarea a dat 40" in html
+    assert "Verificat: portul 554" in html
+    # cifra mare rămâne scorul standard al scanării (ca în scores.csv); scorul după reparații e dedesubt
+    assert f'<span class="score-num">{s.score}</span>' in html
+    assert "Progres după reparațiile confirmate (1)" in html and f'<strong class="mono">{expected}</strong>' in html
+    # culoarea casetei urmează eticheta scorului NOU: verde doar la „Bun”, altfel „Încă: …” + câte au rămas
+    from netscan.ui.view import score_band
+    band = score_band(expected)
+    assert f'class="score-after after-{band}"' in html
+    if band != "good":
+        assert "Încă:" in html and "de rezolvat" in html
+    assert "Vezi scanarea nouă" not in html   # confirmat live, nu de o scanare mai nouă
 
 
 def test_open_port_keeps_step_and_score(tmp_path):
@@ -186,7 +196,13 @@ def test_all_verified_shows_fixed_card_with_steps(tmp_path):
     html = client.get("/?scan=0").get_data(as_text=True)
     card = _worst_card(html)
     assert "Toate problemele au fost verificate ca rezolvate" in card and "Revezi pașii" in card
-    assert ">100<" in html and "Scanarea a dat 40" in html
+    assert '<span class="score-num">40</span>' in html     # scorul scanării vechi nu se schimbă
+    assert '<strong class="mono">100</strong>' in html    # scorul după reparațiile confirmate
+    assert 'class="score-after after-good"' in html and "Acum: Bun" in html and "de rezolvat" not in html
+    # reparațiile au fost confirmate de after.xml: link spre scanarea mai nouă
+    assert "Vezi scanarea nouă →" in html
+    assert 'title="Scanarea mai nouă a acestei rețele: after.xml (scor 100)"' in html
+    assert 'href="/?scan=1"' in html
     assert "Pasul 1 din 5" in _worst_card(client.get("/?scan=0&step=1").get_data(as_text=True))
     # o scanare care chiar nu a găsit nimic își păstrează textul obișnuit
     assert "Nicio problemă găsită" in _worst_card(client.get("/?scan=1").get_data(as_text=True))

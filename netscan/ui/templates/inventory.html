@@ -12,11 +12,11 @@
 {% if scan is none %}
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
-  <div class="toolbar">
+  <div class="toolbar card">
     <div class="toolbar-left">
     {% if scan_list|length > 1 %}
       <form class="picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
-        <label for="scan">{{ T('choose_scan') }}</label>
+        <label for="scan">{{ T('shown_scan') }}</label>
         <div class="picker-row">
           <select id="scan" name="scan" data-autosubmit>
             {% for s in scan_list %}<option value="{{ loop.index0 }}"{% if loop.index0 == selected %} selected{% endif %}>{{ s.file }}</option>{% endfor %}

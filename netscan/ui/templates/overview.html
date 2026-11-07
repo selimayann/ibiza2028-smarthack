@@ -81,12 +81,12 @@
   {% endif %}
 {% endif %}
 
-{# Bara scanării: ce scanare vezi (stânga) și ce poți face cu ea (dreapta). #}
-<div class="toolbar">
+{# Bara scanării, pe un rând: ce scanare vezi, când a fost făcută (stânga) și ce poți face cu ea (dreapta). #}
+<div class="toolbar card">
   <div class="toolbar-left">
     {% if scan_list|length > 1 %}
     <form class="picker" method="get" action="{{ url_for('overview') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
-      <label for="scan">{{ T('choose_scan') }}</label>
+      <label for="scan">{{ T('shown_scan') }}</label>
       <div class="picker-row">
         <select id="scan" name="scan" data-autosubmit>
           {% for s in scan_list %}
@@ -97,13 +97,9 @@
       </div>
     </form>
     {% else %}
-    <dl class="scanmeta">
-      <div><dt>{{ T('scan_file') }}</dt><dd>{{ scan.file }}</dd></div>
-    </dl>
+    <p class="picker"><span class="picker-label">{{ T('shown_scan') }}</span><strong class="scan-file">{{ scan.file }}</strong></p>
     {% endif %}
-    <dl class="scanmeta">
-      <div><dt>{{ T('scan_date') }}</dt><dd>{{ fmt_time(scan.started_at) }}</dd></div>
-    </dl>
+    <p class="scan-meta"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr-only">{{ T('scan_date') }}: </span>{{ fmt_time(scan.started_at) }}{% if scan.status == 'ok' %}<span aria-hidden="true">·</span>{{ T('devices_one') if devices|length == 1 else T('devices_many')|format(devices|length) }}{% endif %}</p>
   </div>
   <div class="toolbar-actions">
     <a class="button button-secondary" href="{{ url_for('history_report', scan_id=history_id) if history_id is not none else url_for('report', scan=selected) }}"><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>{{ T('report_link') }}</a>
@@ -131,8 +127,9 @@
   </section>
 {% else %}
 
-{# Scorul afișat: al scanării sau, după pași verificați pe date reale, cel recalculat de motor #}
-{% set score_shown = steps.score_now if steps else scan.score %}
+{# Cifra mare e mereu scorul standard al scanării (exact ca în scores.csv). Scorul după reparațiile
+   confirmate (recalculat de motor) apare separat, dedesubt, ca să nu se confunde cu scorul scanării. #}
+{% set score_shown = scan.score %}
 {% set band = score_band(score_shown) %}
 {% set band_icon = {'good': 'good', 'fair': 'fair', 'poor': 'high'}[band] %}
 
@@ -205,8 +202,19 @@
     <h1 id="score-h" class="score-label">{{ T('score_label') }}</h1>
     <p class="score-value"><span class="score-num">{{ score_shown }}</span><span class="score-of">{{ T('score_of') }}</span></p>
     {{ meter(score_shown) }}
-    {% if steps and steps.verified_count %}<p class="score-after"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('score_after')|format(scan.score, steps.verified_count) }}</p>{% endif %}
     <p class="score-band"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-{{ band_icon }}"/></svg>{{ T('band_' ~ band) }}</p>
+    {% if steps and steps.verified_count %}
+      {# Progresul după reparațiile confirmate: culoarea urmează eticheta scorului NOU (verde doar când e „Bun”),
+         ca o casetă verde să nu sugereze „gata” când rețeaua e încă în risc. #}
+      {% set band_after = score_band(steps.score_now) %}
+      {% set left = steps.total - steps.verified_count %}
+      <div class="score-after after-{{ band_after }}">
+        <p class="after-label"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-7M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('score_after')|format(steps.verified_count) }}</p>
+        <p class="after-value"><span class="mono">{{ scan.score }}</span> → <strong class="mono">{{ steps.score_now }}</strong> <span class="after-of">{{ T('score_of') }}</span></p>
+        <p class="after-band"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'good': 'good', 'fair': 'fair', 'poor': 'high'}[band_after] }}"/></svg><span>{{ T('score_band_now' if band_after == 'good' else 'score_band_still')|format(T('band_' ~ band_after)) }}{% if left %} · {{ T('score_left_one') if left == 1 else T('score_left_many')|format(left) }}{% endif %}</span></p>
+        {% if newer_hint %}{% set newer_title = T('score_newer_title')|format(newer_hint.file, newer_hint.score) %}<a class="score-newer" href="{{ url_for('overview', scan=newer_hint.idx) }}" title="{{ newer_title }}" aria-label="{{ newer_title }}">{{ T('score_newer') }}</a>{% endif %}
+      </div>
+    {% endif %}
     <ul class="scale" aria-label="{{ T('scale_title') }}">
       {% for b, icon, rng in (('good', 'good', '80–100'), ('fair', 'fair', '50–79'), ('poor', 'high', '0–49')) %}
         <li class="s-{{ b }}{% if b == band %} is-current{% endif %}"{% if b == band %} aria-current="true"{% endif %}>
@@ -214,7 +222,6 @@
         </li>
       {% endfor %}
     </ul>
-    <p class="score-formula">{{ T('score_formula') }}</p>
     <div class="score-facts">
       <p>{{ T('facts_devices') }}<span class="count">{{ devices|length }}</span></p>
       {% for sev_name in ('high', 'medium', 'low', 'info') %}

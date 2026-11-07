@@ -136,7 +136,7 @@
     {% else %}
       {% if sc.state == 'done' %}
         <p class="scan-line scan-ok" role="status"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('scan_done')|format(sc.finished) }} <a href="{{ url_for('overview', file=sc.file) }}">{{ T('scan_see') }}</a></p>
-      {% elif sc.state in ('denied', 'launch_failed', 'stopped', 'failed') %}
+      {% elif sc.state in ('denied', 'auth_failed', 'launch_failed', 'stopped', 'failed') %}
         <p class="scan-line" role="status">{{ T('scan_' ~ sc.state) }}{% if sc.state == 'failed' and sc.message %} {{ sc.message }}{% endif %}</p>
       {% elif sc.state == 'refused' %}
         <p class="scan-line" role="status">{{ T('scan_refused') }} {{ sc.message }}</p>
