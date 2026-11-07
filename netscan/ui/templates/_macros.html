@@ -74,7 +74,12 @@
   {%- set icons = {'bad': 'medium', 'good': 'good', 'info': 'info'} -%}
   <ul class="alerts{% if two_col %} alerts-2col{% endif %}">
     {% for a in alerts %}
+      {%- if a.tone == 'bad' and a.severity %}
+      {# problemă nouă: iconița și eticheta severității ei (formă + text, nu doar culoare) #}
+      <li class="alert alert-bad alert-sev-{{ a.severity }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ a.severity }}"/></svg><span><strong class="alert-sev">{{ T('sev_' ~ a.severity) }}</strong> · {{ alert_text(a) }}</span></li>
+      {%- else %}
       <li class="alert alert-{{ a.tone }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ icons[a.tone] }}"/></svg><span>{{ alert_text(a) }}</span></li>
+      {%- endif %}
     {% endfor %}
   </ul>
 {%- endmacro %}

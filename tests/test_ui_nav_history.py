@@ -50,3 +50,11 @@ def test_comparison_with_another_network_says_so(tmp_path):
     client, ids = _client(tmp_path, [("validation", "V1_home_basic.xml"), ("lab", "scan_01_before.xml")])
     html = client.get(f"/scan/{ids[-1]}").get_data(as_text=True)
     assert "Scanarea anterioară pare din altă rețea" in html
+
+
+def test_new_problem_alerts_show_their_severity(tmp_path):
+    client, _ = _client(tmp_path, [("validation", "V1_home_basic.xml"), ("lab", "scan_01_before.xml")])
+    html = client.get("/journal").get_data(as_text=True)
+    assert 'alert-sev-high' in html and '#i-high' in html                  # Telnet / baza de date: Ridicat
+    assert '<strong class="alert-sev">Ridicat</strong> · Problemă nouă' in html
+    assert '<strong class="alert-sev">Scăzut</strong>' in html             # dispozitiv necunoscut

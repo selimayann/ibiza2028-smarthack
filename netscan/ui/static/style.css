@@ -631,3 +631,8 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 @media (max-width: 30rem) { .trend-chart { width: calc(100% - 1.75rem); margin-left: 1.75rem; } }
 /* Confirmarea ștergerii: spațiu sub antet, ca pe celelalte pagini */
 .panel-error { margin-top: 1.5rem; }
+/* „Problemă nouă”: iconița și eticheta după severitatea problemei */
+.alert-sev-high .icon, .alert-sev-high .alert-sev { color: var(--high); }
+.alert-sev-medium .icon, .alert-sev-medium .alert-sev { color: var(--medium); }
+.alert-sev-low .icon, .alert-sev-low .alert-sev { color: var(--low); }
+.alert-sev-info .icon, .alert-sev-info .alert-sev { color: var(--info); }
