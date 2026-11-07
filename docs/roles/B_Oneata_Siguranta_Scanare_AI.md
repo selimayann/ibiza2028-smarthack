@@ -337,7 +337,7 @@ Utilizatorul pune o întrebare simplă („Care e cel mai periculos dispozitiv?�
 
 **Teste** (`tests/test_assistant.py`): un răspuns cu un port, IP, cod sau CVE care nu e în scanare e respins; întrebarea cu „Ignore previous instructions” nu schimbă nimic; fără `LLM_API_KEY` totul merge, fără nicio cerere de rețea.
 
-**D8 · Model AI local (Qwen, fără internet), după nucleu și doar cu acordul mentorilor (întrebarea 14)**
+**D8 · Model AI local (Qwen, fără internet), după nucleu; permis de mentori (întrebarea 14)**
 - Scopul e demonstrația live a guvernanței: modelul reformulează răspunsul asistentului, validatorul prinde orice IP, port, cod, CVE sau telefon inventat, iar tool-ul revine singur la textul predefinit (ghidul, secțiunea 6: idee bună pentru Inovație).
 - Model mic (Qwen) rulat cu Ollama pe laptopul de demo, descărcat **înainte** (nu în timpul demo-ului). Verifică licența modelului ales.
 - Fișier nou `netscan/scan/local_llm.py`: funcția `llm(context)` pentru `assistant.answer()`, cerere HTTP doar spre `127.0.0.1` (Ollama), cu timeout; orice eroare → textul predefinit.

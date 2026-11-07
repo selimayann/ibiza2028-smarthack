@@ -51,7 +51,7 @@ Detalii: [direction.md](direction.md). **Nu începe nimeni** până nu trece nuc
 | 3b | RBRT | D7: raportul de o pagină pentru furnizorul IT (FR-14) | `ui` | `netscan/ui/` |
 | 4 | Oneata | D3: explicații: maparea celor 15 coduri pe CIS Controls v8 și OWASP IoT Top 10 (bonus) | `explain` | `netscan/explain/standards.py` (nou) |
 | 5 | Radu | D6: raportul „servicii văzute care nu sunt în catalog”, **gata înainte de ora 20** (e în procedura Test Set-ului) | `engine` | `netscan/engine/` (fără schimbări la reguli, scor sau CSV-uri) |
-| 6 | Ayan | D8: model AI local (Qwen cu Ollama, fără internet) pentru demo-ul validatorului; **doar după răspunsul mentorilor la întrebarea 14** | `scan` | `netscan/scan/local_llm.py` (nou) |
+| 6 | Ayan | D8: model AI local (Qwen cu Ollama, fără internet) pentru demo-ul validatorului; permis de mentori (întrebarea 14) | `scan` | `netscan/scan/local_llm.py` (nou) |
 
 - **Ce nu se schimbă:** motorul de reguli, catalogul, scorul, `findings.csv` și `scores.csv`. Findings, severități și scoruri vin doar din cod.
 - **Fără** agenți pe dispozitive, colectare de log-uri sau reparații automate.
