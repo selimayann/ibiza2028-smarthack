@@ -38,10 +38,11 @@
   <a class="skip" href="#main">{{ T('skip_link') }}</a>
   <header class="top">
     <div class="wrap top-inner">
-      <a class="brand" href="{{ url_for('overview') }}" aria-label="SafeEel, {{ T('app_title') }}">
-        <img class="brand-logo" src="{{ url_for('static', filename='brand/safeeel-lockup-horizontal-light.svg') }}" alt="SafeEel" width="141" height="36">
+      {# Doar logo-ul duce la Dashboard; sloganul de lângă e text simplu, nu link #}
+      <div class="brand">
+        <a class="brand-link" href="{{ url_for('overview') }}"><img class="brand-logo" src="{{ url_for('static', filename='brand/safeeel-lockup-horizontal-light.svg') }}" alt="SafeEel, {{ T('nav_overview') }}" width="141" height="36"></a>
         <span class="brand-tagline">{{ T('app_title') }}</span>
-      </a>
+      </div>
       <div class="top-right">
         <nav aria-label="{{ T('nav_label') }}">
           <a href="{{ url_for('overview') }}"{% if request.endpoint == 'overview' or (request.endpoint == 'device' and not from_devices) %} aria-current="page"{% endif %}>{{ T('nav_overview') }}</a>

@@ -30,7 +30,7 @@ from netscan.model import Scan
 from netscan.scan import live as live_mod
 from netscan.ui import extras, guide, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, journal
-from netscan.ui.explain_stub import get_explanation, get_standards
+from netscan.ui.explain_stub import get_explanation, get_harm, get_standards
 from netscan.ui.view import (action_plan, ip_key, most_dangerous, proof_of, rank_devices, score_band, score_trend,
                              steps_view, summary_of, verified_by_newer)
 
@@ -249,6 +249,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "device_type_the": lambda dt: i18n.device_type_the(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
+            "harm": lambda code: get_harm(code, lang),
             "eavesdrop": lambda code: extras.eavesdrop(code, lang),
             "announced": lambda ip: g.names.get(ip),
             "guide_plan": guide.guide_for,

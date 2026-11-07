@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, port_label, device_name, device_title, announced_sub, eavesdrop_block with context %}
+{% from "_macros.html" import harm_line, sev, port_label, device_name, device_title, announced_sub, eavesdrop_block with context %}
 {% block title %}{{ device_name(d.host) }} {{ d.host.ip }} · SafeEel{% endblock %}
 {% block content %}
 {# Înapoi de unde ai venit: din „Dispozitive” sau din Dashboard #}
@@ -52,6 +52,7 @@
         <p class="problem-meta">{{ port_label(f) }}</p>
       </div>
       <p class="problem-text">{{ ex.text }}</p>
+      {{ harm_line(f.code) }}
       <h4>{{ T('how_to_fix') }}</h4>
       {# Primul pas vizibil; restul la cerere (mentor: mai puțin text) #}
       <ol class="steps"><li>{{ ex.steps[0] }}</li></ol>

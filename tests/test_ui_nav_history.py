@@ -58,3 +58,17 @@ def test_new_problem_alerts_show_their_severity(tmp_path):
     assert 'alert-sev-high' in html and '#i-high' in html                  # Telnet / baza de date: Ridicat
     assert '<strong class="alert-sev">Ridicat</strong> · Problemă nouă' in html
     assert '<strong class="alert-sev">Scăzut</strong>' in html             # dispozitiv necunoscut
+
+
+def test_harm_line_on_device_page_and_dashboard(tmp_path):
+    from netscan.explain import get_harm
+
+    client, _ = _client(tmp_path, [("lab", "scan_01_before.xml")])
+    dash = client.get("/").get_data(as_text=True)
+    assert "Ce poate face cineva rău intenționat:" in dash
+    inv = client.get("/devices").get_data(as_text=True)
+    href = inv.split('href="/device/', 1)[1].split('"', 1)[0].replace("&amp;", "&")
+    page = client.get("/device/" + href).get_data(as_text=True)
+    assert page.count('class="harm"') >= 1 and get_harm("FTP_CLEARTEXT", "ro") in page
+    en = client.get("/device/" + href + "&lang=en").get_data(as_text=True)
+    assert "What an attacker could do:" in en and get_harm("FTP_CLEARTEXT", "en").replace("'", "&#39;") in en

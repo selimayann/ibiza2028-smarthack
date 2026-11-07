@@ -125,6 +125,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .top-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 2rem; padding-top: .55rem; padding-bottom: .55rem; }
 .brand { display: inline-flex; align-items: center; gap: .9rem; color: var(--ink); text-decoration: none; }
 .brand-logo { height: 2.25rem; width: auto; display: block; }
+.brand-link { display: block; border-radius: var(--radius-sm); }
 .brand-tagline { color: var(--muted); font-size: 1rem; padding-left: .9rem; border-left: 1px solid var(--line); }
 .top-right { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 2rem; }
 .top nav { display: flex; flex-wrap: wrap; gap: 0 1.5rem; }
@@ -917,3 +918,8 @@ dialog.guide .mono { font-family: ui-monospace, Consolas, monospace; }
 .alert-dev { font-weight: 700; margin: 0 0 .1rem; }
 .alert-dev .mono { font-weight: 400; margin-left: .3rem; }
 .alert-group .alerts { margin-top: 0; }
+/* „Ce poate face cineva rău intenționat”: un rând separat, sub explicație */
+.harm { display: flex; align-items: flex-start; gap: .5rem; margin-top: .6rem; max-width: 65ch; padding: .55rem .8rem; border-left: 3px solid var(--high); background: var(--tint); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.harm .icon { flex: none; margin-top: .2em; color: var(--high); }
+.harm strong { color: var(--ink); }
+.worst-issue .harm { margin-top: .2rem; border-left: 0; border-radius: var(--radius-sm); }  /* deja în bara roșie a problemei */
