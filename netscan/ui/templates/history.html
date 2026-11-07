@@ -52,8 +52,8 @@
     {% endif %}
   </section>
 
-  <div class="table-wrap">
-  <table>
+  {# Pe telefon tabelul devine o listă de carduri (ca la „Dispozitive”), ca linkurile să nu iasă din ecran #}
+  <table class="rtable hist-table">
     <caption class="sr-only">{{ T('history_title') }}</caption>
     <thead><tr>
       <th scope="col">{{ T('scan_date') }}</th><th scope="col">{{ T('scan_file') }}</th>
@@ -64,17 +64,17 @@
       {% for r in rows %}
         {% set s = r.item %}
         <tr>
-          <td>{{ fmt_time(s.started_at) }}</td>
-          <td>{{ s.file }}</td>
-          <td>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_pill(s.score) }}{% endif %}</td>
-          <td>
+          <td class="rt-main"><span class="rt-name">{{ fmt_time(s.started_at) }}</span></td>
+          <td data-label="{{ T('scan_file') }}"><div>{{ s.file }}</div></td>
+          <td data-label="{{ T('score_label') }}"><div>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_pill(s.score) }}{% endif %}</div></td>
+          <td data-label="{{ T('hist_change') }}"><div>
             {% if s.status == 'error' %}<span class="muted">{{ error_message(s.error_code) }}</span>
             {% elif r.prev is none %}<span class="delta delta-same">{{ T('hist_first') }}</span>
             {% elif s.score > r.prev %}<span class="delta delta-up"><span aria-hidden="true">▲</span> {{ T('hist_up') }}: {{ r.prev }} → {{ s.score }}</span>
             {% elif s.score < r.prev %}<span class="delta delta-down"><span aria-hidden="true">▼</span> {{ T('hist_down') }}: {{ r.prev }} → {{ s.score }}</span>
             {% else %}<span class="delta delta-same">{{ T('hist_same') }}: {{ s.score }}</span>{% endif %}
-          </td>
-          <td><span class="row-links">
+          </div></td>
+          <td class="rt-links"><span class="row-links">
             <a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('open') }}<span class="sr-only"> {{ s.file }}</span></a>
             {% if s.status == 'ok' %}<a href="{{ url_for('history_report', scan_id=s.id) }}">{{ T('report_short') }}<span class="sr-only"> {{ s.file }}</span></a>{% endif %}
           </span></td>
@@ -82,7 +82,6 @@
       {% endfor %}
     </tbody>
   </table>
-  </div>
   <div class="danger-zone">
     <p>{{ T('history_delete_hint') }}</p>
     <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>

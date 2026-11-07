@@ -622,3 +622,12 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .compare-details > summary:hover, .journal-more > summary:hover { text-decoration: underline; }
 .compare-details .compare-grid { margin-top: .5rem; }
 .section-this { margin: 2.5rem 0 1rem; }
+/* Istoric pe telefon: cardurile din tabel au linkurile pe un rând separat */
+@media (max-width: 47.99rem) {
+  .hist-table td.rt-links { padding-top: .5rem; }
+  .hist-table td.rt-links::before { content: none; }
+}
+/* Graficul pe telefon: etichetele scorului (0, 50, 100) nu mai sunt tăiate la marginea din stânga */
+@media (max-width: 30rem) { .trend-chart { width: calc(100% - 1.75rem); margin-left: 1.75rem; } }
+/* Confirmarea ștergerii: spațiu sub antet, ca pe celelalte pagini */
+.panel-error { margin-top: 1.5rem; }

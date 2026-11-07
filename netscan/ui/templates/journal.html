@@ -38,8 +38,8 @@
         <p class="journal-sum">
           {%- set parts = [] -%}
           {%- if n_bad %}{% set _ = parts.append(T('j_bad')|format(n_bad)) %}{% endif -%}
-          {%- if n_good %}{% set _ = parts.append(T('j_good')|format(n_good)) %}{% endif -%}
-          {%- if n_info %}{% set _ = parts.append(T('j_info')|format(n_info)) %}{% endif -%}
+          {%- if n_good %}{% set _ = parts.append(T('j_good_1' if n_good == 1 else 'j_good')|format(n_good)) %}{% endif -%}
+          {%- if n_info %}{% set _ = parts.append(T('j_info_1' if n_info == 1 else 'j_info')|format(n_info)) %}{% endif -%}
           {{ parts|join(', ') }}
         </p>
       </div>
