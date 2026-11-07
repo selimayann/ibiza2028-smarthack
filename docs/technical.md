@@ -54,6 +54,8 @@ Doar `state="open"`; decizia după numele serviciului, nu după port; `upnp`/`sn
 ## Folosirea LLM-ului
 **Nu folosim AI online:** mentorii au confirmat că nu avem voie (întrebarea 13), din cauza regulii „fără alte rețele”. Toate explicațiile vin din textele predefinite RO/EN, iar tool-ul merge complet fără internet.
 
+**AI local, opțional (D8, permis de mentori, întrebarea 14):** `ask --local-ai` cere unui model Qwen rulat cu Ollama pe laptop să reformuleze răspunsul construit de cod. Cererea merge doar spre `127.0.0.1` (orice altă adresă e refuzată, proxy-urile sunt ignorate), modelul primește doar textul deja construit, iar rezultatul trece prin validator; dacă e respins sau Ollama nu rulează, se afișează răspunsul predefinit. `ask --verify-text` arată live validatorul pe un text inventat.
+
 Guvernanța rămâne în cod, pregătită pentru un model rulat local, fără internet:
 - un model ar putea doar să formuleze: nu decide findings, severități sau scoruri;
 - ar primi doar date structurate, fără MAC, cu titlurile de pagini marcate ca text nesigur (`ai_check.prompt_context`);

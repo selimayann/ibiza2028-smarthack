@@ -24,7 +24,8 @@ CATALOG = frozenset({
 MAX_TEXT_LEN = 1200          # o explicație + 5 pași încap ușor
 MAX_UNTRUSTED_LEN = 80       # cât din titlu / hostname / versiune ajunge în prompt
 
-_IPV4 = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])")
+# Un punct după IP e acceptat dacă e final de propoziție („…pe 192.168.1.40.”), nu dacă urmează o cifră.
+_IPV4 = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?!\d)(?!\.\d)")
 _CVE = re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.IGNORECASE)
 _CODE = re.compile(r"\b[A-Z]{2,}(?:_[A-Z]{2,})+\b")
 _MAC = re.compile(r"\b[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}\b")

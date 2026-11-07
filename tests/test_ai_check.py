@@ -112,3 +112,10 @@ def test_cve_is_not_a_phone_number():
 
 def test_ip_in_parentheses_is_not_a_phone_number():
     assert "PHONE" not in check_llm_text("Camera (192.168.1.40) are o problemă.", SCAN, CAM).problems
+
+
+def test_ip_at_end_of_sentence():
+    """Bug găsit de testul D8: IP-ul urmat de punctul de final nu era recunoscut ca IP."""
+    assert check_llm_text("Camera de la 192.168.1.40.", SCAN, CAM).ok
+    r = check_llm_text("Problema e la 192.168.1.99.", SCAN, CAM)
+    assert "IP:192.168.1.99" in r.problems and "PHONE" not in r.problems

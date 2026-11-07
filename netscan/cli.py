@@ -53,6 +53,10 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("question", help="întrebarea, între ghilimele")
     q.add_argument("--previous", help="o scanare anterioară, pentru „ce s-a schimbat?”")
     q.add_argument("--lang", choices=["ro", "en"], default="ro")
+    q.add_argument("--local-ai", action="store_true",
+                   help="reformulează cu modelul AI local (Ollama pe 127.0.0.1), verificat de validator")
+    q.add_argument("--verify-text", metavar="TEXT",
+                   help="demo: verifică un text (ex. un răspuns inventat) cu validatorul anti-halucinații")
     return p
 
 
@@ -174,13 +178,41 @@ def cmd_delete_history(args) -> int:
 
 
 def cmd_ask(args) -> int:
-    """B: asistentul FR-12. Doar răspunsuri din scanare; LLM-ul nu e folosit din linia de comandă."""
+    """B: asistentul FR-12 (D8: opțional, modelul AI local). Răspunsurile vin din scanare; AI-ul doar reformulează."""
     from netscan.engine.parser import analyze_file
+    from netscan.scan import ai_check, local_llm
     from netscan.scan.assistant import answer
 
+    ro = args.lang == "ro"
     scan = analyze_file(args.file)
+
+    if args.verify_text is not None:
+        check = ai_check.check_llm_text(args.verify_text, scan)
+        if check.ok:
+            print("Validator: textul e acceptat (tot ce menționează există în scanare)." if ro
+                  else "Validator: text accepted (everything it mentions exists in the scan).")
+        else:
+            print(("Validator: text RESPINS, ar fi afișat răspunsul predefinit. Motive: " if ro
+                   else "Validator: text REJECTED, the predefined answer would be shown. Reasons: ")
+                  + ", ".join(check.problems))
+        return 0 if check.ok else 1
+
     previous = analyze_file(args.previous) if args.previous else None
-    print(answer(args.question, scan, lang=args.lang, previous=previous).text)
+    llm = None
+    if args.local_ai:
+        try:
+            llm = local_llm.make_llm(force=True)
+        except local_llm.NotLocalError as e:
+            print(("Nu folosesc AI-ul: " if ro else "Not using AI: ") + str(e))
+    result = answer(args.question, scan, lang=args.lang, previous=previous, llm=llm)
+    print(result.text)
+    if args.local_ai:
+        if result.source == "llm":
+            print("\n[AI local, verificat de validator]" if ro else "\n[local AI, checked by the validator]")
+        else:
+            print(("\n[răspuns predefinit; AI-ul local a fost respins sau indisponibil: " if ro
+                   else "\n[predefined answer; local AI rejected or unavailable: ")
+                  + ", ".join(result.problems or ["-"]) + "]")
     return 0 if scan.status == "ok" else 2
 
 
