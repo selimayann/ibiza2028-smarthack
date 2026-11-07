@@ -41,6 +41,7 @@
 | D5 | **O singură acțiune pe rând, ordonată după risc**: „Fă asta acum”, apoi următoarea după ce o bifezi | RBRT (UI), Oneata (textul pasului) | FR-11 (UI simplu) și criteriul „Ease of use” (20%): „cel mai periculos dispozitiv și ce fac întâi” | După nucleu |
 | D6 | **Raportul „servicii văzute care nu sunt în catalog”**: ce servicii deschise a văzut motorul și n-au dat niciun finding; ajută la verificarea Test Set-ului | Radu | Nu e cerință, dar e în procedura de rulare a Test Set-ului de la ora 20 (ghid, secțiunea 9) | **Înainte de ora 20** |
 | D7 | **Raportul de o pagină pentru furnizorul IT** (HTML/PDF): scor, dispozitive, findings, pașii de reparare | RBRT | FR-14 (Should/Could) | După nucleu (în ghid: orele 16–20) |
+| D8 | **Model AI local (Qwen, rulat cu Ollama pe laptop, fără internet)**: reformulează răspunsurile asistentului; validatorul respinge orice IP, port, cod, CVE sau telefon inventat și se revine la textul predefinit. Scopul: demonstrația live a validatorului anti-halucinații | Ayan | FR-12 + Inovație (10%; ghidul, secțiunea 6) | După nucleu, **doar dacă mentorii confirmă** că un model local e permis (întrebarea 14) |
 
 > **FR-10 (Istoric) e cerință Must**, deci face parte din nucleu, nu din direcție: dispozitive noi/dispărute, porturi deschise/închise, findings rezolvate (V6a → V6b: 3), trendul scorului. D1 (alertele, FR-13) se construiește peste el.
 
@@ -49,7 +50,7 @@ Reguli pentru toate funcțiile:
 - **Fără agenți, fără log-uri, fără reparații automate.** Doar scanarea hotspotului echipei.
 - Tot ce vine din scanare (titluri, hostname-uri, bannere) e **text nesigur**: escapat în UI, marcat ca date în prompturi.
 - Tot ce e text pentru utilizator: RO și EN, max. 2 propoziții, fără jargon (sau cu termenul explicat în glosar).
-- **Nimic nu iese din hotspot** (regula organizatorilor). D2 trebuie să meargă și fără internet, cu răspunsuri predefinite construite din scanare. Apelul la un LLM se activează doar dacă mentorii confirmă că e permis.
+- **Nimic nu iese din hotspot** (regula organizatorilor). D2 trebuie să meargă și fără internet, cu răspunsuri predefinite construite din scanare. AI online: **nu** (mentorii, întrebarea 13). Un model **local** (D8) doar după confirmarea mentorilor (întrebarea 14), oprit implicit, pornit explicit pentru demo.
 
 ## Propuneri de contract
 
@@ -84,6 +85,10 @@ Alert
 **P4 · Răspunsul asistentului (pentru D2)**: fără schimbare de contract
 - Intern în `netscan/scan/assistant.py` (Ayan): `Answer(text, source: "llm" | "fallback", problems: [str])`, construit cu `ai_check.check_llm_text()` și `choose_text()` din același folder.
 - RBRT îl afișează; forma lui `Answer` se stabilește între Ayan și RBRT.
+
+**P5 · Modelul local (pentru D8)**: fără schimbare de contract
+- Fișier nou `netscan/scan/local_llm.py` (Ayan): o funcție `llm(context) -> str` pentru parametrul `llm` din `assistant.answer()`, care cheamă Ollama doar pe `127.0.0.1` (cu timeout, fără dependențe noi).
+- Oprit implicit; pornit doar cu o variabilă explicită, de exemplu `NETSCAN_LOCAL_LLM=1` (și numele modelului în `NETSCAN_LOCAL_MODEL`). Fără ea, totul rămâne pe textele predefinite.
 
 ## Fraza de pitch
 
