@@ -1,15 +1,15 @@
 """Explanations in English per code (Oneata): max 2 sentences, 1-5 steps, plain language.
 
 Same rules as templates_ro.py (checked in tests/test_explain.py): no port numbers, IPs, catalog codes,
-CVEs or links; `text` has at most 2 sentences; `steps` has 1-5 items, the most important first.
+CVEs or links; `harm` is one line on what an attacker could do (get_harm); `text` has at most 2 sentences; `steps` has 1-5 items, the most important first.
 """
 
 from __future__ import annotations
 
 TEMPLATES: dict[str, dict] = {
     "TELNET_OPEN": {
-        "text": "Telnet is an old door that lets someone control this device remotely, and the password travels "
-                "over the network unencrypted, like a postcard anyone can read. Whoever catches it can take over the device.",
+        "harm": "Someone on the network can learn your password and take control of the device.",
+        "text": "Telnet is an old door that lets someone control this device from far away. The password travels in plain sight, like a postcard, and whoever catches it can take over the device.",
         "steps": [
             "Turn off Telnet in the device's admin page (usually under \"Services\" or \"Remote access\").",
             "If you need remote access, use SSH instead of Telnet.",
@@ -18,6 +18,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "RDP_EXPOSED": {
+        "harm": "Someone can guess the password and use the computer as if they were sitting at it.",
         "text": "Remote Desktop lets others see and control this computer's screen over the network. Attackers "
                 "try thousands of passwords on it or use old Windows bugs to get in.",
         "steps": [
@@ -29,6 +30,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "VNC_EXPOSED": {
+        "harm": "Someone on the network can watch your screen and move the mouse for you.",
         "text": "VNC shows this device's screen to someone else on the network and lets them control it. It often "
                 "has short passwords or none at all, and what is on the screen may travel unencrypted.",
         "steps": [
@@ -39,6 +41,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "DB_EXPOSED": {
+        "harm": "Someone on the network can read, change or delete the app's data.",
         "text": "A database stores an app's information, and this one can be reached directly from the network. "
                 "Many databases come without a password, so anyone on the network could read, change or delete the data.",
         "steps": [
@@ -49,6 +52,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "CAMERA_STREAM_EXPOSED": {
+        "harm": "Anyone on the network can watch what the camera films.",
         "text": "This camera's video can be watched directly from the network, without its app. If the password "
                 "is missing or still the factory default, anyone on the network can see what the camera films.",
         "steps": [
@@ -59,6 +63,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "OUTDATED_SERVICE": {
+        "harm": "Someone can use a ready-made tool to break into the device.",
         "text": "A program on this device is an old version with security bugs that attackers already know about. "
                 "For some of them there are ready-made tools that break in automatically.",
         "steps": [
@@ -68,6 +73,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "FTP_CLEARTEXT": {
+        "harm": "Someone on the network can read the password and the files you send.",
         "text": "FTP moves files over the network, but it sends the password and the files unencrypted. Anyone "
                 "listening on the same network can read them.",
         "steps": [
@@ -78,6 +84,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "HTTP_ADMIN_CLEARTEXT": {
+        "harm": "Someone on the network can steal your password and change the device's settings.",
         "text": "The device's admin page opens over HTTP, without encryption. When you log in, the password "
                 "travels over the network in plain sight and can be stolen.",
         "steps": [
@@ -88,8 +95,8 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "SMB_EXPOSED": {
-        "text": "Windows file sharing (SMB) is open on the network. Attackers can use it to try to reach your "
-                "files, and ransomware can spread through it from one computer to another.",
+        "harm": "Someone can reach your files or spread a virus that asks for money.",
+        "text": "Windows file sharing (SMB) is open on the network. Attackers can use it to reach your files, and viruses that ask for money can spread through it.",
         "steps": [
             "If you don't share files, turn off sharing in the network settings.",
             "If you do, require a password and give access only to people who need it.",
@@ -99,6 +106,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "MQTT_EXPOSED": {
+        "harm": "Someone on the network can send commands to your smart devices, like turning the lights on.",
         "text": "MQTT is how smart devices like bulbs, sensors or locks send each other messages. Without a "
                 "password, anyone on the network can read the messages or send commands, such as turning the lights on.",
         "steps": [
@@ -109,6 +117,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "UPNP_EXPOSED": {
+        "harm": "A virus on one device can open your network to the internet.",
         "text": "UPnP lets devices open doors in your router by themselves, without asking you. A virus on one "
                 "device can use it to open your network to the internet.",
         "steps": [
@@ -118,6 +127,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "SNMP_EXPOSED": {
+        "harm": "Someone can learn the device's model and settings to plan an attack.",
         "text": "SNMP tells anyone who asks many details about the device, such as its model, settings and network. "
                 "It often uses the factory password \"public\", which everybody knows.",
         "steps": [
@@ -128,6 +138,7 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "PRINTER_RAW_EXPOSED": {
+        "harm": "Someone on the network can print on your printer without asking or jam it.",
         "text": "The printer accepts print jobs directly from the network, without any check. Anyone on the network "
                 "can print on it or send it strange commands.",
         "steps": [
@@ -138,17 +149,19 @@ TEMPLATES: dict[str, dict] = {
         ],
     },
     "UNKNOWN_DEVICE": {
+        "harm": "A stranger's device can spy on what happens on your network.",
         "text": "There is a device on the network with open services, and the scan could not find its name or maker. You should "
                 "know what every device on your network is, because a stranger's device can spy or attack.",
         "steps": [
             "Look for the device in your router's list of connected devices.",
-            "New phones and laptops hide their real address, so first check whether it is one of yours.",
+            "Check first whether it is one of your phones or laptops: new ones hide their real address.",
             "If it isn't yours, change the Wi-Fi password.",
             "Give it a name in the router so you recognize it next time.",
             "Move smart devices and unknown devices to the guest network.",
         ],
     },
     "SSH_OPEN": {
+        "harm": "Someone can try thousands of passwords, and if one works, they control the device.",
         "text": "SSH is a safe, encrypted way to control a device remotely, so it is not a problem by itself. "
                 "It just has to be well protected, because attackers often try passwords on it.",
         "steps": [

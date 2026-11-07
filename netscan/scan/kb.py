@@ -56,12 +56,38 @@ def tokens(text: str) -> list[str]:
     return out
 
 
+# În intrările din catalog (D1-D15), explicația și pașii sunt cei din aplicație (netscan/explain), sursa unică:
+# dacă textele se rescriu (ex. testul de limbaj simplu), asistentul nu rămâne cu varianta veche din PDF.
+# Restul răspunsului din PDF (gravitatea, „Apare când scanarea vede: ...”) rămâne neschimbat.
+_TAIL = {"ro": " Gravitate:", "en": " Severity:"}
+
+
+def _sync_catalog(data: dict) -> dict:
+    from netscan.explain import get_explanation
+    from netscan.scan.ai_check import CATALOG
+
+    for e in data.get("entries", []):
+        if e.get("category") != "Catalog":
+            continue
+        code = next((t for t in e.get("tags", []) if t in CATALOG), None)
+        if code is None:
+            continue
+        for lang, tail in _TAIL.items():
+            ex = get_explanation(code, lang)
+            answer = e.get("a_" + lang, "")
+            rest = answer[answer.index(tail):] if tail in answer else ""
+            e["a_" + lang] = ex["text"] + rest
+            e["steps_" + lang] = ex["steps"]
+    return data
+
+
 @lru_cache(maxsize=1)
 def load() -> dict:
     try:
-        return json.loads(KB_FILE.read_text(encoding="utf-8"))
+        data = json.loads(KB_FILE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {"entries": [], "rules": [], "ethics": []}
+    return _sync_catalog(data)
 
 
 @lru_cache(maxsize=1)

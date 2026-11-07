@@ -1,0 +1,1 @@
+Validator: text REJECTED, the predefined answer would be shown. Reasons: IP:192.168.1.99, PORT:23, PHONE
