@@ -14,7 +14,7 @@ fișiere nmap XML (Validation / Test Set, lab) ───────┴─> pars
 ```
 | Modul | Ce face |
 |---|---|
-| `netscan/scan/` | FR-01 detectarea rețelei · FR-02 guardrail · runner nmap · FR-03 producător și tip · validatorul AI |
+| `netscan/scan/` | FR-01 detectarea rețelei · FR-02 guardrail · runner nmap · FR-03 producător și tip · validatorul AI · protecția live și scanarea din aplicație |
 | `netscan/engine/` | parser, cele 15 reguli, scor, export CSV |
 | `netscan/explain/` | textele RO/EN pentru cele 15 coduri, glosar |
 | `netscan/ui/` | Flask + Jinja2 (autoescape), SQLite, diff, „cel mai periculos dispozitiv + ce fac întâi” |
@@ -44,6 +44,8 @@ Doar `state="open"`; decizia după numele serviciului, nu după port; `upnp`/`sn
 ## Supraveghere fără agenți
 - **Monitorul (`watch`, FR-13):** scanare periodică a hotspotului (minimum 10 min), cu verificarea rețelei și a țintei la fiecare ciclu și alerte RO/EN în terminal la dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat (din `diff()`). **NFR-04:** pasul privilegiat (`scan --confirm`, ciclul lui `watch`) scrie doar XML; istoricul și alertele le scrie `import-scans`, ca utilizator normal (sub `sudo` sau alt cont de admin, baza ar ajunge altundeva sau ar rămâne a lui root).
 - **Ușa-capcană (`trap`):** Telnet fals pe IP-ul din hotspot (idee de honeypot, ca OpenCanary): orice conexiune e o alertă. Păstrează doar IP, oră, port, local, 7 zile; nu păstrează nimic din ce s-a scris; nu răspunde spre cine a încercat.
+- **Protecția live (Dashboard, `netscan/scan/live.py`):** rulează în aplicație, ca utilizator normal, doar după „Pornește protecția live” și doar cât timp verificările de la scanare (SSID, o singură rețea, guardrail) trec; le reface la ~10 s și intră singură în pauză altfel. Straturi: **prezența** la ~20 s (o datagramă UDP goală pe fiecare adresă din hotspot, legată de IP-ul din hotspot, ≤25/s, apoi tabela ARP a sistemului; Windows reverifică intrările vechi, deci plecările se văd în ~40 s), **porturile riscante** în fiecare minut (conexiune TCP închisă imediat, ≤10/s, porturile din catalog + cele din ultima scanare; prima verificare se compară cu ultima scanare), **ușa-capcană** pe IP-ul din hotspot. Nu decide probleme și nu calculează scor: le dă motorul, din scanarea completă.
+- **Scanarea completă din aplicație (`elevate.py`, `scan_job.py`):** butonul pornește `python -I netscan/scan/_elevated.py scan|auto` prin fereastra de permisiune a sistemului (UAC / parola de admin / pkexec); comanda e fixă, procesul de admin refăce toate verificările și rulează exact comanda nmap de mai sus, plus `-v --stats-every 5s` (doar afișarea progresului). **NFR-04:** scrie doar în `scans/` (XML, copia bazei de sonde, `.scan_progress.json`, blocarea); aplicația citește progresul ca date nesigure și aduce scanarea terminată în istoric, ca utilizator normal.
 - **Ascultarea pasivă (`listen`):** abonare la anunțurile mDNS/SSDP doar pe interfața hotspotului (permisă de ghid), parser cu limite stricte pentru pachete ostile, fără cereri și fără deschiderea link-urilor din anunțuri.
 - **„Ce vede cineva care ascultă”:** pentru codurile necriptate, un exemplu inventat de logare la vedere (momentul „aha” din Wireshark), fără captură reală de trafic.
 - Față de o platformă cu agenți (de ex. Wazuh): vedem toate dispozitivele, inclusiv camere și telefoane pe care nu se poate instala nimic, dar nu vedem ce e în interiorul lor (log-uri, fișiere, viruși).
