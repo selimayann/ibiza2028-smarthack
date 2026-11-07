@@ -87,7 +87,7 @@ def test_closed_port_is_verified_and_engine_rescores(tmp_path):
     # cifra mare rămâne scorul standard al scanării (ca în scores.csv); scorul după reparații e dedesubt
     assert f'<span class="score-num">{s.score}</span>' in html
     assert "După reparațiile confirmate (1):" in html and f'<strong class="mono">{expected}</strong>' in html
-    assert "Există o scanare mai nouă" not in html   # confirmat live, nu de o scanare mai nouă
+    assert "Vezi scanarea nouă" not in html   # confirmat live, nu de o scanare mai nouă
 
 
 def test_open_port_keeps_step_and_score(tmp_path):
@@ -193,7 +193,8 @@ def test_all_verified_shows_fixed_card_with_steps(tmp_path):
     assert '<span class="score-num">40</span>' in html     # scorul scanării vechi nu se schimbă
     assert '<strong class="mono">100</strong>' in html    # scorul după reparațiile confirmate
     # reparațiile au fost confirmate de after.xml: link spre scanarea mai nouă
-    assert "Există o scanare mai nouă a acestei rețele: after.xml (scor 100)" in html
+    assert "Vezi scanarea nouă →" in html
+    assert 'title="Scanarea mai nouă a acestei rețele: after.xml (scor 100)"' in html
     assert 'href="/?scan=1"' in html
     assert "Pasul 1 din 5" in _worst_card(client.get("/?scan=0&step=1").get_data(as_text=True))
     # o scanare care chiar nu a găsit nimic își păstrează textul obișnuit

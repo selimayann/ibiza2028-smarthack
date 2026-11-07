@@ -220,10 +220,12 @@ button:disabled { opacity: .6; cursor: progress; }
 .verify-warn .icon { color: var(--medium); }
 .verify-info .icon { color: var(--brand); }
 .worst-note { margin-top: .2rem; color: var(--muted); }
-.score-after { display: flex; align-items: flex-start; gap: .4rem; margin-top: .6rem; color: var(--good); font-weight: 700; }
+/* Scorul după reparațiile confirmate: separat de scorul scanării, într-o casetă discretă */
+.score-after { margin-top: .75rem; padding: .6rem .75rem; border-radius: 10px; background: var(--good-tint); }
+.score-after p { display: flex; align-items: flex-start; gap: .4rem; margin: 0; color: var(--good); font-weight: 700; }
 .score-after .icon { flex: none; margin-top: .2em; }
-.score-newer { margin-top: .4rem; }
-.score-newer a { font-weight: 700; }
+.score-newer { display: inline-block; margin-top: .35rem; padding-left: 1.4rem; font-weight: 700; color: var(--link); text-decoration: none; }
+.score-newer:hover, .score-newer:focus-visible { text-decoration: underline; }
 .do-first-done { background: var(--good-tint); border-left-color: var(--good); }
 .do-first-done .do-first-label { color: var(--good); display: flex; align-items: center; gap: .4rem; }
 
