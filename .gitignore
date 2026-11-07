@@ -1,0 +1,29 @@
+# secrete și configurare locală
+.env
+*.pem
+*.key
+
+# date locale (istoric, scanări live)
+data/
+*.db
+*.sqlite
+scans/
+
+# rezultate generate (se produc de tool, nu se versionează)
+findings.csv
+scores.csv
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# editoare / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
