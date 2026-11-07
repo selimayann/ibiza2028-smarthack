@@ -5,7 +5,7 @@
 {% macro token_field() %}<input type="hidden" name="token" value="{{ token }}">{% endmacro %}
 <section class="live card live-{{ live.status }}" id="live" aria-labelledby="live-h"
          data-poll="{{ live.poll_ms }}" data-panel="{{ url_for('live_panel') }}" data-version="{{ live.version }}"
-         data-latest="{{ live.latest }}">
+         data-latest="{{ live.latest }}" data-fixes="{{ live.fixes }}">
   <div class="live-head">
     <div class="live-title">
       <h2 id="live-h" tabindex="-1">{{ T('live_title') }}</h2>
@@ -62,11 +62,12 @@
     {% else %}
       <h3 class="live-sub">{{ T('live_devices') }}</h3>
       {% if live.devices %}
+      <p class="live-help">{{ T('live_doors_help') }}</p>
       <div class="table-wrap">
         <table class="live-table">
           <thead><tr>
-            <th scope="col">{{ T('live_col_device') }}</th><th scope="col">IP</th>
-            <th scope="col">{{ T('live_col_mac') }}</th><th scope="col">{{ T('live_col_ports') }}</th>
+            <th scope="col">{{ T('live_col_device') }}</th>
+            <th scope="col">{{ T('live_doors_title') }}</th>
             <th scope="col">{{ T('live_col_seen') }}</th>
           </tr></thead>
           <tbody>
@@ -77,14 +78,18 @@
                 {% if d.new %}<span class="tag tag-urgent">{{ T('live_new') }}</span>{% endif %}
                 {% if d.not_in_scan %}<span class="tag">{{ T('live_not_in_scan') }}</span>{% endif %}
                 {% if not d.online %}<span class="tag">{{ T('live_gone') }}</span>{% endif %}
+                <span class="live-ids mono" translate="no">{{ T('live_details')|format(d.ip, d.mac_masked or '—') }}</span>
               </td>
-              <td class="mono" translate="no">{{ d.ip }}</td>
-              <td class="mono" translate="no">{{ d.mac_masked or '—' }}</td>
               <td>
                 {% if not d.online %}<span class="muted">—</span>
                 {% elif not d.pulsed %}<span class="muted">{{ T('live_ports_checking') }}</span>
-                {% elif d.open_ports %}{% for p in d.open_ports %}<span class="port-chip" translate="no">{{ p.port }}{% if p.label %} {{ p.label }}{% endif %}</span>{% endfor %}
-                {% else %}<span class="muted">{{ T('live_ports_none') }}</span>{% endif %}
+                {% elif d.doors %}
+                  <ul class="doors">
+                  {% for x in d.doors %}
+                    <li class="{{ 'door-check' if x.check }}">{{ x.text }} <span class="muted">· {{ T('live_port_word')|format(x.port) }}</span>{% if x.check %} <span class="tag tag-urgent">{{ T('live_check_tag') }}</span>{% endif %}</li>
+                  {% endfor %}
+                  </ul>
+                {% else %}<span class="muted">{{ T('live_doors_none') }}</span>{% endif %}
               </td>
               <td class="mono">{{ d.since if d.online else T('live_left_at')|format(d.left) }}</td>
             </tr>

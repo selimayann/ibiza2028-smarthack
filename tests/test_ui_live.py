@@ -85,7 +85,8 @@ def test_live_panel_active_escapes_device_data_and_masks_mac(tmp_path):
     assert resp.headers["Cache-Control"] == "no-store" and 'data-poll="2000"' in html
     assert XSS not in html and "&lt;script&gt;" in html
     assert "D0:39:57:XX:XX:XX" in html and not FULL_MAC.search(html)
-    assert "23 Telnet" in html and "nou" in html and "ascultă pe portul 2323" in html
+    assert "Acces de la distanță necriptat (Telnet)" in html and "de verificat" in html and "portul 23" in html
+    assert "nou" in html and "ascultă pe portul 2323" in html and "IP 172.20.10.9 · MAC D0:39:57:XX:XX:XX" in html
     assert 'data-latest="Dispozitiv nou' in html
 
 

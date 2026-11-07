@@ -735,3 +735,130 @@ LIVE_TEXTS: dict[str, dict[str, str]] = {
 }
 for _lang in LANGS:
     TEXTS[_lang].update(LIVE_TEXTS[_lang])
+
+# Pașii ghidați (sar peste / accept riscul) și tabelul live pe înțeles.
+GUIDED_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "step_skip": "Sar peste acum",
+        "step_status_accepted": "Risc acceptat de tine (scorul nu se schimbă)",
+        "steps_tally_accepted": "%s acceptate de tine",
+        "steps_all_done_accepted": "Ai acceptat %s riscuri: rămân în raport și nu schimbă scorul.",
+        "accept_title": "Nu vreau să schimb asta",
+        "accept_body": "Dacă dispozitivul e al tău și știi de ce e așa (de exemplu îl folosești intenționat), poți accepta riscul. Problema rămâne în raport și pe pagina dispozitivului, iar scorul nu se schimbă: scorul standard îl dă doar scanarea.",
+        "accept_btn": "Accept riscul și trec mai departe",
+        "accepted_note": "Ai acceptat acest risc. Dacă îl repari totuși, apasă „Am făcut asta, verifică” sau lasă protecția live să-l confirme.",
+        "howto_gateway": "Acesta e routerul rețelei (la noi, telefonul cu hotspotul). Pe un router obișnuit, setarea se schimbă din pagina sau aplicația routerului. Pe un telefon cu hotspot, de obicei nu ai ce opri: dacă te deranjează, folosește un router separat.",
+        "howto_router": "Unde: în pagina de administrare a routerului (adresa lui în browser, cu parola de pe eticheta routerului) sau în aplicația producătorului.",
+        "howto_camera": "Unde: în aplicația camerei sau în pagina ei de administrare → Setări → Rețea / Servicii.",
+        "howto_printer": "Unde: pe ecranul imprimantei sau în pagina ei de administrare → Rețea / Protocoale.",
+        "howto_tv": "Unde: în meniul televizorului → Setări → Rețea / Partajare.",
+        "howto_pc_windows": "Unde: pe acel calculator, în Setări Windows (Rețea, Partajare) sau în programul care a deschis serviciul.",
+        "howto_server": "Unde: pe acel dispozitiv, în setările serviciului respectiv (sau cere ajutor celui care l-a instalat).",
+        "howto_phone_laptop": "Unde: pe acel telefon sau laptop, în setările de partajare sau în aplicația care a deschis serviciul.",
+        "howto_iot": "Unde: în aplicația producătorului dispozitivului → Setări. Dacă nu găsești opțiunea, actualizează-i firmware-ul.",
+        "howto_unknown": "Nu știm sigur ce dispozitiv e. Caută-l în lista de dispozitive conectate din router; dacă nu e al tău, schimbă parola Wi-Fi.",
+        "live_gateway": "Routerul (telefonul cu hotspotul)",
+        "live_device_by": "Dispozitiv %s",
+        "live_doors_title": "Ce acceptă din rețea acum",
+        "live_doors_help": "Fiecare rând e o „ușă” prin care alte dispozitive din rețea se pot conecta la el. „De verificat” înseamnă că acasă ușa asta de obicei n-ar trebui să fie deschisă; scanarea completă spune sigur ce e acolo.",
+        "live_doors_none": "nimic riscant",
+        "live_check_tag": "de verificat",
+        "live_port_word": "portul %s",
+        "live_details": "IP %s · MAC %s",
+        "port_21": "Transfer de fișiere necriptat (FTP)",
+        "port_22": "Acces de la distanță (SSH)",
+        "port_23": "Acces de la distanță necriptat (Telnet)",
+        "port_53": "Nume de site-uri (DNS), normal la un router",
+        "port_80": "Pagină web fără criptare",
+        "port_135": "Servicii interne Windows",
+        "port_139": "Partajare de fișiere Windows",
+        "port_443": "Pagină web criptată (HTTPS)",
+        "port_445": "Partajare de fișiere Windows",
+        "port_554": "Imaginea unei camere video",
+        "port_1883": "Mesaje între dispozitive inteligente (MQTT)",
+        "port_2179": "Conectare la mașini virtuale (Hyper-V)",
+        "port_3306": "Bază de date",
+        "port_3389": "Desktop la distanță",
+        "port_5353": "Nume anunțate în rețea (Bonjour)",
+        "port_5432": "Bază de date",
+        "port_5900": "Ecran la distanță (VNC)",
+        "port_6379": "Bază de date (Redis)",
+        "port_7070": "Streaming audio/video",
+        "port_27017": "Bază de date (MongoDB)",
+        "port_62078": "Sincronizare iPhone/iPad",
+        "port_other": "Un program (%s)",
+        "port_unknown": "Un program",
+    },
+    "en": {
+        "step_skip": "Skip for now",
+        "step_status_accepted": "Risk accepted by you (the score doesn't change)",
+        "steps_tally_accepted": "%s accepted by you",
+        "steps_all_done_accepted": "You accepted %s risks: they stay in the report and don't change the score.",
+        "accept_title": "I don't want to change this",
+        "accept_body": "If the device is yours and you know why it's like this (for example you use it on purpose), you can accept the risk. The problem stays in the report and on the device page, and the score doesn't change: only the scan sets the standard score.",
+        "accept_btn": "Accept the risk and move on",
+        "accepted_note": "You accepted this risk. If you fix it anyway, press “I did this, check” or let live protection confirm it.",
+        "howto_gateway": "This is the network's router (for us, the phone with the hotspot). On a regular router, the setting is changed from the router's page or app. On a phone hotspot there is usually nothing to turn off: if it bothers you, use a separate router.",
+        "howto_router": "Where: on the router's admin page (its address in the browser, with the password from the router's label) or in the maker's app.",
+        "howto_camera": "Where: in the camera's app or admin page → Settings → Network / Services.",
+        "howto_printer": "Where: on the printer's screen or admin page → Network / Protocols.",
+        "howto_tv": "Where: in the TV menu → Settings → Network / Sharing.",
+        "howto_pc_windows": "Where: on that computer, in Windows Settings (Network, Sharing) or in the program that opened the service.",
+        "howto_server": "Where: on that device, in the settings of that service (or ask whoever installed it).",
+        "howto_phone_laptop": "Where: on that phone or laptop, in the sharing settings or in the app that opened the service.",
+        "howto_iot": "Where: in the maker's app → Settings. If you can't find the option, update its firmware.",
+        "howto_unknown": "We're not sure what device this is. Look for it in the router's list of connected devices; if it isn't yours, change the Wi-Fi password.",
+        "live_gateway": "The router (the phone with the hotspot)",
+        "live_device_by": "%s device",
+        "live_doors_title": "What it accepts from the network now",
+        "live_doors_help": "Each line is a “door” other devices on the network can connect through. “Check this” means that at home this door usually shouldn't be open; the full scan tells you for sure what is there.",
+        "live_doors_none": "nothing risky",
+        "live_check_tag": "check this",
+        "live_port_word": "port %s",
+        "live_details": "IP %s · MAC %s",
+        "port_21": "Unencrypted file transfer (FTP)",
+        "port_22": "Remote access (SSH)",
+        "port_23": "Unencrypted remote access (Telnet)",
+        "port_53": "Website names (DNS), normal on a router",
+        "port_80": "Web page without encryption",
+        "port_135": "Internal Windows services",
+        "port_139": "Windows file sharing",
+        "port_443": "Encrypted web page (HTTPS)",
+        "port_445": "Windows file sharing",
+        "port_554": "A video camera's picture",
+        "port_1883": "Messages between smart devices (MQTT)",
+        "port_2179": "Connecting to virtual machines (Hyper-V)",
+        "port_3306": "Database",
+        "port_3389": "Remote desktop",
+        "port_5353": "Names announced on the network (Bonjour)",
+        "port_5432": "Database",
+        "port_5900": "Remote screen (VNC)",
+        "port_6379": "Database (Redis)",
+        "port_7070": "Audio/video streaming",
+        "port_27017": "Database (MongoDB)",
+        "port_62078": "iPhone/iPad sync",
+        "port_other": "A program (%s)",
+        "port_unknown": "A program",
+    },
+}
+for _lang in LANGS:
+    TEXTS[_lang].update(GUIDED_TEXTS[_lang])
+
+# Aceleași porturi ca la protecția live; „de verificat” = acasă, de obicei n-ar trebui să fie deschise.
+# Nu e o severitate din catalog (pe aceea o dă doar motorul): e doar un semn că merită să te uiți.
+_PORT_ALIASES = {2323: 23, 8000: 80, 8080: 80, 8081: 80}
+_PORT_CHECK = {21, 23, 80, 139, 445, 554, 1883, 3306, 3389, 5432, 5900, 6379, 27017}
+
+
+def port_meaning(lang: str, port: int, label: str = "") -> dict:
+    """Ce înseamnă pe înțeles un port deschis: {"text", "check"}. `label` (serviciul) e text nesigur, deja curățat."""
+    lang = normalize_lang(lang)
+    base = _PORT_ALIASES.get(port, port)
+    key = f"port_{base}"
+    if key in TEXTS[lang]:
+        text = TEXTS[lang][key]
+    elif label:
+        text = TEXTS[lang]["port_other"] % label
+    else:
+        text = TEXTS[lang]["port_unknown"]
+    return {"text": text, "check": base in _PORT_CHECK}

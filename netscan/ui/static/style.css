@@ -594,3 +594,14 @@ th { color: var(--muted); font-weight: 700; border-bottom: 2px solid var(--ink);
 .scan-bar .w-90 { width: 90%; }
 .scan-bar .w-95 { width: 95%; }
 .scan-bar .w-100 { width: 100%; }
+.live-help { color: var(--muted); max-width: 62rem; }
+.live-ids { display: block; color: var(--muted); font-size: 1rem; margin-top: .15rem; white-space: nowrap; }
+.doors { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; }
+.doors li.door-check { font-weight: 700; }
+.step-howto { display: flex; gap: .5rem; align-items: baseline; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .6rem .8rem; margin-top: .6rem; }
+.step-howto .icon { position: relative; top: .15em; color: var(--info); }
+.accept-risk { margin-top: .6rem; }
+.accept-risk summary { cursor: pointer; color: var(--link); text-decoration: underline; text-underline-offset: .18em; min-height: 2.75rem; display: inline-flex; align-items: center; }
+.accept-risk p { margin: .25rem 0 .6rem; max-width: 52rem; }
+.accept-note { margin-top: .6rem; color: var(--muted); }
+.steps-progress span.accepted { background: var(--line-strong); }
