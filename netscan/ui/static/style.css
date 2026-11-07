@@ -111,6 +111,7 @@ a:hover { text-decoration-thickness: 2px; }
 .scanmeta dt { color: var(--muted); }
 .scanmeta dd { margin: 0; padding: .45rem 0; }
 .scanbar-save { margin-left: auto; }
+.scanbar-report a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .saved { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; color: var(--good); padding: .45rem 0; }
 
 select, button, .button {
@@ -195,6 +196,35 @@ button:hover, .button:hover, select:hover { border-color: var(--muted); }
 .compare-warn h3 { border-bottom-color: var(--medium); }
 .compare-col ul { list-style: none; padding: 0; margin: .5rem 0 0; display: flex; flex-direction: column; gap: .55rem; }
 .compare-col li { line-height: 1.4; }
+
+/* ---------- assistant (FR-12) ---------- */
+.ask { background: var(--surface); border-radius: var(--radius); padding: 1.2rem 1.4rem; margin-top: 1.25rem; }
+.ask > h2 { margin: 0 0 .7rem; font-size: 1.25rem; }
+.ask-form { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ask-form input[type=text] { flex: 1 1 16rem; min-width: 0; font: inherit; color: var(--ink); background: var(--surface);
+  border: 2px solid var(--line); border-radius: 8px; padding: .45rem .8rem; min-height: 2.75rem; }
+.ask-form input[type=text]::placeholder { color: var(--muted); }
+.ask-examples { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; margin-top: .6rem; }
+.ask-examples a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.ask-reply { margin-top: .8rem; border-left: 5px solid var(--link); background: var(--bg); border-radius: 8px; padding: .8rem 1rem; }
+.ask-q { overflow-wrap: anywhere; }
+.ask-a { white-space: pre-line; margin-top: .4rem; max-width: 70ch; }
+.ask-src { display: flex; align-items: center; gap: .4rem; margin-top: .6rem; }
+
+/* ---------- security journal (FR-13) ---------- */
+.lead { max-width: 65ch; margin-bottom: 1rem; }
+.journal-day { background: var(--surface); border-radius: var(--radius); padding: 1.1rem 1.3rem; margin-top: 1rem; }
+.journal-day > h2 { font-size: 1.125rem; margin: 0 0 .6rem; overflow-wrap: anywhere; }
+.journal-link { margin-top: .4rem; }
+.alerts-title { font-size: 1.0625rem; margin: .8rem 0 .5rem; }
+.alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .45rem; }
+.alert { display: flex; gap: .55rem; align-items: baseline; padding: .45rem .7rem; border-radius: 8px; border-left: 5px solid var(--line); background: var(--bg); }
+.alert .icon { position: relative; top: .15em; }
+.alert-bad { border-left-color: var(--medium); }
+.alert-bad .icon { color: var(--medium); }
+.alert-good { border-left-color: var(--good); }
+.alert-good .icon { color: var(--good); }
+.alert-info .icon { color: var(--info); }
 
 /* ---------- score trend (history) ---------- */
 .trend { background: var(--surface); border-radius: var(--radius); padding: 1.25rem 1.4rem; margin-top: 1rem; }

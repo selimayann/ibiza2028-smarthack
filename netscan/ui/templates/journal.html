@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import alert_list with context %}
+{% block title %}{{ T('journal_title') }} · {{ T('app_title') }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ T('journal_title') }}</h1>
+<p class="muted lead">{{ T('journal_hint') }}</p>
+
+{% if groups %}
+  {% for g in groups %}
+    <section class="journal-day" aria-labelledby="j-{{ g.scan_id }}">
+      <h2 id="j-{{ g.scan_id }}">
+        {% if g.scan %}{{ T('journal_scan')|format(fmt_time(g.scan.started_at), g.scan.file) }}{% endif %}
+      </h2>
+      {{ alert_list(g.alerts) }}
+      <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id) }}">{{ T('see_in_history') }}</a></p>
+    </section>
+  {% endfor %}
+{% else %}
+  <p class="notice">{{ T('journal_empty') }}</p>
+{% endif %}
+{% endblock %}

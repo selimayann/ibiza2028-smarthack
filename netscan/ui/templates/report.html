@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ T('report_title') }} · {{ scan.file }}</title>
+  {% if inline_css %}<style>{{ inline_css }}</style>{% else %}<link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">{% endif %}
+</head>
+<body>
+{% if not inline_css %}
+  <nav class="report-actions" aria-label="{{ T('report_title') }}">
+    <a href="{{ back_url }}">{{ T('report_back') }}</a>
+    <button type="button" id="print-report">{{ T('report_print') }}</button>
+    <a href="{{ download_url }}">{{ T('report_download') }}</a>
+  </nav>
+{% endif %}
+<main class="report">
+  <header class="r-head">
+    <div>
+      <h1>{{ T('report_title') }}</h1>
+      <p class="r-muted">{{ T('report_for') }}</p>
+    </div>
+    <dl class="r-meta">
+      <div><dt>{{ T('scan_file') }}</dt><dd>{{ scan.file }}</dd></div>
+      <div><dt>{{ T('scan_date') }}</dt><dd>{{ fmt_time(scan.started_at) }}</dd></div>
+      <div><dt>{{ T('report_generated') }}</dt><dd>{{ generated }}</dd></div>
+    </dl>
+  </header>
+
+  {% if scan.status == 'error' %}
+    <section class="r-box r-error"><h2>{{ T('error_title') }}</h2><p>{{ error_message(scan.error_code) }}</p></section>
+  {% else %}
+    {% set band = score_band(scan.score) %}
+    <section class="r-summary" aria-label="{{ T('report_summary') }}">
+      <div class="r-score r-{{ band }}">
+        <p class="r-label">{{ T('score_label') }}</p>
+        <p><span class="r-num">{{ scan.score }}</span> {{ T('score_of') }}</p>
+        <p class="r-band">{{ {'good': '●', 'fair': '◆', 'poor': '▲'}[band] }} {{ T('band_' ~ band) }}</p>
+      </div>
+      <div class="r-counts">
+        <p><strong>{{ devices|length }}</strong> {{ T('report_devices')|lower }}, <strong>{{ scan.findings|length }}</strong> {{ T('report_problems')|lower }}</p>
+        <ul>
+          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li>{{ T('sev_' ~ sev) }}: {{ counts[sev] }}</li>{% endif %}{% endfor %}
+        </ul>
+        {% set worst = devices[0] if devices and devices[0].findings else none %}
+        {% if worst %}
+          <p class="r-first"><strong>{{ T('do_first') }}</strong> {{ explain(worst.worst.code).steps[0] }}
+            <span class="r-muted">({{ device_type_label(worst.host.device_type) }}, {{ worst.host.ip }})</span></p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section>
+      <h2>{{ T('report_problems_detail') }}</h2>
+      {% if scan.findings %}
+      <table class="r-table">
+        <thead><tr><th scope="col">#</th><th scope="col">{{ T('report_problems') }}</th><th scope="col">{{ T('report_device') }}</th><th scope="col">{{ T('report_fix_first') }}</th></tr></thead>
+        <tbody>
+        {% set ns = namespace(n=0) %}
+        {% for d in devices %}{% for f in d.findings %}
+          {% set ns.n = ns.n + 1 %}
+          {% set std = standards(f.code) %}
+          <tr>
+            <td class="r-n">{{ ns.n }}</td>
+            <td><strong>{{ T('sev_' ~ f.severity) }}:</strong> {{ code_name(f.code) }}<br><span class="r-code">{{ f.code }}</span>
+              <br><span class="r-small r-muted">{{ T('evidence') }}: <span class="r-mono">{{ f.evidence }}</span>
+              {% if std.groups %}<span class="r-std"><br>{% for g in std.groups %}{{ g.name }} {% for r in g.refs %}{{ r.id }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}; {% endif %}{% endfor %}</span>{% endif %}</span></td>
+            <td>{{ device_type_label(d.host.device_type) }}<br><span class="r-mono r-nowrap">{{ d.host.ip }}{% if f.port is not none %}:{{ f.port }}{% endif %}</span></td>
+            <td>{{ explain(f.code).steps[0] }}</td>
+          </tr>
+        {% endfor %}{% endfor %}
+        </tbody>
+      </table>
+      <p class="r-small r-muted">{{ T('report_more') }}</p>
+      {% else %}
+        <p>{{ T('report_none') }}</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>{{ T('report_devices') }}</h2>
+      <table class="r-table">
+        <thead><tr><th scope="col">{{ T('report_device') }}</th><th scope="col">{{ T('ip') }}</th><th scope="col">{{ T('mac') }}</th><th scope="col">{{ T('vendor') }}</th><th scope="col">{{ T('report_problems') }}</th></tr></thead>
+        <tbody>
+          {% for d in devices %}
+            <tr>
+              <td>{{ device_type_label(d.host.device_type) }}</td>
+              <td class="r-mono r-nowrap">{{ d.host.ip }}</td>
+              <td class="r-mono r-nowrap">{{ d.host.mac_masked or '—' }}</td>
+              <td>{{ d.host.vendor or '—' }}</td>
+              <td>{{ d.findings|length }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  <footer class="r-foot"><p>{{ T('report_footer') }}</p></footer>
+</main>
+{% if not inline_css %}<script src="{{ url_for('static', filename='report.js') }}"></script>{% endif %}
+</body>
+</html>

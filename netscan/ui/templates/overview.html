@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, port_label, device_name, meter with context %}
+{% from "_macros.html" import sev, port_label, device_name, meter, alert_list, ask_box with context %}
 {% block content %}
 
 {% if scan is none %}
@@ -27,6 +27,7 @@
   <dl class="scanmeta">
     <div><dt>{{ T('scan_date') }}</dt><dd>{{ fmt_time(scan.started_at) }}</dd></div>
   </dl>
+  <p class="scanbar-report"><a href="{{ url_for('history_report', scan_id=history_id) if history_id is not none else url_for('report', scan=selected) }}">{{ T('report_link') }}</a></p>
   {% if history_id is none and scan.status == 'ok' %}
     <div class="scanbar-save">
     {% if saved_id %}
@@ -87,6 +88,12 @@
   {% endif %}
 </div>
 
+{% if history_id is none %}
+  {{ ask_box(url_for('overview'), selected, question, reply, false) }}
+{% else %}
+  {{ ask_box(url_for('history_scan', scan_id=history_id), none, question, reply, true) }}
+{% endif %}
+
 {# Comparația cu scanarea anterioară (doar în istoric) #}
 {% if history_id is not none %}
   <section class="compare" aria-labelledby="cmp-h">
@@ -94,6 +101,8 @@
     {% if compare is none %}
       <p>{{ T('compare_none') }}</p>
     {% else %}
+      <h3 class="alerts-title">{{ T('alerts_title') }}</h3>
+      {% if alerts %}{{ alert_list(alerts) }}{% else %}<p class="muted">{{ T('journal_no_change') }}</p>{% endif %}
       <p class="compare-score">{{ T('score_change') }}: <strong class="mono">{{ compare.score_before }} → {{ compare.score_after }}</strong></p>
       {% if compare.matched_by_ip %}
         <div class="ip-note" role="note">

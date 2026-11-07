@@ -251,3 +251,84 @@ def test_standards_failure_does_not_break_page(tmp_path, monkeypatch):
     client, _ = make_client(tmp_path, [sample()])
     resp = client.get("/device/e1f2a3b4c5d6")
     assert resp.status_code == 200 and "Standarde de securitate" not in resp.get_data(as_text=True)
+
+
+# ---------- FR-12: asistentul în UI ----------
+
+def test_ask_box_answers_from_scan(tmp_path):
+    from urllib.parse import quote
+
+    client, _ = make_client(tmp_path, [sample()])
+    html = client.get("/").get_data(as_text=True)
+    assert "Întreabă despre rețeaua ta" in html and 'name="q"' in html
+    html = client.get("/?q=" + quote("Ce fac întâi?")).get_data(as_text=True)
+    assert "Ai întrebat:" in html and "Fă asta întâi" in html
+    assert "Răspuns construit doar din scanare" in html
+
+
+def test_ask_question_is_escaped_and_not_obeyed(tmp_path):
+    from urllib.parse import quote
+
+    client, _ = make_client(tmp_path, [sample()])
+    html = client.get("/?q=" + quote(XSS + " " + INJECT)).get_data(as_text=True)
+    assert XSS not in html and "&lt;script&gt;" in html
+    assert "Scanarea nu poate răspunde la asta" in html
+
+
+def test_ask_long_question_is_cut(tmp_path):
+    client, _ = make_client(tmp_path, [sample()])
+    resp = client.get("/?q=" + "a" * 5000)
+    assert resp.status_code == 200 and "a" * 501 not in resp.get_data(as_text=True)
+
+
+def test_ask_on_history_scan_knows_previous(tmp_path):
+    from urllib.parse import quote
+
+    client, app = make_client(tmp_path, [])
+    _, b_id = _save_validation(app.config["DB_PATH"], "V6a_before.xml", "V6b_after.xml")
+    html = client.get(f"/scan/{b_id}?q=" + quote("Ce s-a schimbat?")).get_data(as_text=True)
+    assert "Ai întrebat:" in html and "Ce s-a schimbat?" in html
+
+
+# ---------- FR-14: raportul pentru furnizorul IT ----------
+
+def test_report_page(tmp_path):
+    client, _ = make_client(tmp_path, [sample()])
+    assert "Raport pentru furnizorul IT" in client.get("/").get_data(as_text=True)
+    resp = client.get("/report?scan=0")
+    html = resp.get_data(as_text=True)
+    assert resp.status_code == 200
+    assert "Raport de securitate a rețelei" in html and ">40<" in html and "Risc mare" in html
+    assert "Imaginea camerei expusă" in html and "CAMERA_STREAM_EXPOSED" in html
+    assert "DD:EE:FF:XX:XX:XX" in html                         # doar MAC mascat
+    assert "<style>" not in html                              # pagina servită respectă CSP (fără stil inline)
+    assert 'src="/static/report.js"' in html
+    # ordinea riscului: camera (30p) înaintea routerului (20p)
+    assert html.index("192.168.1.40") < html.index("192.168.1.1<")
+
+
+def test_report_download_is_self_contained(tmp_path):
+    client, _ = make_client(tmp_path, [sample()])
+    resp = client.get("/report?scan=0&download=1")
+    assert resp.headers["Content-Disposition"] == 'attachment; filename="raport-V2_smart_home.html"'
+    html = resp.get_data(as_text=True)
+    assert "<style>" in html and "/static/" not in html and "<script" not in html
+
+
+def test_report_escapes_untrusted_text(tmp_path):
+    scan = Scan(file=XSS, status="ok", score=90,
+                hosts=[Host(ip="10.0.0.1", device_id="d1", vendor=XSS)],
+                findings=[Finding(file=XSS, ip="10.0.0.1", device_id="d1", port=80, code="HTTP_ADMIN_CLEARTEXT",
+                                  severity="medium", points=10, evidence=XSS)])
+    client, _ = make_client(tmp_path, [scan])
+    for url in ("/report?scan=0", "/report?scan=0&download=1"):
+        html = client.get(url).get_data(as_text=True)
+        assert XSS not in html and "&lt;script&gt;" in html
+
+
+def test_report_error_scan_and_history(tmp_path):
+    client, app = make_client(tmp_path, [Scan(file="V7_broken.xml", status="error", error_code="TRUNCATED")])
+    assert "pare incomplet" in client.get("/report?scan=0").get_data(as_text=True)
+    _, b_id = _save_validation(app.config["DB_PATH"], "V6a_before.xml", "V6b_after.xml")
+    html = client.get(f"/scan/{b_id}/report").get_data(as_text=True)
+    assert "Nu am găsit nicio problemă din catalog." in html

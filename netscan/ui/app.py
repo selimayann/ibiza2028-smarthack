@@ -9,7 +9,9 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import re
 import secrets
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -19,12 +21,14 @@ from netscan.cli import load_env_file
 from netscan.engine import analyze_folder
 from netscan.model import Scan
 from netscan.ui import i18n, storage
+from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
 from netscan.ui.view import most_dangerous, rank_devices, score_band, score_trend
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
 VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
+REPORT_CSS = Path(__file__).resolve().parent / "static" / "report.css"
 LANG_COOKIE = "lang"
 
 
@@ -43,6 +47,23 @@ def load_scans() -> list[Scan]:
         return analyze_folder(scans_dir())
     except NotADirectoryError:
         return []
+
+
+MAX_QUESTION_LEN = 500
+
+
+def ask_assistant(question: str, scan: Scan | None, lang: str, previous: Scan | None = None):
+    """FR-12: asistentul lui Ayan (netscan/scan/assistant.py). Răspunde doar din scanare, fără rețea.
+    Întrebarea e text nesigur: se trimite doar asistentului și nu se afișează ca HTML."""
+    question = (question or "").strip()[:MAX_QUESTION_LEN]
+    if not question or scan is None:
+        return None
+    try:
+        from netscan.scan.assistant import answer
+
+        return answer(question, scan, lang=lang, previous=previous)
+    except Exception:  # asistentul nu are voie să strice pagina
+        return None
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -81,7 +102,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         other = "en" if lang == "ro" else "ro"
         def lang_url() -> str:
             """Aceeași pagină, în cealaltă limbă (păstrează restul parametrilor)."""
-            args = {k: v for k, v in request.args.items() if k != "lang"}
+            args = {k: (v[:MAX_QUESTION_LEN] if k == "q" else v) for k, v in request.args.items() if k != "lang"}
             if request.endpoint and request.endpoint != "static" and request.method == "GET":
                 return url_for(request.endpoint, **(request.view_args or {}), **args, lang=other)
             return url_for("overview", lang=other)
@@ -94,6 +115,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
+            "alert_text": lambda a: i18n.alert_text(lang, a),
+            "code_name": lambda code: i18n.code_name(lang, code),
             "standards": lambda code: get_standards(code, lang),
             "fmt_time": _fmt_time,
             "score_band": score_band,
@@ -116,8 +139,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan_list = scans()
         scan, idx = pick(scan_list)
         saved_id = storage.find_scan(scan.file, scan.started_at, app.config["DB_PATH"]) if scan else None
+        question = request.args.get("q", "")[:MAX_QUESTION_LEN]
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx,
+            question=question, reply=ask_assistant(question, scan, g.lang),
             devices=rank_devices(scan) if scan else [], worst=most_dangerous(scan) if scan else None,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
         )
@@ -156,6 +181,47 @@ def create_app(test_config: dict | None = None) -> Flask:
             deleted=request.args.get("deleted") == "1",
         )
 
+    def render_report(scan: Scan, back_url: str, download_url: str, download: bool):
+        """FR-14: raportul de o pagină pentru furnizorul IT. Doar date din motor; MAC mascat."""
+        devices = rank_devices(scan) if scan.status == "ok" else []
+        counts = {sev: sum(1 for f in scan.findings if f.severity == sev) for sev in ("high", "medium", "low", "info")}
+        html = render_template(
+            "report.html", scan=scan, devices=devices, counts=counts, generated=_fmt_time(int(time.time())),
+            back_url=back_url, download_url=download_url, inline_css=REPORT_CSS.read_text(encoding="utf-8") if download else None,
+        )
+        if not download:
+            return html
+        name = re.sub(r"[^A-Za-z0-9_.-]+", "_", Path(scan.file).stem)[:60] or "scan"
+        return app.response_class(html, mimetype="text/html", headers={
+            "Content-Disposition": f'attachment; filename="raport-{name}.html"'})
+
+    @app.get("/report")
+    def report():
+        scan, idx = pick(scans())
+        if scan is None:
+            abort(404)
+        return render_report(scan, url_for("overview", scan=idx), url_for("report", scan=idx, download=1),
+                             request.args.get("download") == "1")
+
+    @app.get("/scan/<int:scan_id>/report")
+    def history_report(scan_id: int):
+        scan = storage.get_scan(scan_id, app.config["DB_PATH"])
+        if scan is None:
+            abort(404)
+        return render_report(scan, url_for("history_scan", scan_id=scan_id),
+                             url_for("history_report", scan_id=scan_id, download=1), request.args.get("download") == "1")
+
+    @app.get("/journal")
+    def journal_page():
+        db = app.config["DB_PATH"]
+        by_id = {s.id: s for s in storage.list_scans(db)}
+        groups: list[dict] = []
+        for a in journal(db):
+            if not groups or groups[-1]["scan_id"] != a.scan_id:
+                groups.append({"scan_id": a.scan_id, "scan": by_id.get(a.scan_id), "alerts": []})
+            groups[-1]["alerts"].append(a)
+        return render_template("journal.html", groups=groups)
+
     @app.get("/history/delete")
     def history_delete_confirm():
         return render_template("history_delete.html", token=app.config["FORM_TOKEN"])
@@ -177,11 +243,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         prev_id = storage.previous_scan_id(scan_id, db)
         prev = storage.get_scan(prev_id, db) if prev_id is not None else None
         compare = storage.diff(prev, scan) if prev is not None else None
+        alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None else None
+        question = request.args.get("q", "")[:MAX_QUESTION_LEN]
         ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
         return render_template(
             "overview.html", scan=scan, scan_list=[], selected=0,
             devices=rank_devices(scan), worst=most_dangerous(scan),
-            history_id=scan_id, compare=compare, ip_of=ip_of,
+            history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts,
+            question=question, reply=ask_assistant(question, scan, g.lang, previous=prev),
         )
 
     @app.errorhandler(400)
