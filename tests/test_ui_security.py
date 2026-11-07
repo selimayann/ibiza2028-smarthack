@@ -37,12 +37,6 @@ def test_cross_site_cannot_run_the_assistant(tmp_path):
     assert 'id="ask-answer"' in c.get("/?ask=1&q=" + q, headers={"Sec-Fetch-Site": "same-origin"}).get_data(as_text=True)
 
 
-def test_downloaded_report_keeps_its_css_intact(tmp_path):
-    c, _ = client(tmp_path)
-    html = c.get("/report?scan=0&download=1").get_data(as_text=True)
-    assert '"Segoe UI"' in html and "&#34;" not in html.split("</style>")[0]
-
-
 def test_language_link_drops_internal_parameters(tmp_path):
     c, _ = client(tmp_path)
     html = c.get("/?scan=0&_scheme=javascript&_anchor=x&_method=DELETE").get_data(as_text=True)

@@ -6,12 +6,10 @@
 """
 from __future__ import annotations
 
-import base64
 import hashlib
 import hmac
 import json
 import os
-import re
 import secrets
 import threading
 import time
@@ -20,7 +18,6 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
-from markupsafe import Markup
 
 from netscan.cli import load_env_file
 from netscan.engine import analyze_folder
@@ -35,8 +32,6 @@ from netscan.ui.view import (action_plan, ip_key, most_dangerous, rank_devices, 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
 VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
-REPORT_CSS = Path(__file__).resolve().parent / "static" / "report.css"
-LOGO_SVG = Path(__file__).resolve().parent / "static" / "brand" / "safeeel-lockup-horizontal-light.svg"
 LANG_COOKIE = "lang"
 LOCAL_HOSTS = ("127.0.0.1", "localhost")   # serverul ascultă doar pe 127.0.0.1 (IPv4)
 SEEN_COOKIE = "journal_seen"   # când a deschis utilizatorul ultima dată Jurnalul (pentru „N alerte noi”)
@@ -502,38 +497,28 @@ def create_app(test_config: dict | None = None) -> Flask:
             deleted=request.args.get("deleted") == "1",
         )
 
-    def render_report(scan: Scan, back_url: str, download_url: str, download: bool):
-        """FR-14: raportul de o pagină pentru furnizorul IT. Doar date din motor; MAC mascat."""
+    def render_report(scan: Scan, back_url: str):
+        """FR-14: raportul de o pagină pentru furnizorul IT. Doar date din motor; MAC mascat. PDF = Tipărește."""
         devices = rank_devices(scan) if scan.status == "ok" else []
         counts = {sev: sum(1 for f in scan.findings if f.severity == sev) for sev in ("high", "medium", "low", "info")}
-        html = render_template(
+        return render_template(
             "report.html", scan=scan, devices=devices, counts=counts, generated=_fmt_time(int(time.time()), g.lang),
-            back_url=back_url, download_url=download_url, inline_css=Markup(REPORT_CSS.read_text(encoding="utf-8")) if download else None,  # fișierul nostru, nu date
-            # raportul descărcat trebuie să meargă singur, fără server: logo-ul intră în fișier ca data URI
-            logo_src=("data:image/svg+xml;base64," + base64.b64encode(LOGO_SVG.read_bytes()).decode("ascii")) if download
-            else url_for("static", filename="brand/safeeel-lockup-horizontal-light.svg"),
+            back_url=back_url, logo_src=url_for("static", filename="brand/safeeel-lockup-horizontal-light.svg"),
         )
-        if not download:
-            return html
-        name = re.sub(r"[^A-Za-z0-9_.-]+", "_", Path(scan.file).stem)[:60] or "scan"
-        return app.response_class(html, mimetype="text/html", headers={
-            "Content-Disposition": f'attachment; filename="raport-{name}.html"'})
 
     @app.get("/report")
     def report():
         scan, idx = pick(scans())
         if scan is None:
             abort(404)
-        return render_report(scan, url_for("overview", scan=idx), url_for("report", scan=idx, download=1),
-                             request.args.get("download") == "1")
+        return render_report(scan, url_for("overview", scan=idx))
 
     @app.get("/scan/<int:scan_id>/report")
     def history_report(scan_id: int):
         scan = storage.get_scan(scan_id, app.config["DB_PATH"])
         if scan is None:
             abort(404)
-        return render_report(scan, url_for("history_scan", scan_id=scan_id),
-                             url_for("history_report", scan_id=scan_id, download=1), request.args.get("download") == "1")
+        return render_report(scan, url_for("history_scan", scan_id=scan_id))
 
     @app.get("/journal")
     def journal_page():

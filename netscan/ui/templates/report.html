@@ -4,15 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ T('report_title') }} · {{ scan.file }} · SafeEel</title>
-  {% if inline_css %}<style>{{ inline_css }}</style>{% else %}<link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">
 </head>
 <body>
-{% if not inline_css %}
   <nav class="report-actions" aria-label="{{ T('report_title') }}">
     <a class="r-back" href="{{ back_url }}"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('report_back') }}</a>
     <button type="button" id="print-report" class="r-print"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>{{ T('report_print') }}</button>
   </nav>
-{% endif %}
 <main class="report">
   <header class="r-head">
     <div>
@@ -109,6 +107,6 @@
 
   <footer class="r-foot"><p>{{ T('report_footer') }}</p></footer>
 </main>
-{% if not inline_css %}<script src="{{ url_for('static', filename='report.js') }}"></script>{% endif %}
+<script src="{{ url_for('static', filename='report.js') }}"></script>
 </body>
 </html>

@@ -310,23 +310,14 @@ def test_report_page(tmp_path):
     assert html.index("192.168.1.40") < html.index("192.168.1.1<")
 
 
-def test_report_download_is_self_contained(tmp_path):
-    client, _ = make_client(tmp_path, [sample()])
-    resp = client.get("/report?scan=0&download=1")
-    assert resp.headers["Content-Disposition"] == 'attachment; filename="raport-V2_smart_home.html"'
-    html = resp.get_data(as_text=True)
-    assert "<style>" in html and "/static/" not in html and "<script" not in html
-
-
 def test_report_escapes_untrusted_text(tmp_path):
     scan = Scan(file=XSS, status="ok", score=90,
                 hosts=[Host(ip="10.0.0.1", device_id="d1", vendor=XSS)],
                 findings=[Finding(file=XSS, ip="10.0.0.1", device_id="d1", port=80, code="HTTP_ADMIN_CLEARTEXT",
                                   severity="medium", points=10, evidence=XSS)])
     client, _ = make_client(tmp_path, [scan])
-    for url in ("/report?scan=0", "/report?scan=0&download=1"):
-        html = client.get(url).get_data(as_text=True)
-        assert XSS not in html and "&lt;script&gt;" in html
+    html = client.get("/report?scan=0").get_data(as_text=True)
+    assert XSS not in html and "&lt;script&gt;" in html
 
 
 def test_report_error_scan_and_history(tmp_path):
