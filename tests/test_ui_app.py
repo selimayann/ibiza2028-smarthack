@@ -229,3 +229,25 @@ def test_compare_shows_opened_and_closed_ports(tmp_path):
     html = client.get(f"/scan/{b_id}").get_data(as_text=True)
     assert "Porturi deschise acum (1)" in html and "443/tcp" in html
     assert "Porturi închise acum (3)" in html and "23/tcp" in html and "1900/udp" in html
+
+
+def test_device_page_shows_standards(tmp_path):
+    from netscan.ui.app import load_scans
+
+    scans = load_scans()
+    i = next(n for n, s in enumerate(scans) if s.file == "V6a_before.xml")
+    client, _ = make_client(tmp_path, scans)
+    worst = most_dangerous(scans[i])
+    html = client.get(f"/device/{worst.host.device_id}?scan={i}").get_data(as_text=True)
+    assert "Standarde de securitate" in html
+    assert "CIS Controls v8" in html and "OWASP IoT Top 10 (2018)" in html
+    assert "https://www.cisecurity.org/controls/v8" in html
+
+
+def test_standards_failure_does_not_break_page(tmp_path, monkeypatch):
+    import netscan.explain.standards as st
+
+    monkeypatch.setattr(st, "get_standards", lambda *a, **k: 1 / 0)
+    client, _ = make_client(tmp_path, [sample()])
+    resp = client.get("/device/e1f2a3b4c5d6")
+    assert resp.status_code == 200 and "Standarde de securitate" not in resp.get_data(as_text=True)

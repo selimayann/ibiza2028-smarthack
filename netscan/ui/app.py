@@ -19,7 +19,7 @@ from netscan.cli import load_env_file
 from netscan.engine import analyze_folder
 from netscan.model import Scan
 from netscan.ui import i18n, storage
-from netscan.ui.explain_stub import get_explanation
+from netscan.ui.explain_stub import get_explanation, get_standards
 from netscan.ui.view import most_dangerous, rank_devices, score_band, score_trend
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -94,6 +94,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
+            "standards": lambda code: get_standards(code, lang),
             "fmt_time": _fmt_time,
             "score_band": score_band,
         }

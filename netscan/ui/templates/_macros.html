@@ -4,7 +4,7 @@
 {%- endmacro %}
 
 {% macro port_label(f) -%}
-  {%- if f.port is not none -%}{{ T('port') }} <span class="mono">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
+  {%- if f.port is not none -%}{{ T('port') }} <span class="mono" translate="no">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
 {%- endmacro %}
 
 {% macro device_name(host) -%}

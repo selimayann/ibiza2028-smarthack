@@ -135,7 +135,7 @@ def score_trend(items, width: int = 640, height: int = 220) -> Trend | None:
     scored = [s for s in items if s.status == "ok" and s.score is not None]
     if len(scored) < 2:
         return None
-    left, right, top, bottom = 44, width - 56, 16, height - 34
+    left, right, top, bottom = 64, width - 60, 18, height - 36
     step = (right - left) / (len(scored) - 1)
     trend = Trend(points=[], width=width, height=height,
                   plot_left=left, plot_right=right, plot_top=top, plot_bottom=bottom)

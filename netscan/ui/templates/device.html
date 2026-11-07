@@ -5,7 +5,7 @@
 <p class="back"><a href="{{ url_for('overview', scan=selected) }}">{{ T('back') }}</a></p>
 
 <header class="device-page-head rail-{{ d.max_severity or 'none' }}">
-  <h1>{{ device_name(d.host) }} <span class="mono ip">{{ d.host.ip }}</span></h1>
+  <h1>{{ device_name(d.host) }} <span class="mono ip" translate="no">{{ d.host.ip }}</span></h1>
   <dl class="facts">
     <div><dt>{{ T('mac') }}</dt><dd class="mono">{{ d.host.mac_masked or T('unknown') }}</dd></div>
     <div><dt>{{ T('vendor') }}</dt><dd>{% if d.host.vendor %}{{ d.host.vendor }}{% if d.info and d.info.vendor_source == 'ieee' %} <span class="muted">({{ T('vendor_ieee') }})</span>{% endif %}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}{{ T('unknown') }}{% endif %}</dd></div>
@@ -18,10 +18,22 @@
   {% for f in d.findings %}
     {% set ex = explain(f.code) %}
     <article class="problem rail-{{ f.severity }}">
-      <h3>{{ sev(f.severity) }} <span class="code">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
+      <h3>{{ sev(f.severity) }} <span class="code" translate="no">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
       <p class="problem-text">{{ ex.text }}</p>
       <h4>{{ T('how_to_fix') }}</h4>
       <ol class="steps">{% for s in ex.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+      {% set std = standards(f.code) %}
+      {% if std.groups %}
+        <div class="standards">
+          <h4>{{ T('standards_title') }}</h4>
+          <ul>
+            {% for g in std.groups %}
+              <li><a href="{{ g.url }}" rel="noopener noreferrer">{{ g.name }}</a>:
+                {% for r in g.refs %}<span class="std-ref"><span class="mono" translate="no">{{ r.id }}</span> {{ r.title }}</span>{% if not loop.last %}; {% endif %}{% endfor %}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
       <p class="evidence"><span class="muted">{{ T('evidence') }}:</span> <code>{{ f.evidence }}</code></p>
     </article>
   {% else %}

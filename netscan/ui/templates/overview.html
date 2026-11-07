@@ -68,8 +68,8 @@
     {% set ex = explain(w.code) %}
     <section class="worst" aria-labelledby="worst-h">
       <h2 id="worst-h" class="worst-label">{{ T('worst_title') }}</h2>
-      <p class="worst-device">{{ device_name(worst.host) }} <span class="mono ip">{{ worst.host.ip }}</span></p>
-      <p class="worst-problem">{{ sev(w.severity) }} <span class="code">{{ w.code }}</span> <span class="muted">{{ port_label(w) }}</span></p>
+      <p class="worst-device">{{ device_name(worst.host) }} <span class="mono ip" translate="no">{{ worst.host.ip }}</span></p>
+      <p class="worst-problem">{{ sev(w.severity) }} <span class="code" translate="no">{{ w.code }}</span> <span class="muted">{{ port_label(w) }}</span></p>
       <p class="worst-text">{{ ex.text }}</p>
       <div class="do-first">
         <p class="do-first-label">{{ T('do_first') }}</p>
@@ -99,37 +99,37 @@
         <div class="ip-note" role="note">
           <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('matched_ip_title') }} ({{ compare.matched_by_ip|length }})</h3>
           <p>{{ T('matched_ip_body') }}</p>
-          <ul>{% for h in compare.matched_by_ip %}<li>{{ device_name(h) }} <span class="mono">{{ h.ip }}</span>{% if h.vendor %} <span class="muted">{{ h.vendor }}</span>{% endif %}</li>{% endfor %}</ul>
+          <ul>{% for h in compare.matched_by_ip %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span>{% if h.vendor %} <span class="muted">{{ h.vendor }}</span>{% endif %}</li>{% endfor %}</ul>
         </div>
       {% endif %}
       <div class="compare-grid">
         <div class="compare-col compare-good">
           <h3>{{ T('resolved') }} ({{ compare.resolved_findings|length }})</h3>
-          <ul>{% for f in compare.resolved_findings %}<li><span class="code">{{ f.code }}</span><br><span class="mono">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+          <ul>{% for f in compare.resolved_findings %}<li><span class="code" translate="no">{{ f.code }}</span><br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col compare-bad">
           <h3>{{ T('new_findings') }} ({{ compare.new_findings|length }})</h3>
-          <ul>{% for f in compare.new_findings %}<li><span class="code">{{ f.code }}</span><br><span class="mono">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+          <ul>{% for f in compare.new_findings %}<li><span class="code" translate="no">{{ f.code }}</span><br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col compare-warn">
           <h3>{{ T('persistent') }} ({{ compare.persistent_findings|length }})</h3>
-          <ul>{% for f in compare.persistent_findings %}<li><span class="code">{{ f.code }}</span><br><span class="mono">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
+          <ul>{% for f in compare.persistent_findings %}<li><span class="code" translate="no">{{ f.code }}</span><br><span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>{% else %}<li class="muted">{{ T('none_f') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col">
           <h3>{{ T('opened_ports') }} ({{ compare.opened_ports|length }})</h3>
-          <ul>{% for dev, port, proto in compare.opened_ports %}<li><span class="mono">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+          <ul>{% for dev, port, proto in compare.opened_ports %}<li><span class="mono" translate="no">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col">
           <h3>{{ T('closed_ports') }} ({{ compare.closed_ports|length }})</h3>
-          <ul>{% for dev, port, proto in compare.closed_ports %}<li><span class="mono">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+          <ul>{% for dev, port, proto in compare.closed_ports %}<li><span class="mono" translate="no">{{ port }}/{{ proto }}</span> <span class="muted">{{ ip_of.get(dev, dev) }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col">
           <h3>{{ T('new_devices') }} ({{ compare.new_devices|length }})</h3>
-          <ul>{% for h in compare.new_devices %}<li>{{ device_name(h) }} <span class="mono">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+          <ul>{% for h in compare.new_devices %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
         </div>
         <div class="compare-col">
           <h3>{{ T('removed_devices') }} ({{ compare.removed_devices|length }})</h3>
-          <ul>{% for h in compare.removed_devices %}<li>{{ device_name(h) }} <span class="mono">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
+          <ul>{% for h in compare.removed_devices %}<li>{{ device_name(h) }} <span class="mono" translate="no">{{ h.ip }}</span></li>{% else %}<li class="muted">{{ T('none') }}</li>{% endfor %}</ul>
         </div>
       </div>
     {% endif %}
@@ -143,7 +143,7 @@
     {% for d in devices %}
       <li class="device rail-{{ d.max_severity or 'none' }}">
         <div class="device-head">
-          <h3><span>{{ device_name(d.host) }}</span> <span class="mono ip">{{ d.host.ip }}</span></h3>
+          <h3><span>{{ device_name(d.host) }}</span> <span class="mono ip" translate="no">{{ d.host.ip }}</span></h3>
           <p class="device-sum">
             {% if d.findings %}{{ d.findings|length }} {{ T('device_problem') if d.findings|length == 1 else T('device_problems') }}, {{ d.total_points }} {{ T('device_points') }}{% else %}{{ T('no_findings') }}{% endif %}
           </p>
@@ -151,7 +151,7 @@
         {% if d.findings %}
           <ul class="findings">
             {% for f in d.findings %}
-              <li>{{ sev(f.severity) }} <span class="code">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></li>
+              <li>{{ sev(f.severity) }} <span class="code" translate="no">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></li>
             {% endfor %}
           </ul>
         {% endif %}
