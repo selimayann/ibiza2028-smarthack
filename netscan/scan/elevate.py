@@ -16,6 +16,8 @@ import ctypes
 import shlex
 import subprocess
 import sys
+import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -26,7 +28,14 @@ JOBS = ("scan", "auto")          # o scanare / scanare completă automată la in
 
 STARTED = "STARTED"
 DENIED = "DENIED"                # utilizatorul a refuzat fereastra de permisiune
+AUTH_FAILED = "AUTH_FAILED"      # Linux: parola greșită / permisiunea n-a putut fi cerută (pkexec 127)
 FAILED = "FAILED"
+
+# Codurile de ieșire ale lui pkexec (man pkexec): 126 = fereastra închisă / permisiune refuzată,
+# 127 = autentificare eșuată sau fără agent de autentificare.
+_PKEXEC_DISMISSED = 126
+_PKEXEC_AUTH_FAILED = 127
+_POLL_S = 0.3
 UNSUPPORTED = "UNSUPPORTED"
 
 _SW_HIDE = 0
@@ -58,10 +67,36 @@ def _shell_execute_runas(exe: str, params: str, cwd: str) -> int:
     return int(fn(None, "runas", exe, params, cwd, _SW_HIDE) or 0)
 
 
+def _watch_pkexec(proc, started: Optional[Callable[[], bool]], sleep: Callable[[float], None]) -> Launch:
+    """Linux: pkexec rulează procesul de admin în prim-plan, deci nu „revine” după parolă. Așteptăm până când
+    fie procesul de admin a scris progresul (= permisiune dată, scanarea a pornit), fie pkexec s-a terminat:
+    126 = fereastra închisă, 127 = parolă greșită / fără fereastră, altceva fără progres = n-a pornit.
+    Fără `started`, întoarcem imediat STARTED (ca înainte). Procesul e mereu așteptat (fără procese zombie)."""
+    reap = lambda: threading.Thread(target=proc.wait, name="netscan-pkexec-wait", daemon=True).start()
+    if started is None:
+        reap()
+        return Launch(True, STARTED)
+    while True:
+        rc = proc.poll()
+        if rc is not None:
+            if rc == _PKEXEC_DISMISSED:
+                return Launch(False, DENIED)
+            if rc == _PKEXEC_AUTH_FAILED:
+                return Launch(False, AUTH_FAILED)
+            # s-a terminat repede, dar a apucat să scrie progresul (de ex. „refuzat” de guardrail): îl arată UI-ul
+            return Launch(True, STARTED) if started() else Launch(False, FAILED)
+        if started():
+            reap()
+            return Launch(True, STARTED)
+        sleep(_POLL_S)
+
+
 def launch(job: str, platform: Optional[str] = None,
            shell_execute: Callable[[str, str, str], int] = None,
-           run: Callable = subprocess.run) -> Launch:
-    """Blochează până răspunde utilizatorul la fereastra de permisiune: apelați-o dintr-un fir separat."""
+           run: Callable = subprocess.run, *, started: Optional[Callable[[], bool]] = None,
+           popen: Callable = subprocess.Popen, sleep: Callable[[float], None] = time.sleep) -> Launch:
+    """Blochează până răspunde utilizatorul la fereastra de permisiune: apelați-o dintr-un fir separat.
+    `started()` spune dacă procesul de admin a început să scrie progresul (folosit pe Linux)."""
     args = command(job)
     platform = platform or sys.platform
     if platform == "win32":
@@ -83,9 +118,9 @@ def launch(job: str, platform: Optional[str] = None,
         return Launch(False, DENIED if "-128" in (r.stderr or "") else FAILED)
     if platform.startswith("linux"):
         try:
-            subprocess.Popen(["pkexec", *args], shell=False, stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL, start_new_session=True)
+            proc = popen(["pkexec", *args], shell=False, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
         except OSError:
             return Launch(False, FAILED)
-        return Launch(True, STARTED)   # dacă fereastra e refuzată, progresul rămâne „aștept permisiunea”
+        return _watch_pkexec(proc, started, sleep)
     return Launch(False, UNSUPPORTED)
