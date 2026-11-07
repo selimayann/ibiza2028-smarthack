@@ -19,7 +19,7 @@
 | OUTDATED_SERVICE apare **în plus** față de findingul serviciului (vsftpd 2.3.4 → FTP_CLEARTEXT + OUTDATED_SERVICE pe 21) | Așa cere V4 | Da (V4) |
 | Învechit: vsftpd 2.3.4; OpenSSH < 7.4; Apache httpd ≤ 2.2.x; IIS ≤ 7.5; Samba ≤ 3.x doar când versiunea e fără ambiguitate | Pragurile din brief | Parțial |
 | Samba cu interval (`3.X - 4.X`) **nu** se raportează învechit | E ambiguu | Nu → întrebarea 1 |
-| SMB: un singur finding per dispozitiv, pe 445, altfel pe 139 | Brief + V3 | Nu → întrebarea 2 |
+| `SMB_EXPOSED`: un singur finding per dispozitiv, pe 445, altfel pe 139. `OUTDATED_SERVICE` e separat: se pune **pe fiecare port** cu serviciu învechit (Samba veche pe 139 și 445 → 2 × OUTDATED_SERVICE + 1 × SMB_EXPOSED) | Brief + V3; la OUTDATED, regula generală (în plus față de serviciu) | Așa susțin mentorii după un coleg, **încă netrecut în `docs/questions.md`** (întrebarea 2) |
 | HTTP_ADMIN_CLEARTEXT: titlul se caută ca subșir, fără diferență între litere mari/mici | Cel mai tolerant la variații | Nu → întrebarea 4 |
 | UNKNOWN_DEVICE: fără vendor, fără hostname și cu cel puțin un port deschis; `port` rămâne gol | Brief | Nu → întrebările 5 și 8 |
 | Doar fișierele `*.xml` din folder (fără subfoldere), în ordine alfabetică; `file` = numele fișierului | Determinism | Nu → întrebarea 7 |
