@@ -118,6 +118,39 @@ def summary_of(scan: Scan, worst: DeviceView | None, all_fixed: bool = False) ->
                    device=worst, finding=worst.worst if worst else None)
 
 
+# ---------- dovada „înainte / după” (după ce ai reparat și ai verificat din nou) ----------
+
+@dataclass
+class Proof:
+    """Ce s-a schimbat între două scanări, pentru cardul „Dovada”. Scorurile vin din motor (nu se recalculează aici);
+    aici doar se numără și se grupează rezultatele lui diff()."""
+    before: Scan
+    after: Scan
+    score_before: int
+    score_after: int
+    resolved: list[Finding] = field(default_factory=list)     # „ușile închise”
+    remaining: list[Finding] = field(default_factory=list)    # încă deschise
+    new: list[Finding] = field(default_factory=list)          # apărute între scanări
+
+    @property
+    def closed(self) -> int:
+        return len(self.resolved)
+
+    @property
+    def direction(self) -> str:
+        return ("up" if self.score_after > self.score_before
+                else "down" if self.score_after < self.score_before else "same")
+
+
+def proof_of(before: Scan, after: Scan, d) -> Proof | None:
+    """`d` e storage.diff(before, after). Fără dovadă dacă una dintre scanări nu are scor (e ilizibilă)."""
+    if d.score_before is None or d.score_after is None:
+        return None
+    key = lambda f: finding_rank_key(f)  # noqa: E731  (cea mai gravă întâi, ca peste tot în UI)
+    return Proof(before, after, d.score_before, d.score_after, sorted(d.resolved_findings, key=key),
+                 sorted(d.persistent_findings, key=key), sorted(d.new_findings, key=key))
+
+
 # ---------- trendul scorului (FR-10), pentru graficul din istoric ----------
 
 @dataclass

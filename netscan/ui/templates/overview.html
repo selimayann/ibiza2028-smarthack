@@ -61,12 +61,53 @@
           </div>
         </div>
         {% endif %}
+        {{ recheck_panel() }}
+{% endmacro %}
+
+{# Pasul de după bifare: „Verifică din nou”. Un fișier nou sau o scanare mai nouă care există deja; apoi vine dovada. #}
+{% macro recheck_panel() %}
+  {% if recheck %}
+  <section class="recheck" aria-labelledby="recheck-h">
+    <h3 id="recheck-h" tabindex="-1">{{ T('recheck_title') }}</h3>
+    {% if upload_error %}
+      <p class="verify-msg verify-warn" role="alert">
+        <svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>
+        <span>{{ T('upload_failed') }} {{ T('upload_err_empty') if upload_error == 'NO_FILE' else T('upload_err_older') if upload_error == 'OLDER' else error_message(upload_error) }}</span>
+      </p>
+    {% endif %}
+    <p>{{ T('recheck_body') }}</p>
+    {% if recheck.newer_ref %}
+      <p class="recheck-newer">{{ T('recheck_newer')|format(recheck.newer_file) }}</p>
+      <form method="post" action="{{ url_for('compare_scans') }}">
+        <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+        <input type="hidden" name="after" value="{{ recheck.newer_ref }}">
+        <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('recheck_compare_btn') }}</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('scan_upload') }}" enctype="multipart/form-data" class="recheck-form">
+      <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="scan" value="{{ selected }}">
+      <label for="scanfile">{{ T('recheck_upload_label') }}</label>
+      <div class="name-row">
+        <input id="scanfile" name="scanfile" type="file" accept=".xml,text/xml,application/xml" required>
+        <button type="submit" class="{{ 'button-secondary' if recheck.newer_ref else 'button-primary' }}">{{ T('recheck_upload_btn') }}</button>
+      </div>
+    </form>
+    <details class="recheck-how">
+      <summary>{{ T('recheck_how') }}</summary>
+      <p>{{ T('recheck_how_body') }}</p>
+      <p><code class="mono" translate="no">python -m netscan scan --confirm</code></p>
+    </details>
+  </section>
+  {% endif %}
 {% endmacro %}
 
 
 {% if scan is none %}
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
+
+{# După „Verifică din nou” (și la orice scanare din istoric cu una dinainte): dovada înainte/după, prima pe pagină #}
+{% if proof %}{% include "_proof.html" %}{% endif %}
 
 {# Fraza-rezumat: primul lucru pe care îl citești, înaintea oricărui card. Text simplu: se escapează (conține nume nesigure). #}
 {% if summary %}

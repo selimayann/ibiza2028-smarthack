@@ -164,6 +164,28 @@ TEXTS: dict[str, dict[str, str]] = {
         "choose_scan": "Alege scanarea",
         "show": "Arată",
         "summary_label": "Pe scurt",
+        "recheck_title": "Ai reparat ceva? Verifică din nou.",
+        "recheck_body": "Fă o scanare nouă sau încarcă un fișier nou. Îți arăt scorul de după și ce ai închis.",
+        "recheck_upload_label": "Fișierul scanării noi (.xml)",
+        "recheck_upload_btn": "Verifică din nou",
+        "recheck_newer": "Am găsit deja o scanare mai nouă: %s.",
+        "recheck_compare_btn": "Vezi înainte și după",
+        "recheck_how": "Cum fac o scanare nouă?",
+        "recheck_how_body": "Pe acest calculator, într-un terminal, scrie comanda de mai jos. Când se termină, încarcă aici fișierul făcut de ea.",
+        "upload_failed": "Nu am putut folosi fișierul ales.",
+        "upload_err_empty": "Nu ai ales niciun fișier.",
+        "upload_err_older": "Fișierul ales e mai vechi decât scanarea cu care îl compar. Alege scanarea făcută după reparații.",
+        "proof_title": "Dovada: înainte și după",
+        "proof_before": "Înainte",
+        "proof_after": "După",
+        "proof_better": "Mai bine",
+        "proof_worse": "Mai rău",
+        "proof_same": "La fel",
+        "proof_resolved": "Rezolvate (%s)",
+        "proof_remaining": "Au rămas (%s)",
+        "proof_new": "Probleme noi (%s)",
+        "proof_nothing": "Nimic aici.",
+        "proof_files": "Înainte: %s · După: %s",
         "name_title": "Numele dispozitivului",
         "name_hint": "Dă-i un nume ca să-l recunoști ușor, de exemplu „Camera din sufragerie”. Numele rămâne doar pe acest calculator.",
         "name_label": "Nume (cel mult 40 de caractere)",
@@ -409,6 +431,28 @@ TEXTS: dict[str, dict[str, str]] = {
         "choose_scan": "Choose scan",
         "show": "Show",
         "summary_label": "In short",
+        "recheck_title": "Fixed something? Check again.",
+        "recheck_body": "Run a new scan or upload a new file. I'll show you the new score and what you closed.",
+        "recheck_upload_label": "New scan file (.xml)",
+        "recheck_upload_btn": "Check again",
+        "recheck_newer": "I already found a newer scan: %s.",
+        "recheck_compare_btn": "See before and after",
+        "recheck_how": "How do I run a new scan?",
+        "recheck_how_body": "On this computer, type the command below in a terminal. When it finishes, upload the file it made here.",
+        "upload_failed": "I couldn't use the file you chose.",
+        "upload_err_empty": "You didn't choose a file.",
+        "upload_err_older": "The file you chose is older than the scan I compare it with. Choose the scan made after your fixes.",
+        "proof_title": "Proof: before and after",
+        "proof_before": "Before",
+        "proof_after": "After",
+        "proof_better": "Better",
+        "proof_worse": "Worse",
+        "proof_same": "The same",
+        "proof_resolved": "Fixed (%s)",
+        "proof_remaining": "Still open (%s)",
+        "proof_new": "New problems (%s)",
+        "proof_nothing": "Nothing here.",
+        "proof_files": "Before: %s · After: %s",
         "name_title": "Device name",
         "name_hint": "Give it a name so you can recognise it easily, for example “Living room camera”. The name stays on this computer only.",
         "name_label": "Name (at most 40 characters)",
@@ -630,6 +674,46 @@ SUMMARY_TEXTS: dict[str, dict[str, str]] = {
         "error": "I can't tell anything about the network from this file. {message}",
     },
 }
+
+
+# Fraza de sub scor în cardul „Dovada”: câte „uși” s-au închis, încotro a mers scorul, ce a apărut nou.
+PROOF_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "closed_none": "Nicio ușă închisă încă.", "closed_one": "Ai închis o ușă.", "closed_many": "uși",
+        "closed_prefix": "Ai închis",
+        "up": "Scorul a urcat de la {a} la {b}.", "down": "Scorul a coborât de la {a} la {b}.",
+        "same": "Scorul a rămas {a}.",
+        "new_one": "A apărut și o problemă nouă.", "new_many": "Au apărut și {n} probleme noi.",
+    },
+    "en": {
+        "closed_none": "No doors closed yet.", "closed_one": "You closed 1 door.", "closed_many": "doors",
+        "closed_prefix": "You closed",
+        "up": "The score went up from {a} to {b}.", "down": "The score went down from {a} to {b}.",
+        "same": "The score stayed at {a}.",
+        "new_one": "One new problem also appeared.", "new_many": "{n} new problems also appeared.",
+    },
+}
+
+
+def proof_sentence(lang: str, proof) -> str:
+    """Fraza cardului „Dovada”: ce ai închis și ce s-a întâmplat cu scorul. Text simplu, fără date din scanare."""
+    lang = normalize_lang(lang)
+    tx = PROOF_TEXTS[lang]
+    n = proof.closed
+    if n == 0:
+        closed = tx["closed_none"]
+    elif n == 1:
+        closed = tx["closed_one"]
+    else:
+        de = "de " if lang == "ro" and (n % 100 == 0 or n % 100 >= 20) else ""   # „20 de uși”
+        closed = f"{tx['closed_prefix']} {n} {de}{tx['closed_many']}."
+    score = tx[proof.direction].format(a=proof.score_before, b=proof.score_after)
+    parts = [closed, score]
+    if len(proof.new) == 1:
+        parts.append(tx["new_one"])
+    elif proof.new:
+        parts.append(tx["new_many"].format(n=len(proof.new)))
+    return " ".join(parts)
 
 
 def _count(lang: str, n: int, one: str, many: str) -> str:

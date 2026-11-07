@@ -12,6 +12,7 @@ import json
 import os
 import re
 import secrets
+import tempfile
 import threading
 import time
 from dataclasses import replace
@@ -20,15 +21,17 @@ from pathlib import Path
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
 from markupsafe import Markup
+from werkzeug.utils import secure_filename
 
 from netscan.cli import load_env_file
-from netscan.engine import analyze_folder
+from netscan.engine import analyze_file, analyze_folder
+from netscan.engine.parser import MAX_BYTES
 from netscan.model import Scan
 from netscan.ui import extras, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, journal
 from netscan.ui.explain_stub import get_explanation, get_standards
-from netscan.ui.view import (action_plan, ip_key, most_dangerous, rank_devices, score_band, score_trend, steps_view,
-                             summary_of, verified_by_newer)
+from netscan.ui.view import (action_plan, ip_key, most_dangerous, proof_of, rank_devices, score_band, score_trend,
+                             steps_view, summary_of, verified_by_newer)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
@@ -58,6 +61,8 @@ def load_scans() -> list[Scan]:
 
 
 MAX_QUESTION_LEN = 500
+UPLOAD_ERRORS = frozenset(set(i18n.ERROR_MESSAGES["ro"]) - {"_default"}) | {"NO_FILE", "OLDER"}   # coduri afișabile la încărcare
+UPLOAD_SLACK = 1024 * 1024   # peste limita fișierului: câmpurile formularului (jeton etc.)
 _ASK_LOCK = threading.Lock()
 _VERIFY_LOCK = threading.Lock()   # o singură verificare live odată   # modelul local răspunde la o singură întrebare odată (altfel se poate bloca placa video)
 
@@ -212,6 +217,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "new_alerts": new_alerts,
             "alert_text": lambda a: i18n.alert_text(lang, a, custom_names()),
             "custom_name": lambda device_id: custom_names().get(device_id),
+            "proof_sentence": lambda proof: i18n.proof_sentence(lang, proof),
             "code_name": lambda code: i18n.code_name(lang, code),
             "standards": lambda code: get_standards(code, lang),
             "fmt_time": lambda epoch: _fmt_time(epoch, lang),
@@ -277,8 +283,17 @@ def create_app(test_config: dict | None = None) -> Flask:
             check, checked = None, None
         reply = ask_assistant(question, scan, g.lang)
         worst = most_dangerous(remaining) if remaining else None
+        # După ce a bifat ceva, utilizatorul vede pasul următor: „Verifică din nou” (fișier nou sau scanare mai nouă).
+        recheck = None
+        if scan is not None and steps is not None and (steps.declared_count or steps.verified_count):
+            newer = newest_after(scan, scan_list)
+            recheck = {"newer_ref": newer[0] if newer else None, "newer_file": newer[1].file if newer else None}
+        upload_error = request.args.get("upload_error")
+        if upload_error not in UPLOAD_ERRORS:
+            upload_error = None
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx,
+            recheck=recheck, upload_error=upload_error,
             steps=steps, check=check, checked=steps.steps[checked - 1] if checked else None,
             show_steps=steps is not None and (request.args.get("step") is not None or not steps.all_resolved),
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", scan=idx), scan, idx, question, reply, False),
@@ -300,6 +315,44 @@ def create_app(test_config: dict | None = None) -> Flask:
                 if saved is not None:
                     out.append(saved)
         return out
+
+    # ---------- „Verifică din nou”: o scanare nouă (fișier încărcat sau deja existentă) și dovada înainte/după ----------
+
+    def ensure_saved(scan: Scan) -> int:
+        """Id-ul scanării în istoric; o salvează dacă încă nu e (aceeași pereche fișier + dată nu se dublează)."""
+        db = app.config["DB_PATH"]
+        found = storage.find_scan(scan.file, scan.started_at, db)
+        return found if found is not None else storage.save_scan(scan, db)
+
+    def newest_after(scan: Scan, scan_list: list[Scan]) -> tuple[str, Scan] | None:
+        """Cea mai nouă scanare citibilă de după `scan`, ca referință: "f<index>" (din folder) sau "h<id>" (din istoric)."""
+        if scan.started_at is None:
+            return None
+        found: list[tuple[int, str, Scan]] = []
+        for i, s in enumerate(scan_list):
+            if s.status == "ok" and (s.started_at or 0) > scan.started_at:
+                found.append((s.started_at, f"f{i}", s))
+        seen = {(s.file, s.started_at) for _, _, s in found}
+        db = app.config["DB_PATH"]
+        for item in storage.list_scans(db):
+            if item.status == "ok" and (item.started_at or 0) > scan.started_at and (item.file, item.started_at) not in seen:
+                saved = storage.get_scan(item.id, db)
+                if saved is not None:
+                    found.append((item.started_at, f"h{item.id}", saved))
+        if not found:
+            return None
+        _, ref, newest = max(found, key=lambda t: t[0])
+        return ref, newest
+
+    def resolve_ref(ref: str, scan_list: list[Scan]) -> Scan | None:
+        """Scanarea numită de o referință "f<index>" / "h<id>". Orice altceva: None."""
+        match = re.fullmatch(r"([fh])(\d{1,9})", ref or "")
+        if not match:
+            return None
+        number = int(match.group(2))
+        if match.group(1) == "f":
+            return scan_list[number] if number < len(scan_list) else None
+        return storage.get_scan(number, app.config["DB_PATH"])
 
     def _form_scan() -> tuple[Scan, int]:
         if not hmac.compare_digest(request.form.get("token", ""), app.config["FORM_TOKEN"]):
@@ -334,6 +387,48 @@ def create_app(test_config: dict | None = None) -> Flask:
         number = [f.key() for f in action_plan(scan)].index(key) + 1
         stay = {"step": number} if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION) else {}
         return redirect(url_for("overview", scan=idx, checked=number, check=result.result, **stay) + "#worst-h")
+
+    @app.post("/scan/upload")
+    def scan_upload():
+        """„Verifică din nou” cu un fișier nmap XML nou: îl analizează motorul, ambele scanări intră în istoric și
+        se arată dovada înainte/după. Fișierul nu e păstrat (doar rezultatul), iar fără rețea."""
+        if not same_site_request():
+            abort(403)
+        request.max_content_length = MAX_BYTES + UPLOAD_SLACK   # doar pentru această cerere (restul rămân la 1 MB)
+        before, idx = _form_scan()
+        upload = request.files.get("scanfile")
+        data = upload.read(MAX_BYTES + 1) if upload is not None else b""
+        back = lambda code: redirect(url_for("overview", scan=idx, upload_error=code) + "#recheck-h")  # noqa: E731
+        if not data:
+            return back("NO_FILE")
+        # Același motor ca pentru fișierele din folder (analyze_file): defusedxml, limită de mărime, erori ca valori.
+        # Fișierul stă doar cât durează analiza, într-un folder temporar, sub un nume curățat.
+        name = secure_filename(upload.filename or "") or "scan.xml"
+        if not name.lower().endswith(".xml"):
+            name += ".xml"
+        with tempfile.TemporaryDirectory(prefix="netscan-upload-") as tmp:
+            path = Path(tmp) / name
+            path.write_bytes(data)
+            after = analyze_file(path)
+        if after.status != "ok":
+            return back(after.error_code or "INVALID_XML")
+        if before.status == "ok" and None not in (before.started_at, after.started_at) \
+                and after.started_at < before.started_at:
+            return back("OLDER")
+        before_id, after_id = ensure_saved(before), ensure_saved(after)
+        return redirect(url_for("history_scan", scan_id=after_id, vs=before_id) + "#proof-h")
+
+    @app.post("/compare")
+    def compare_scans():
+        """„Vezi înainte și după” pentru o scanare mai nouă care există deja (în folder sau în istoric)."""
+        if not same_site_request():
+            abort(403)
+        before, _ = _form_scan()
+        after = resolve_ref(request.form.get("after", ""), scans())
+        if after is None or after.status != "ok" or before.status != "ok":
+            abort(400)
+        before_id, after_id = ensure_saved(before), ensure_saved(after)
+        return redirect(url_for("history_scan", scan_id=after_id, vs=before_id) + "#proof-h")
 
     @app.post("/action/reset")
     def action_reset():
@@ -482,10 +577,19 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan = storage.get_scan(scan_id, db)
         if scan is None:
             abort(404)
-        prev_id = storage.previous_scan_id(scan_id, db)
-        prev = storage.get_scan(prev_id, db) if prev_id is not None else None
-        compare = storage.diff(prev, scan) if prev is not None else None
-        alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None else None
+        # „Înainte”: cea cerută explicit (?vs=<id>, după „Verifică din nou”) sau ultima citibilă de dinainte
+        prev = None
+        vs = request.args.get("vs", type=int)
+        if vs is not None and vs != scan_id:
+            prev = storage.get_scan(vs, db)
+            if prev is not None and prev.status != "ok":
+                prev = None
+        if prev is None:
+            prev_id = storage.previous_scan_id(scan_id, db)
+            prev = storage.get_scan(prev_id, db) if prev_id is not None else None
+        compare = storage.diff(prev, scan) if prev is not None and scan.status == "ok" else None
+        proof = proof_of(prev, scan, compare) if compare is not None else None
+        alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None and scan.status == "ok" else None
         question = request.args.get("q", "")[:MAX_QUESTION_LEN] if same_site_request() else ""
         ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
         worst = most_dangerous(scan)
@@ -493,7 +597,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "overview.html", scan=scan, scan_list=[], selected=0,
             summary=summary_sentence(scan, worst),
             devices=rank_devices(scan), worst=worst,
-            history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts,
+            history_id=scan_id, compare=compare, proof=proof, ip_of=ip_of, alerts=alerts,
             assistant=assistant_ctx(url_for("history_scan", scan_id=scan_id), url_for("api_ask", history=scan_id),
                                     scan, None, question, ask_assistant(question, scan, g.lang, previous=prev), True),
         )
