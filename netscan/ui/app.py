@@ -12,11 +12,13 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
+from markupsafe import Markup
 
 from netscan.cli import load_env_file
 from netscan.engine import analyze_folder
@@ -32,6 +34,7 @@ VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
 REPORT_CSS = Path(__file__).resolve().parent / "static" / "report.css"
 LOGO_SVG = Path(__file__).resolve().parent / "static" / "brand" / "safeeel-lockup-horizontal-light.svg"
 LANG_COOKIE = "lang"
+LOCAL_HOSTS = ("127.0.0.1", "localhost")   # serverul ascultă doar pe 127.0.0.1 (IPv4)
 SEEN_COOKIE = "journal_seen"   # când a deschis utilizatorul ultima dată Jurnalul (pentru „N alerte noi”)
 
 
@@ -53,6 +56,14 @@ def load_scans() -> list[Scan]:
 
 
 MAX_QUESTION_LEN = 500
+_ASK_LOCK = threading.Lock()   # modelul local răspunde la o singură întrebare odată (altfel se poate bloca placa video)
+
+
+def same_site_request() -> bool:
+    """Cererea vine din propriul site (sau e tastată direct în bara browserului), nu de pe alt site.
+    Browserele moderne trimit Sec-Fetch-Site; dacă lipsește (unelte vechi, teste), o acceptăm."""
+    site = request.headers.get("Sec-Fetch-Site")
+    return site in (None, "same-origin", "none")
 
 
 def local_ai_enabled() -> bool:
@@ -83,7 +94,10 @@ def ask_assistant(question: str, scan: Scan | None, lang: str, previous: Scan | 
                 llm = local_llm.make_llm()
             except Exception:  # model indisponibil sau adresă nelocală: rămâne textul predefinit
                 llm = None
-        return answer(question, scan, lang=lang, previous=previous, llm=llm)
+        if llm is None:
+            return answer(question, scan, lang=lang, previous=previous)
+        with _ASK_LOCK:
+            return answer(question, scan, lang=lang, previous=previous, llm=llm)
     except Exception:  # asistentul nu are voie să strice pagina
         return None
 
@@ -106,11 +120,22 @@ def create_app(test_config: dict | None = None) -> Flask:
         DB_PATH=None,  # None = NETSCAN_DB_PATH sau data/netscan.db
         FORM_TOKEN=secrets.token_urlsafe(32),
         MAX_CONTENT_LENGTH=1024 * 1024,
+        # DNS rebinding: o pagină rea poate face ca numele ei să ducă la 127.0.0.1. Acceptăm doar cereri adresate
+        # explicit calculatorului local; orice alt Host primește 400 (portul nu contează).
+        TRUSTED_HOSTS=list(LOCAL_HOSTS),   # Flask >= 3.1; verificarea proprie only_local_host() acoperă versiunile vechi
     )
     if test_config:
         app.config.update(test_config)
 
     # ---------- limbă și helperi pentru template-uri ----------
+
+    @app.before_request
+    def only_local_host():
+        """DNS rebinding: verificare proprie, pe orice versiune de Flask (TRUSTED_HOSTS există doar din 3.1)."""
+        host = (request.host or "").rsplit(":", 1)[0] if not (request.host or "").startswith("[") else ""
+        if host.lower() not in LOCAL_HOSTS:
+            return "400 Bad Request", 400, {"Content-Type": "text/plain; charset=utf-8"}
+        return None
 
     @app.before_request
     def pick_language() -> None:
@@ -143,7 +168,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         new_alerts = sum(1 for e in g.monitor[0] if (e.ts or 0) > seen)
         def lang_url() -> str:
             """Aceeași pagină, în cealaltă limbă (păstrează restul parametrilor)."""
-            args = {k: (v[:MAX_QUESTION_LEN] if k == "q" else v) for k, v in request.args.items() if k != "lang"}
+            args = {k: (v[:MAX_QUESTION_LEN] if k == "q" else v) for k, v in request.args.items()
+                    if k != "lang" and not k.startswith("_")}
             if request.endpoint and request.endpoint != "static" and request.method == "GET":
                 return url_for(request.endpoint, **(request.view_args or {}), **args, lang=other)
             return url_for("overview", lang=other)
@@ -183,7 +209,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan_list = scans()
         scan, idx = pick(scan_list)
         saved_id = storage.find_scan(scan.file, scan.started_at, app.config["DB_PATH"]) if scan else None
-        question = request.args.get("q", "")[:MAX_QUESTION_LEN]
+        question = request.args.get("q", "")[:MAX_QUESTION_LEN] if same_site_request() else ""
         step, plan_total, all_done = None, 0, False
         if scan is not None and scan.status == "ok" and scan.findings:
             done = storage.done_keys(scan, app.config["DB_PATH"])
@@ -281,7 +307,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         counts = {sev: sum(1 for f in scan.findings if f.severity == sev) for sev in ("high", "medium", "low", "info")}
         html = render_template(
             "report.html", scan=scan, devices=devices, counts=counts, generated=_fmt_time(int(time.time()), g.lang),
-            back_url=back_url, download_url=download_url, inline_css=REPORT_CSS.read_text(encoding="utf-8") if download else None,
+            back_url=back_url, download_url=download_url, inline_css=Markup(REPORT_CSS.read_text(encoding="utf-8")) if download else None,  # fișierul nostru, nu date
             # raportul descărcat trebuie să meargă singur, fără server: logo-ul intră în fișier ca data URI
             logo_src=("data:image/svg+xml;base64," + base64.b64encode(LOGO_SVG.read_bytes()).decode("ascii")) if download
             else url_for("static", filename="brand/safeeel-lockup-horizontal-light.svg"),
@@ -349,7 +375,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         prev = storage.get_scan(prev_id, db) if prev_id is not None else None
         compare = storage.diff(prev, scan) if prev is not None else None
         alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None else None
-        question = request.args.get("q", "")[:MAX_QUESTION_LEN]
+        question = request.args.get("q", "")[:MAX_QUESTION_LEN] if same_site_request() else ""
         ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
         return render_template(
             "overview.html", scan=scan, scan_list=[], selected=0,
@@ -362,6 +388,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.get("/api/ask")
     def api_ask():
         """Răspunsul asistentului ca JSON, pentru fereastra de chat (app.js îl pune în pagină doar cu textContent)."""
+        if not same_site_request():
+            return {"ok": False, "text": i18n.t(g.lang, "ai_error")}, 403
         question = request.args.get("q", "")[:MAX_QUESTION_LEN]
         prev = None
         if request.args.get("history") is not None:
@@ -383,7 +411,10 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.errorhandler(400)
     @app.errorhandler(404)
     def not_found(err):
-        return render_template("message.html", message_key="not_found"), err.code
+        try:
+            return render_template("message.html", message_key="not_found"), err.code
+        except Exception:  # ex. Host respins (DNS rebinding): fără linkuri, doar un mesaj simplu
+            return "400 Bad Request", err.code, {"Content-Type": "text/plain; charset=utf-8"}
 
     @app.errorhandler(500)
     def server_error(err):  # fără stack trace în pagină
