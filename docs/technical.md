@@ -52,9 +52,11 @@ Doar `state="open"`; decizia după numele serviciului, nu după port; `upnp`/`sn
 - XML-urile din lab conțin MAC-uri, deci nu sunt încă în repo (întrebarea 9).
 
 ## Folosirea LLM-ului
-Implicit **dezactivat** (`LLM_API_KEY` gol): toate explicațiile vin din textele predefinite RO/EN, deci tool-ul merge complet fără internet. Dacă e activat, regulile sunt:
-- modelul doar formulează: nu decide findings, severități sau scoruri;
-- primește doar date structurate, fără MAC, cu titlurile de pagini marcate ca text nesigur (`ai_check.prompt_context`);
-- **validatorul** (`ai_check.check_llm_text`) respinge orice IP, port, cod de finding sau CVE care nu există în scanare, plus MAC-uri și link-uri; atunci se afișează textul predefinit.
+**Nu folosim AI online:** mentorii au confirmat că nu avem voie (întrebarea 13), din cauza regulii „fără alte rețele”. Toate explicațiile vin din textele predefinite RO/EN, iar tool-ul merge complet fără internet.
 
-Asistentul de întrebări (FR-12) e planificat peste același validator ([direction.md](direction.md)).
+Guvernanța rămâne în cod, pregătită pentru un model rulat local, fără internet:
+- un model ar putea doar să formuleze: nu decide findings, severități sau scoruri;
+- ar primi doar date structurate, fără MAC, cu titlurile de pagini marcate ca text nesigur (`ai_check.prompt_context`);
+- **validatorul** (`ai_check.check_llm_text`) respinge orice IP, port, cod de finding, CVE sau număr de telefon care nu există în scanare, plus MAC-uri și link-uri; atunci se afișează textul predefinit.
+
+**Asistentul (FR-12)**, `netscan/scan/assistant.py`, comanda `ask`: răspunde din scanare la „cel mai periculos dispozitiv”, „ce fac întâi”, scor, un cod sau un IP anume, „ce s-a schimbat” (cu scanarea anterioară), lista dispozitivelor. Altfel spune clar că scanarea nu poate răspunde. Răspunsurile sunt construite de cod, fără niciun model AI; validatorul e testat cu texte „inventate” (porturi, IP-uri, CVE-uri, telefoane) care sunt respinse.
