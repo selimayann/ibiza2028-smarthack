@@ -57,4 +57,4 @@ Implicit **dezactivat** (`LLM_API_KEY` gol): toate explicațiile vin din textele
 - primește doar date structurate, fără MAC, cu titlurile de pagini marcate ca text nesigur (`ai_check.prompt_context`);
 - **validatorul** (`ai_check.check_llm_text`) respinge orice IP, port, cod de finding sau CVE care nu există în scanare, plus MAC-uri și link-uri; atunci se afișează textul predefinit.
 
-Asistentul de întrebări (FR-12) e planificat peste același validator ([direction.md](direction.md)).
+**Asistentul (FR-12)**, `netscan/scan/assistant.py`, comanda `ask`: răspunde din scanare la „cel mai periculos dispozitiv”, „ce fac întâi”, scor, un cod sau un IP anume, „ce s-a schimbat” (cu scanarea anterioară), lista dispozitivelor. Altfel spune clar că scanarea nu poate răspunde. Răspunsurile sunt construite de cod; un LLM opțional le poate doar reformula și trece prin același validator (care respinge și numere de telefon).

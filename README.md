@@ -78,6 +78,7 @@ python -m netscan scan <țintă>         # dry-run; scanează doar cu --confirm
 python -m netscan ui                   # interfața web locală
 python -m netscan diff <a> <b>         # diferența dintre două scanări
 python -m netscan delete-history       # șterge istoricul local
+python -m netscan ask <fișier.xml> "Ce fac întâi?"   # asistentul: răspunde doar din scanare, fără rețea
 ```
 
 ### Scanarea live, pas cu pas (`network`, `scan`)

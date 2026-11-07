@@ -42,6 +42,12 @@ def build_parser() -> argparse.ArgumentParser:
     h = sub.add_parser("delete-history", help="șterge istoricul local")
     h.add_argument("--yes", action="store_true", help="fără întrebarea de confirmare")
     h.add_argument("--lang", choices=["ro", "en"], default="ro")
+
+    q = sub.add_parser("ask", help="asistentul: răspunde la o întrebare doar din scanare (fără rețea)")
+    q.add_argument("file", help="fișierul nmap XML")
+    q.add_argument("question", help="întrebarea, între ghilimele")
+    q.add_argument("--previous", help="o scanare anterioară, pentru „ce s-a schimbat?”")
+    q.add_argument("--lang", choices=["ro", "en"], default="ro")
     return p
 
 
@@ -157,6 +163,17 @@ def cmd_delete_history(args) -> int:
     return run_delete(lang=args.lang, yes=args.yes)
 
 
+def cmd_ask(args) -> int:
+    """B: asistentul FR-12. Doar răspunsuri din scanare; LLM-ul nu e folosit din linia de comandă."""
+    from netscan.engine.parser import analyze_file
+    from netscan.scan.assistant import answer
+
+    scan = analyze_file(args.file)
+    previous = analyze_file(args.previous) if args.previous else None
+    print(answer(args.question, scan, lang=args.lang, previous=previous).text)
+    return 0 if scan.status == "ok" else 2
+
+
 COMMANDS = {
     "analyze": cmd_analyze,
     "network": cmd_network,
@@ -164,6 +181,7 @@ COMMANDS = {
     "ui": cmd_ui,
     "diff": cmd_diff,
     "delete-history": cmd_delete_history,
+    "ask": cmd_ask,
 }
 
 
