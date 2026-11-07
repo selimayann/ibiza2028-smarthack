@@ -187,7 +187,7 @@ class StepInfo:
     finding: Finding
     device: Host
     number: int
-    status: str            # "todo" | "declared" (bifat, neconfirmat) | "verified"
+    status: str            # "todo" | "declared" (bifat, neconfirmat) | "verified" | "accepted" (risc acceptat)
     verified_by: str | None = None   # "live" sau numele scanării mai noi
 
 
@@ -216,9 +216,13 @@ class StepsView:
     def all_resolved(self) -> bool:
         return all(s.status != "todo" for s in self.steps)
 
+    @property
+    def accepted_count(self) -> int:
+        return sum(1 for s in self.steps if s.status == "accepted")
+
 
 def steps_view(scan: Scan, declared: set, verified_live: set, by_scan: dict[tuple, str],
-               requested: int | None = None) -> StepsView | None:
+               requested: int | None = None, accepted: set = frozenset()) -> StepsView | None:
     """Toți pașii în ordinea riscului, cu starea fiecăruia. Pasul afișat: cel cerut (1-based, din
     butoanele Înapoi/Înainte) sau primul încă de făcut. Scorul nou e al motorului, pe problemele rămase."""
     from netscan.engine.scoring import compute_score
@@ -234,6 +238,8 @@ def steps_view(scan: Scan, declared: set, verified_live: set, by_scan: dict[tupl
             st, by = "verified", "live"
         elif k in by_scan:
             st, by = "verified", by_scan[k]
+        elif k in accepted:
+            st, by = "accepted", None          # risc acceptat: nu e reparat, scorul rămâne
         else:
             st, by = ("declared" if k in declared else "todo"), None
         steps.append(StepInfo(f, hosts.get(f.device_id, Host(ip=f.ip, device_id=f.device_id)), i, st, by))

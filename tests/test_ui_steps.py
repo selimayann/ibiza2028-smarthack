@@ -119,7 +119,7 @@ def test_prev_next_only_browse(tmp_path):
     s = sample()
     client, app = client_for(tmp_path, [s])
     html = client.get("/").get_data(as_text=True)
-    assert "Pasul 1 din 5" in html and 'rel="prev"' not in html and "step=2" in html and "Pasul următor" in html
+    assert "Pasul 1 din 5" in html and 'rel="prev"' not in html and "step=2" in html and "Sar peste acum" in html
     html = client.get("/?step=3").get_data(as_text=True)
     assert "Pasul 3 din 5" in html and "step=2" in html and "step=4" in html and "Pasul anterior" in html
     html = client.get("/?step=5").get_data(as_text=True)

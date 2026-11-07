@@ -79,6 +79,16 @@ CREATE TABLE IF NOT EXISTS verified_steps (
     verified_at INTEGER NOT NULL,
     PRIMARY KEY (scan_key, device_id, port, code)
 );
+-- riscurile acceptate de utilizator („e dispozitivul meu, știu de ce e așa”): problema rămâne în raport,
+-- iar scorul NU se schimbă (scorul standard e doar al motorului)
+CREATE TABLE IF NOT EXISTS accepted_risks (
+    scan_key TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    code TEXT NOT NULL,
+    accepted_at INTEGER NOT NULL,
+    PRIMARY KEY (scan_key, device_id, port, code)
+);
 """
 
 
@@ -204,7 +214,7 @@ def previous_scan_id(scan_id: int, path: str | Path | None = None) -> int | None
 def delete_history(path: str | Path | None = None) -> None:
     """Șterge tot istoricul (NFR-02)."""
     with closing(connect(path)) as conn, conn:
-        for table in ("verified_steps", "done_actions", "findings", "ports", "hosts", "scans"):
+        for table in ("accepted_risks", "verified_steps", "done_actions", "findings", "ports", "hosts", "scans"):
             conn.execute(f"DELETE FROM {table}")  # nume fixe din cod, nu date din scanare
     with closing(connect(path)) as conn:
         conn.execute("VACUUM")
@@ -315,6 +325,7 @@ def reset_done(scan: Scan, path: str | Path | None = None) -> None:
     with closing(connect(path)) as conn, conn:
         conn.execute("DELETE FROM done_actions WHERE scan_key = ?", (scan_key(scan),))
         conn.execute("DELETE FROM verified_steps WHERE scan_key = ?", (scan_key(scan),))
+        conn.execute("DELETE FROM accepted_risks WHERE scan_key = ?", (scan_key(scan),))
 
 
 def verified_keys(scan: Scan, path: str | Path | None = None) -> set[tuple]:
@@ -330,4 +341,20 @@ def mark_verified(scan: Scan, keys, path: str | Path | None = None) -> None:
         conn.executemany(
             "INSERT OR IGNORE INTO verified_steps (scan_key, device_id, port, code, verified_at) VALUES (?, ?, ?, ?, ?)",
             [(scan_key(scan), d, -1 if port is None else port, c, now) for d, port, c in keys],
+        )
+
+
+def accepted_keys(scan: Scan, path: str | Path | None = None) -> set[tuple]:
+    """Riscurile acceptate de utilizator pentru această scanare (nu schimbă scorul)."""
+    with closing(connect(path)) as conn:
+        rows = conn.execute("SELECT device_id, port, code FROM accepted_risks WHERE scan_key = ?", (scan_key(scan),))
+        return {(r["device_id"], None if r["port"] == -1 else r["port"], r["code"]) for r in rows}
+
+
+def mark_accepted(scan: Scan, key: tuple, path: str | Path | None = None) -> None:
+    device_id, port, code = key
+    with closing(connect(path)) as conn, conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO accepted_risks (scan_key, device_id, port, code, accepted_at) VALUES (?, ?, ?, ?, ?)",
+            (scan_key(scan), device_id, -1 if port is None else port, code, int(time.time())),
         )

@@ -20,30 +20,43 @@
             <p class="do-first-label">{{ T('do_first') if st.number == 1 else T('next_step') if st.status == 'todo' else T('step_label') }}</p>
             <p class="do-first-count">{{ T('step_of')|format(st.number, steps.total) }}</p>
           </div>
-          <p class="step-status step-status-{{ st.status }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'todo': 'low', 'declared': 'info', 'verified': 'good'}[st.status] }}"/></svg>{% if st.status == 'verified' %}{{ T('step_verified_live') if st.verified_by == 'live' else T('step_verified_scan')|format(st.verified_by) }}{% else %}{{ T('step_status_' ~ st.status) }}{% endif %}</p>
+          <p class="step-status step-status-{{ st.status }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'todo': 'low', 'declared': 'info', 'verified': 'good', 'accepted': 'info'}[st.status] }}"/></svg>{% if st.status == 'verified' %}{{ T('step_verified_live') if st.verified_by == 'live' else T('step_verified_scan')|format(st.verified_by) }}{% else %}{{ T('step_status_' ~ st.status) }}{% endif %}</p>
           <p class="do-first-step" id="step-now" tabindex="-1">{{ sx.steps[0] }}</p>
           <p class="do-first-for">{{ T('step_on')|format(code_name(st.finding.code), device_type_label(st.device.device_type), st.device.ip) }}</p>
+          {# Unde se face pasul, pe înțeles, după tipul dispozitivului (routerul = la noi, telefonul cu hotspotul) #}
+          {% set is_gw = live and live.gateway and live.gateway == st.device.ip %}
+          <p class="step-howto"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{{ T('howto_gateway') if is_gw else T('howto_' ~ (st.device.device_type if st.device.device_type in ('router', 'camera', 'printer', 'tv', 'pc_windows', 'server', 'phone_laptop', 'iot') else 'unknown')) }}</span></p>
           {% set evd = eavesdrop(st.finding.code) %}
           {% if evd %}<details class="eaves-details"><summary>{{ T('eaves_title') }}</summary>{{ eavesdrop_block(evd) }}</details>{% endif %}
           <div class="steps-progress" aria-hidden="true">{% for x in steps.steps %}<span class="{{ x.status }}{% if loop.index0 == steps.index %} now{% endif %}"></span>{% endfor %}</div>
-          <p class="steps-tally">{{ T('steps_tally')|format(steps.verified_count, steps.declared_count, steps.total) }}</p>
+          <p class="steps-tally">{{ T('steps_tally')|format(steps.verified_count, steps.declared_count, steps.total) }}{% if steps.accepted_count %} · {{ T('steps_tally_accepted')|format(steps.accepted_count) }}{% endif %}</p>
+          {% set key_fields %}<input type="hidden" name="device_id" value="{{ st.finding.device_id }}"><input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}"><input type="hidden" name="code" value="{{ st.finding.code }}">{% endset %}
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
             <form method="post" action="{{ url_for('action_done') }}" data-swap="#score, #worst" data-focus="#worst .verify-msg, #step-now">
-              {{ hidden }}
-              <input type="hidden" name="device_id" value="{{ st.finding.device_id }}">
-              <input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}">
-              <input type="hidden" name="code" value="{{ st.finding.code }}">
-              <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') if st.status == 'todo' else T('step_recheck') }}</button>
+              {{ hidden }}{{ key_fields }}
+              <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</button>
             </form>
             {% endif %}
             <nav class="step-nav" aria-label="{{ T('step_nav') }}">
               {% if st.number > 1 %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number - 1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
-              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number + 1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="next">{{ T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
+              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=st.number + 1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="next">{{ T('step_skip') if st.status == 'todo' else T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
             </nav>
           </div>
+          {% if st.status in ('todo', 'declared') %}
+            <details class="accept-risk">
+              <summary>{{ T('accept_title') }}</summary>
+              <p>{{ T('accept_body') }}</p>
+              <form method="post" action="{{ url_for('action_accept') }}" data-swap="#score, #worst" data-focus="#step-now">
+                {{ hidden }}{{ key_fields }}
+                <button type="submit" class="button-secondary">{{ T('accept_btn') }}</button>
+              </form>
+            </details>
+          {% elif st.status == 'accepted' %}
+            <p class="accept-note">{{ T('accepted_note') }}</p>
+          {% endif %}
           <p class="verify-note">{{ T('verify_note') }}</p>
-          {% if steps.verified_count or steps.declared_count %}
+          {% if steps.verified_count or steps.declared_count or steps.accepted_count %}
             <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">
               {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
             </form>
@@ -53,6 +66,7 @@
         <div class="do-first do-first-done">
           <p class="do-first-label" id="step-now" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('steps_all_done') }}</p>
           <p class="do-first-for">{{ T('steps_all_done_hint')|format(steps.verified_count, steps.declared_count) }}</p>
+          {% if steps.accepted_count %}<p class="do-first-for">{{ T('steps_all_done_accepted')|format(steps.accepted_count) }}</p>{% endif %}
           <div class="do-first-actions">
             <a class="button button-secondary" href="{{ url_for('overview', scan=selected, step=1) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
             <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">

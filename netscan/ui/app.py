@@ -271,7 +271,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             db = app.config["DB_PATH"]
             steps = steps_view(scan, storage.done_keys(scan, db), storage.verified_keys(scan, db),
                                verified_by_newer(scan, newer_scans(scan, scan_list)),
-                               request.args.get("step", type=int))
+                               request.args.get("step", type=int), accepted=storage.accepted_keys(scan, db))
         # cardul „Cel mai periculos dispozitiv” nu mai arată problemele verificate ca rezolvate
         remaining = scan
         if steps is not None and steps.fixed_keys:
@@ -338,6 +338,21 @@ def create_app(test_config: dict | None = None) -> Flask:
         stay = {"step": number} if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION) else {}
         return redirect(url_for("overview", scan=idx, checked=number, check=result.result, **stay) + "#worst-h")
 
+    @app.post("/action/accept")
+    def action_accept():
+        """„Accept riscul”: utilizatorul știe de ce e așa (e dispozitivul lui). Problema rămâne în raport și pe pagina
+        dispozitivului, marcată ca acceptată; scorul NU se schimbă (e al motorului). Trecem la pasul următor."""
+        if not same_site_request():
+            abort(403)
+        scan, idx = _form_scan()
+        port_raw = request.form.get("port", "")
+        key = (request.form.get("device_id", ""), int(port_raw) if port_raw.lstrip("-").isdigit() else None,
+               request.form.get("code", ""))
+        if key not in {f.key() for f in scan.findings}:
+            abort(400)
+        storage.mark_accepted(scan, key, app.config["DB_PATH"])
+        return redirect(url_for("overview", scan=idx) + "#worst-h")
+
     @app.post("/action/reset")
     def action_reset():
         scan, idx = _form_scan()
@@ -358,14 +373,20 @@ def create_app(test_config: dict | None = None) -> Flask:
         clock = lambda ts: time.strftime("%H:%M:%S", time.localtime(ts)) if ts else ""  # noqa: E731
         devices = []
         for d in snap["devices"]:
-            if d["in_scan"] and d["device_type"]:
+            if d.get("is_gateway"):
+                name = i18n.t(lang, "live_gateway")
+            elif d["in_scan"] and d["device_type"] and d["device_type"] != "unknown":
                 name = i18n.device_type_label(lang, d["device_type"])
+            elif d["vendor"]:
+                name = i18n.t(lang, "live_device_by") % d["vendor"]
             elif d["private_mac"]:
                 name = i18n.t(lang, "live_private")
             else:
-                name = d["vendor"] or i18n.t(lang, "live_unknown_device")
+                name = i18n.t(lang, "live_unknown_device")
+            doors = [{"port": p["port"], **i18n.port_meaning(lang, p["port"], p["label"])} for p in d["open_ports"]]
             devices.append({**d, "name": name, "since": clock(d["first_seen"]), "left": clock(d["last_seen"]),
-                            "not_in_scan": bool(snap["known_file"]) and not d["in_scan"]})
+                            "not_in_scan": bool(snap["known_file"]) and not d["in_scan"], "doors": doors,
+                            "to_check": sum(1 for x in doors if x["check"])})
         events = [{"tone": e["tone"], "time": clock(e["ts"]), "text": e["text_en"] if en else e["text_ro"],
                    "kind": e["kind"]} for e in snap["events"][:12]]
         state = full["state"]
@@ -389,6 +410,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "last_check": clock(snap["last_sweep"]), "trap_state": snap["trap_state"],
             "trap_code": snap["trap_code"], "trap_port": snap["trap_port"], "known_file": snap["known_file"],
             "scan": scan_ctx, "msg": msg if msg in LIVE_MESSAGES else None,
+            "gateway": snap.get("gateway"), "fixes": snap.get("fixes", 0),
             "poll_ms": 2000 if (status != "off" or active_scan) else 0,
             "latest": events[0]["text"] if events else "",
         }
