@@ -122,6 +122,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .top-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 2rem; padding-top: .55rem; padding-bottom: .55rem; }
 .brand { display: inline-flex; align-items: center; gap: .9rem; color: var(--ink); text-decoration: none; }
 .brand-logo { height: 2.25rem; width: auto; display: block; }
+.brand-link { display: block; border-radius: var(--radius-sm); }
 .brand-tagline { color: var(--muted); font-size: 1rem; padding-left: .9rem; border-left: 1px solid var(--line); }
 .top-right { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 2rem; }
 .top nav { display: flex; flex-wrap: wrap; gap: 0 1.5rem; }
