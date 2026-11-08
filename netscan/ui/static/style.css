@@ -1488,3 +1488,17 @@ details > summary *, details > summary:hover * { text-decoration: none !importan
 .done-tally { margin: .1rem 0 .15rem; }
 .do-first-done .do-first-for { margin: 0; }
 .do-first-done .do-first-actions { margin-top: .3rem; }
+/* „Fă asta întâi”: navigarea între pași ca o paginare în antet (‹  Pasul X din N  Sar peste ›), separată de acțiuni.
+   Butoane cu contur, fără subliniere și fără albastru de link; zona de apăsare rămâne 44px. */
+.do-first-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1rem; }
+.do-first-head .do-first-label { margin: 0; }
+.step-pager { display: inline-flex; align-items: center; gap: .5rem; flex-wrap: nowrap; }
+.pager-count { color: var(--muted); font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pager-btn { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 2.75rem; min-width: 2.75rem;
+  padding: 0 .9rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--ink);
+  font-weight: 700; text-decoration: none; white-space: nowrap; }
+.pager-btn:hover { border-color: var(--muted); color: var(--ink); text-decoration: none; }
+.pager-btn .icon { width: 1em; height: 1em; }
+.pager-prev { padding: 0; }
+@media (max-width: 40rem) { .do-first-head { flex-direction: column; align-items: flex-start; }
+  .step-pager { flex-wrap: wrap; gap: .4rem; max-width: 100%; } .pager-btn { padding: 0 .75rem; } }

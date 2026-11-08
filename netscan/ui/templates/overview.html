@@ -20,7 +20,15 @@
         {% set st = steps.current %}
         {% set sx = explain(st.finding.code) %}
         <div class="do-first do-first-{{ st.status }}">
-          <p class="do-first-label">{{ T('do_first') if st.number == 1 else T('next_step') if st.status == 'todo' else T('step_label') }}</p>
+          {# Antetul: eticheta în stânga; navigarea între pași în dreapta, ca o paginare: ‹  Pasul X din N  Sar peste › #}
+          <div class="do-first-head">
+            <p class="do-first-label">{{ T('do_first') if st.number == 1 else T('next_step') if st.status == 'todo' else T('step_label') }}</p>
+            <nav class="step-nav step-pager" aria-label="{{ T('step_nav') }}">
+              {% if st.number > 1 %}<a class="pager-btn pager-prev" href="{{ url_for('overview', step=st.number - 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="prev" aria-label="{{ T('step_prev') }}" title="{{ T('step_prev') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
+              <span class="do-first-count pager-count">{{ T('step_of')|format(st.number, steps.total) }}</span>
+              {% if st.number < steps.total %}<a class="pager-btn pager-next" href="{{ url_for('overview', step=st.number + 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_skip') if st.status == 'todo' else T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
+            </nav>
+          </div>
           {% if st.status != 'todo' %}<p class="step-status step-status-{{ st.status }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'declared': 'info', 'verified': 'good', 'accepted': 'info'}[st.status] }}"/></svg>{% if st.status == 'verified' %}{{ T('step_verified_live') if st.verified_by == 'live' else T('step_verified_scan')|format(st.verified_by) }}{% else %}{{ T('step_status_' ~ st.status) }}{% endif %}</p>{% endif %}
           <p class="do-first-step" id="step-now" tabindex="-1">{{ sx.steps[0] }}</p>
           {# „Pentru: …” doar când pasul e pe altă problemă decât cea din titlul cardului #}
@@ -42,17 +50,12 @@
             {# Ghidul animat pas cu pas (dialog). Fără JavaScript, linkul duce la pagina dispozitivului (aceeași scanare). #}
             <a class="button button-secondary guide-open" href="{{ url_for('device', device_id=st.finding.device_id, **scan_ref) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
             {% endif %}
-            <nav class="step-nav" aria-label="{{ T('step_nav') }}">
-              {% if st.number > 1 %}<a class="step-link" href="{{ url_for('overview', step=st.number - 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
-              {% if st.number < steps.total %}<a class="step-link" href="{{ url_for('overview', step=st.number + 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_skip') if st.status == 'todo' else T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
-            </nav>
           </div>
           {% if verify_block and st.status != 'verified' %}<p class="verify-block" id="verify-block"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{% if verify_block.file %}{{ T('verify_blocked_file') }}{% elif verify_block.ssid %}{{ T('verify_blocked')|format(expected_ssid, verify_block.ssid) }}{% else %}{{ T('verify_blocked_nossid')|format(expected_ssid) }}{% endif %}</span></p>{% endif %}
           <details class="more-options">
             <summary>{{ T('more_options') }}</summary>
             <div class="more-body">
               {{ howto }}
-              <p class="do-first-count">{{ T('step_of')|format(st.number, steps.total) }}</p>
               <div class="steps-progress" aria-hidden="true">{% for x in steps.steps %}<span class="{{ x.status }}{% if loop.index0 == steps.index %} now{% endif %}"></span>{% endfor %}</div>
               {% if evd %}<details class="eaves-details"><summary>{{ T('eaves_title') }}</summary>{{ eavesdrop_block(evd) }}</details>{% endif %}
               {% if worst %}<p><a class="device-link" href="{{ url_for('device', device_id=worst.host.device_id, **scan_ref) }}">{{ T('all_steps') }}</a></p>{% endif %}
