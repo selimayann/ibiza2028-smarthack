@@ -152,10 +152,12 @@ def test_bad_network_refuses_before_guardrail(status):
     assert not p.ok and p.reason_code == status and p.args == []
 
 
-def test_extra_allowlist_from_env(monkeypatch):
+def test_allowlist_from_env_can_only_narrow(monkeypatch):
     monkeypatch.setattr(runner.sys, "platform", "win32")
-    assert plan("10.42.0.3", env={"NETSCAN_ALLOWLIST": "10.42.0.0/29"}).ok
+    assert not plan("10.42.0.3", env={"NETSCAN_ALLOWLIST": "10.42.0.0/29"}).ok    # nu lărgește
     assert not plan("10.42.0.3").ok
+    narrowed = {"NETSCAN_ALLOWLIST": "172.20.10.4/30"}
+    assert plan("172.20.10.5", env=narrowed).ok and not plan("172.20.10.9", env=narrowed).ok
 
 
 def test_missing_ports_file():

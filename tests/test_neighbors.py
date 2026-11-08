@@ -119,3 +119,24 @@ def test_poke_sends_empty_datagrams_from_the_hotspot_ip_only_to_given_addresses(
     assert n == 2 and sock.bound == ("172.20.10.10", 0)
     assert sock.sent == [(b"", ("172.20.10.1", 9)), (b"", ("172.20.10.14", 9))]
     assert slept == [0.04, 0.04]                                  # cel mult 25 pe secundă
+
+
+# --- același dispozitiv ca în scanare (device_id), fără MAC complet păstrat ---------------------------------
+
+def test_device_id_is_the_engines_and_the_full_mac_is_dropped():
+    from netscan.engine.parser import device_identity
+    got = neighbors.parse_windows_arp(WINDOWS, "172.20.10.10", "172.20.10.0/28")
+    for ip, raw in (("172.20.10.1", "66:48:42:94:C3:64"), ("172.20.10.14", "4E:C7:BC:6F:E3:A1")):
+        n = got[ip]
+        assert n.device_id == device_identity(raw, ip)[0] and len(n.device_id) == 12
+        dumped = repr(n).upper()
+        assert raw not in dumped and raw.replace(":", "-") not in dumped and "94:C3" not in dumped
+
+
+def test_same_mac_gives_the_same_device_id_on_every_platform():
+    win = neighbors.parse_windows_arp(WINDOWS, "172.20.10.10", "172.20.10.0/28")["172.20.10.1"]
+    mac = neighbors.parse_macos_arp(MACOS, "172.20.10.10", "172.20.10.0/28")["172.20.10.1"]
+    lin = neighbors.parse_linux_neigh(LINUX, "172.20.10.10", "172.20.10.0/28")["172.20.10.1"]
+    assert win.device_id == mac.device_id == lin.device_id
+    other = neighbors.parse_linux_neigh(LINUX, "172.20.10.10", "172.20.10.0/28")["172.20.10.4"]
+    assert other.device_id != win.device_id

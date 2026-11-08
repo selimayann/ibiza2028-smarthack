@@ -15,7 +15,7 @@ LANGS = ("ro", "en")
 # (protocolul, liniile pe care le-ar vedea cineva care ascultă; {pw} = parola generică)
 _SAMPLES: dict[str, tuple[str, tuple[str, ...]]] = {
     "FTP_CLEARTEXT": ("FTP", (
-        "220 (vsFTPd 2.3.4)",
+        "220 FTP server ready",
         "USER admin",
         "331 Please specify the password.",
         "PASS {pw}",
@@ -24,7 +24,7 @@ _SAMPLES: dict[str, tuple[str, tuple[str, ...]]] = {
     "TELNET_OPEN": ("Telnet", (
         "login: admin",
         "Password: {pw}",
-        "BusyBox v1.24.1 built-in shell (ash)",
+        "Welcome",
         "# ",
     )),
     "HTTP_ADMIN_CLEARTEXT": ("HTTP", (
@@ -47,7 +47,7 @@ _TEXTS = {
     "en": {
         "title": "What someone listening on the network sees",
         "password": "your-password",
-        "caption": ("This is what a {proto} login looks like to anyone listening on the network: the username and "
+        "caption": ("This is what a login over {proto} looks like to anyone listening on the network: the username and "
                     "password travel in plain sight, like a postcard. Made-up example: we don't listen to your traffic."),
         "fix": "After the fix, the same login would look like scrambled characters that nobody can read.",
     },

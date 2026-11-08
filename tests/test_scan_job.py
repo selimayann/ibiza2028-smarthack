@@ -190,6 +190,8 @@ def test_auto_job_repeats_until_the_stop_file(tmp_path):
         if len(runs) == 2:
             (scans / scan_job.STOP_FILE).write_text("stop")
 
+    scans.mkdir()
+    (scans / scan_job.APP_ALIVE_FILE).write_text("viu")              # aplicația e deschisă
     rc = scan_job.main(["auto"], scans_dir=scans, run=run, sleep=sleep, now=lambda: clock[0], load_env=False)
     assert rc == 0 and runs == ["auto", "auto"]
     assert not (scans / scan_job.LOCK_FILE).exists() and not (scans / scan_job.STOP_FILE).exists()
@@ -278,3 +280,40 @@ def test_lock_holder_ignores_dead_and_own_pids(tmp_path):
     (tmp_path / scan_job.LOCK_FILE).write_text(str(os.getpid()))
     (tmp_path / scan_job.WATCH_LOCK_FILE).write_text("999999999")
     assert scan_job.lock_holder(tmp_path) is None
+
+
+def test_lock_stores_pid_and_start_time_and_a_reused_pid_is_not_a_holder(tmp_path):
+    scan_job.write_lock(tmp_path)
+    data = json.loads((tmp_path / scan_job.LOCK_FILE).read_text())
+    assert data["pid"] == os.getpid() and isinstance(data["created"], float)
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        (tmp_path / scan_job.LOCK_FILE).write_text(json.dumps({"pid": proc.pid, "created": 12345.0}))
+        assert scan_job.lock_holder(tmp_path) is None                 # același PID, alt proces (pornit altă dată)
+        real = scan_job._create_time(proc.pid)
+        (tmp_path / scan_job.LOCK_FILE).write_text(json.dumps({"pid": proc.pid, "created": real}))
+        assert scan_job.lock_holder(tmp_path) == proc.pid
+    finally:
+        proc.kill()
+
+
+def test_stale_lock_is_removed_and_said(tmp_path):
+    (tmp_path / scan_job.LOCK_FILE).write_text(json.dumps({"pid": 999999999, "created": 1.0}))
+    said = []
+    assert scan_job.clear_stale_lock(tmp_path, log=said.append)
+    assert not (tmp_path / scan_job.LOCK_FILE).exists() and "999999999" in said[0]
+    assert not scan_job.clear_stale_lock(tmp_path, log=said.append) and len(said) == 1
+
+
+def test_busy_because_of_the_terminal_monitor_is_written_for_the_app(tmp_path):
+    scans = tmp_path / "scans"
+    scans.mkdir()
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        (scans / scan_job.WATCH_LOCK_FILE).write_text(str(proc.pid))
+        assert scan_job.main(["scan"], scans_dir=scans, run=lambda *a: pytest.fail("a doua scanare"),
+                             load_env=False) == 3
+    finally:
+        proc.kill()
+    p = scan_job.read_progress(scans)
+    assert p["state"] == "refused" and p["code"] == "BUSY" and p["msg_en"]

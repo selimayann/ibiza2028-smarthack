@@ -260,7 +260,7 @@ def run_listen(confirm: bool, lang: str = "ro", out: Callable[[str], None] = pri
     t = TEXTS[lang if lang in TEXTS else "ro"]
     info = detect()
     if not info.scan_allowed or not info.ip or not info.cidr:
-        ro, en = network.MESSAGES.get(info.status, ("Rețeaua nu e potrivită.", "The network isn't suitable."))
+        ro, en = network.status_message(info)
         out(t["refused"].format(why=en if lang == "en" else ro))
         return 2
     if not confirm:

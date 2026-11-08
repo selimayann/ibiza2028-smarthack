@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     n = sub.add_parser("network", help="afișează interfața, subnetul și gateway-ul detectate")
     n.add_argument("--lang", choices=["ro", "en"], default="ro")
 
-    s = sub.add_parser("scan", help="scanare live, doar în rețeaua proprie")
+    s = sub.add_parser("scan", help="scanarea completă (nmap), doar în hotspotul echipei; fără --confirm doar arată comanda")
     s.add_argument("target", nargs="?", help="IP sau subnet; implicit subnetul curent")
     s.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
     s.add_argument("--lang", choices=["ro", "en"], default="ro")
@@ -72,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     im.add_argument("folder", nargs="?", default="scans", help="folderul cu watch_*.xml (implicit scans/)")
     im.add_argument("--lang", choices=["ro", "en"], default="ro")
 
-    t = sub.add_parser("trap", help="ușa-capcană: alertă când cineva din hotspot încearcă să intre (Telnet fals)")
+    t = sub.add_parser("trap", help="ușa-capcană: notează doar cine a încercat să se conecteze (IP, oră, port) și închide; nu citește nimic")
     t.add_argument("--port", type=int, default=2323, help="portul capcanei (1024–65535)")
     t.add_argument("--confirm", action="store_true", help="fără acest flag se face doar dry-run")
     t.add_argument("--lang", choices=["ro", "en"], default="ro")
@@ -263,7 +263,7 @@ def cmd_import_scans(args) -> int:
 
 
 def cmd_trap(args) -> int:
-    """B: ușa-capcană (Telnet fals) doar pe IP-ul din hotspot; păstrează doar IP, oră, port."""
+    """B: ușa-capcană, doar pe IP-ul din hotspot: notează cine a încercat (IP, oră, port), închide imediat, nu citește nimic."""
     from netscan.scan.trap import run_trap
 
     return run_trap(args.confirm, port=args.port, lang=args.lang)

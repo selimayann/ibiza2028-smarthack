@@ -245,8 +245,8 @@ def prepare_scan(
 
     info = detect()
     if not info.scan_allowed:
-        ro, en = network.MESSAGES.get(info.status, ("Rețeaua nu e potrivită pentru scanare.",
-                                                    "The network isn't suitable for scanning."))
+        ro, en = (network.status_message(info) if info.status in network.MESSAGES
+                  else ("Rețeaua nu e potrivită pentru scanare.", "The network isn't suitable for scanning."))
         return _refuse(info.status, info, ro=ro, en=en)
 
     allowlist = guardrail.build_allowlist(info.cidr, env.get("NETSCAN_ALLOWLIST"))
@@ -315,11 +315,14 @@ def execute(plan: ScanPlan, nmap_path: Optional[str] = None) -> ScanPlan:
 # `-v` afișează porturile deschise pe măsură ce sunt găsite, `--stats-every` afișează procentul. Ambele schimbă
 # doar ce scrie nmap pe ecran, nu și ce trimite în rețea: restul comenzii rămâne exact cea de la `scan --confirm`.
 PROGRESS_ARGS = ["-v", "--stats-every", "5s"]
-# Viteza pe hotspot (doar scanarea din aplicație): ritm CONSTANT de 100 pachete/s (min = max, deci tot în regula
-# de ≤100/s; altfel nmap încetinește mult când laptopurile cu firewall nu răspund), cel mult 2 reîncercări și
-# timp de așteptare de rețea locală (pe hotspot răspunsurile vin în milisecunde). Nu schimbă CE se verifică:
-# aceleași porturi, aceeași detecție de versiuni (-sV), același script.
-SPEED_ARGS = ["--min-rate", MAX_RATE, "--max-retries", "2", "--max-rtt-timeout", "300ms"]
+# Viteza pe hotspot (doar scanarea din aplicație): cel puțin MIN_RATE pachete/s (altfel nmap încetinește mult când
+# laptopurile cu firewall nu răspund), cel mult 2 reîncercări și timp de așteptare de rețea locală (pe hotspot
+# răspunsurile vin în milisecunde). --max-rate 100 (din build_nmap_args) rămâne plafonul. Bugetul de ≤100 pachete/s
+# e COMUN pentru tot ce trimite laptopul: cât rulează scanarea completă, verificările live (prezența și porturile,
+# live.py) stau în pauză, deci totalul rămâne ≤100/s. Nu schimbă CE se verifică: aceleași porturi, aceeași
+# detecție de versiuni (-sV), același script.
+MIN_RATE = "80"
+SPEED_ARGS = ["--min-rate", MIN_RATE, "--max-retries", "2", "--max-rtt-timeout", "300ms"]
 STOPPED = "STOPPED"
 
 

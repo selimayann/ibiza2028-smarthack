@@ -6,7 +6,8 @@ Ce face, după ghid:
 - **MAC aleatoriu** (a doua cifră hex a primului octet e 2, 6, A sau E: adresă administrată local)
   → „adresă privată (telefon/laptop modern)”. Pentru astfel de adrese nu căutăm producător.
 - **Tipul**: gateway = router; după porturi: 554 cameră, 9100/631 imprimantă, 8008/8009 TV,
-  3389/445 PC Windows (completează ghicirea din netscan/engine/devices.py).
+  3389/445 PC Windows (completează ghicirea din netscan/engine/devices.py). Un NAS (Synology, QNAP,
+  Western Digital, Buffalo, Asustor sau un nume ca „nas”/„nas01”) are și el 445 deschis: rămâne „server”.
 
 Important: nimic de aici nu ajunge în reguli, findings, scor sau CSV-uri. UNKNOWN_DEVICE folosește
 în continuare doar producătorul din XML (răspunsul mentorilor la întrebarea 5). Funcțiile întorc
@@ -38,6 +39,9 @@ _PORT_TYPES: tuple[tuple[frozenset[int], str], ...] = (
 )
 # Tipuri „slabe” pe care porturile de mai sus au voie să le corecteze.
 _WEAK_TYPES = frozenset({None, "", "unknown", "server", "phone_laptop"})
+# Producătorii de NAS (stocare în rețea): au SMB (445) deschis, dar nu sunt calculatoare Windows.
+_NAS_VENDORS = ("synology", "qnap", "western digital", "buffalo", "asustor")
+_NAS_HOSTNAME = re.compile(r"^nas\d*$")
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,14 @@ def lookup_vendor(mac: Optional[str]) -> Optional[str]:
     return _oui_table().get(prefix) if prefix else None
 
 
+def is_nas(vendor: Optional[str], hostname: Optional[str]) -> bool:
+    """NAS după producător sau după un nume ca „nas”, „nas01”, „casa-nas” (nu „jonas”)."""
+    v = (vendor or "").lower()
+    if any(name in v for name in _NAS_VENDORS):
+        return True
+    return any(_NAS_HOSTNAME.match(part) for part in re.split(r"[^a-z0-9]+", (hostname or "").lower()))
+
+
 def _open_ports(host: Host) -> set[int]:
     return {p.port for p in host.ports if p.state == "open"}
 
@@ -94,6 +106,8 @@ def describe(host: Host, gateway_ip: Optional[str] = None) -> DeviceInfo:
 
     if gateway_ip and host.ip == gateway_ip:
         dtype = "router"
+    elif is_nas(vendor, host.hostname) and dtype in _WEAK_TYPES | {"pc_windows"}:
+        dtype = "server"                               # NAS: stocare în rețea, nu un PC Windows
     elif dtype in _WEAK_TYPES:
         ports = _open_ports(host)
         for wanted, kind in _PORT_TYPES:

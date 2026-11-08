@@ -8,7 +8,10 @@ Cum lucrează:
 3. interfețele virtuale (loopback, Docker, WSL/Hyper-V, VirtualBox, VMware, VPN) sunt ignorate după nume
    și, pe Windows, după descrierea adaptorului (`Get-NetAdapter`), pentru că acolo un adaptor VirtualBox
    se poate numi simplu „Ethernet 2”;
-4. SSID-ul doar pentru interfața activă (fără să listăm rețelele Wi-Fi din jur).
+4. SSID-ul doar pentru interfața activă (fără să listăm rețelele Wi-Fi din jur);
+5. un VPN pornit (Tailscale, WireGuard, OpenVPN, AnyConnect, ZeroTier, tun/utun/wg) cu adresă IPv4 = laptopul nu
+   e doar pe hotspot: status VPN_ON, deci nu scanăm (nici live, nici complet) până nu e oprit. Analiza unui fișier
+   nu citește rețeaua, deci nu e afectată.
 
 Nu trimite niciun pachet în rețea: nu folosește trucul cu socket UDP spre 8.8.8.8, nu face DNS.
 MAC-urile nu sunt citite și nu apar nicăieri.
@@ -39,6 +42,7 @@ WRONG_SSID = "WRONG_SSID"
 PSUTIL_MISSING = "PSUTIL_MISSING"
 SSID_NOT_CONFIGURED = "SSID_NOT_CONFIGURED"   # fără NETSCAN_EXPECTED_SSID nu știm dacă e hotspotul nostru
 SSID_UNREADABLE = "SSID_UNREADABLE"           # doar cu NETSCAN_REQUIRE_SSID=1: numele Wi-Fi nu a putut fi citit
+VPN_ON = "VPN_ON"                             # un VPN e pornit lângă hotspot: laptopul nu e doar pe hotspot
 
 W_SSID_UNKNOWN = "SSID_UNKNOWN"
 W_NO_GATEWAY = "NO_GATEWAY"
@@ -75,6 +79,11 @@ MESSAGES: dict[str, tuple[str, str]] = {
         "Nu am putut citi numele rețelei Wi-Fi și NETSCAN_REQUIRE_SSID=1 e setat, deci nu scanez.",
         "I couldn't read the Wi-Fi network name and NETSCAN_REQUIRE_SSID=1 is set, so I won't scan.",
     ),
+    VPN_ON: (
+        "Ai un VPN pornit (%s). Brief-ul cere ca laptopul să fie doar pe hotspot: oprește VPN-ul înainte de scanare.",
+        "You have a VPN turned on (%s). The brief requires the laptop to be only on the hotspot: turn the VPN off "
+        "before scanning.",
+    ),
     W_NO_GATEWAY: (
         "Rețeaua nu are gateway (router).",
         "The network has no gateway (router).",
@@ -92,6 +101,7 @@ class NetworkInfo:
     warnings: list[str] = field(default_factory=list)   # coduri din MESSAGES
     status: str = NO_NETWORK
     other_ifaces: list[str] = field(default_factory=list)  # la MULTIPLE_NETWORKS: celelalte interfețe
+    vpn_ifaces: list[str] = field(default_factory=list)    # VPN-uri pornite cu IPv4 (vezi VPN_ON)
 
     @property
     def scan_allowed(self) -> bool:
@@ -123,6 +133,58 @@ _VIRTUAL_DESC = re.compile(
     r"|ip-https|kernel debug|npcap|pseudo",
     re.IGNORECASE,
 )
+
+
+# Un tunel VPN (nu Docker / Hyper-V / VirtualBox: acelea rămân doar ignorate, ca până acum).
+_VPN_NAME = re.compile(
+    r"^(utun\d*|tun\d*|wg\d*|tailscale.*|zt.*|zerotier.*|wireguard.*|openvpn.*|anyconnect.*|.*vpn.*)$",
+    re.IGNORECASE,
+)
+_VPN_DESC = re.compile(
+    r"wireguard|wintun|tailscale|zerotier|openvpn|tap-windows|anyconnect|cisco.*vpn|vpn",
+    re.IGNORECASE,
+)
+
+
+def is_vpn_iface(name: str, description: Optional[str] = None) -> bool:
+    if _VPN_NAME.match(name or ""):
+        return True
+    return bool(description and _VPN_DESC.search(description))
+
+
+def vpn_ipv4_ifaces(ps, descriptions: dict[str, str]) -> list[str]:
+    """Tunelurile VPN pornite care au o adresă IPv4 utilizabilă (un utun de macOS doar cu IPv6 nu contează)."""
+    stats = ps.net_if_stats()
+    out = []
+    for name, addrs in ps.net_if_addrs().items():
+        st = stats.get(name)
+        if st is None or not st.isup or not is_vpn_iface(name, descriptions.get(name)):
+            continue
+        for a in addrs:
+            if a.family != socket.AF_INET or not a.address:
+                continue
+            try:
+                ip = ipaddress.IPv4Address(a.address)
+            except ValueError:
+                continue
+            if ip.is_loopback or ip.is_link_local or ip.is_unspecified:
+                continue
+            out.append(name)
+            break
+    return out
+
+
+def status_message(info: "NetworkInfo") -> tuple[str, str]:
+    """(ro, en) pentru starea rețelei, cu numele VPN-ului completat acolo unde e cazul."""
+    return message(info.status, info)
+
+
+def message(code: str, info: Optional["NetworkInfo"] = None) -> tuple[str, str]:
+    ro, en = MESSAGES.get(code, ("Rețeaua nu e potrivită.", "The network isn't suitable."))
+    if code == VPN_ON:
+        names = ", ".join((info.vpn_ifaces if info is not None else None) or ["VPN"])
+        ro, en = ro % names, en % names
+    return ro, en
 
 
 def is_virtual_iface(name: str, description: Optional[str] = None) -> bool:
@@ -379,6 +441,7 @@ def detect_network(
 
     descriptions = read_adapter_descriptions(run, platform)
     physical = physical_ipv4_ifaces(ps, descriptions)
+    vpns = vpn_ipv4_ifaces(ps, descriptions)
     by_name = {i.name: i for i in physical}
     by_ip = {i.ip: i for i in physical}
 
@@ -396,7 +459,7 @@ def detect_network(
 
     if chosen is None:
         return NetworkInfo(status=MULTIPLE_NETWORKS if len(physical) > 1 else NO_NETWORK,
-                           other_ifaces=[i.name for i in physical])
+                           other_ifaces=[i.name for i in physical], vpn_ifaces=vpns)
 
     info = NetworkInfo(
         iface=chosen.name,
@@ -429,6 +492,15 @@ def detect_network(
     elif info.ssid != expected and info.status == OK:
         info.status = WRONG_SSID
 
+    if vpns:
+        # Un VPN pornit = laptopul nu e doar pe hotspot (brief-ul). Refuzăm; dacă rețeaua e deja refuzată din
+        # alt motiv, VPN-ul apare totuși ca avertisment, ca să știi ce mai ai de oprit.
+        info.vpn_ifaces = vpns
+        if info.status == OK:
+            info.status = VPN_ON
+        else:
+            info.warnings.append(VPN_ON)
+
     return info
 
 
@@ -436,9 +508,11 @@ def describe(info: NetworkInfo, lang: str = "ro") -> str:
     """Text simplu pentru comanda `network`."""
     idx = 0 if lang == "ro" else 1
     labels = {
-        "ro": ("Interfață", "IP", "Subnet", "Gateway", "Rețea Wi-Fi", "Stare", "Scanare live", "permisă", "refuzată",
+        "ro": ("Interfață", "IP", "Subnet", "Gateway", "Rețea Wi-Fi", "Stare", "Rețeaua",
+               "hotspotul echipei (scanez doar în %s)", "nu scanez aici (vezi starea de mai sus)",
                "Alte rețele active"),
-        "en": ("Interface", "IP", "Subnet", "Gateway", "Wi-Fi network", "Status", "Live scan", "allowed", "refused",
+        "en": ("Interface", "IP", "Subnet", "Gateway", "Wi-Fi network", "Status", "Network",
+               "team hotspot (I only scan inside %s)", "I won't scan here (see the status above)",
                "Other active networks"),
     }["ro" if lang == "ro" else "en"]
     dash = "—"
@@ -451,8 +525,8 @@ def describe(info: NetworkInfo, lang: str = "ro") -> str:
     ]
     if info.other_ifaces:
         lines.append(f"{labels[9]}: {', '.join(info.other_ifaces)}")
-    lines.append(f"{labels[5]}: {info.status} — {MESSAGES.get(info.status, ('', ''))[idx]}")
+    lines.append(f"{labels[5]}: {info.status} — {message(info.status, info)[idx]}")
     for w in info.warnings:
-        lines.append(f"! {MESSAGES[w][idx]}")
-    lines.append(f"{labels[6]}: {labels[7] if info.scan_allowed else labels[8]}")
+        lines.append(f"! {message(w, info)[idx]}")
+    lines.append(f"{labels[6]}: " + (labels[7] % (info.cidr or dash) if info.scan_allowed else labels[8]))
     return "\n".join(lines)

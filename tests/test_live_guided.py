@@ -16,12 +16,18 @@ from netscan.ui import i18n, storage
 from netscan.ui.app import create_app
 from netscan.ui.view import steps_view
 
-from tests.test_live import HOTSPOT, Net, make, nb, sweep, T0
+from tests.test_live import HOTSPOT, Net, dev_id, make, nb, sweep, T0
 from tests.test_ui_live import FakeLive, client_for, device, snapshot
 
 ROOT = Path(__file__).parent.parent
 LAB = ROOT / "fixtures" / "lab"
 BEFORE = analyze_file(str(LAB / "scan_01_before.xml"))
+
+
+def lab_nb(ip):
+    """Dispozitivul din lab, văzut live cu ACELAȘI device_id ca în scanare (același MAC, același salt)."""
+    host = next(h for h in analyze_file(str(LAB / "scan_01_before.xml")).hosts if h.ip == ip)
+    return nb(ip, host.mac_masked or "66:48:42:XX:XX:XX", device_id=host.device_id)
 
 
 # ---------- „Accept riscul”: problema rămâne, scorul nu se schimbă ----------
@@ -56,14 +62,14 @@ def _client(tmp_path, live_=None):
 def test_accept_route_needs_token_same_site_and_a_real_finding(tmp_path):
     c, token = _client(tmp_path)
     f = steps_view(BEFORE, set(), set(), {}).steps[0].finding
-    form = {"token": token, "scan": 0, "device_id": f.device_id, "port": f.port, "code": f.code}
+    form = {"token": token, "file": BEFORE.file, "device_id": f.device_id, "port": f.port, "code": f.code}
     assert c.post("/action/accept", data={**form, "token": "x"}).status_code == 400
     assert c.post("/action/accept", data=form, headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
     assert c.post("/action/accept", data={**form, "code": "INVENTAT"}).status_code == 400
     assert c.post("/action/accept", data=form).status_code == 302
     assert storage.accepted_keys(BEFORE, tmp_path / "h.db") == {f.key()}
     html = c.get("/?step=1").get_data(as_text=True)
-    assert "Risc acceptat de tine" in html and "1 acceptate de tine" in html
+    assert "Risc acceptat de tine" in html and "1 acceptat de tine" in html and "1 acceptate" not in html
     assert f'<span class="score-num">{BEFORE.score}</span>' in html
 
 
@@ -94,7 +100,7 @@ def _lab_scan_dir(tmp_path):
 def test_closed_finding_port_is_confirmed_and_recomputes_the_score(tmp_path):
     _lab_scan_dir(tmp_path)
     net = Net()
-    net.present = {"172.20.10.14": nb("172.20.10.14"), "172.20.10.1": nb("172.20.10.1")}
+    net.present = {"172.20.10.14": lab_nb("172.20.10.14"), "172.20.10.1": lab_nb("172.20.10.1")}
     net.open = {"172.20.10.14": {22, 1883, 2121, 8080}, "172.20.10.1": {21, 53, 62078}}  # Telnet și Redis închise (ca în lab)
     m = make(net, tmp_path, persist=True)
     sweep(m, T0)
@@ -112,12 +118,15 @@ def test_closed_finding_port_is_confirmed_and_recomputes_the_score(tmp_path):
 def test_unknown_answers_and_udp_findings_are_never_confirmed(tmp_path):
     _lab_scan_dir(tmp_path)
     net = Net()
-    net.present = {"172.20.10.14": nb("172.20.10.14")}
+    net.present = {"172.20.10.14": lab_nb("172.20.10.14")}
     m = make(net, tmp_path, persist=True, probe=lambda ip, port: "unknown")
     sweep(m, T0)
     assert m.fixes == 0 and storage.verified_keys(BEFORE, tmp_path / "data" / "netscan.db") == set()
+    assert m.devices["172.20.10.14"].pulsed                          # verificat (e în scanare), dar fără refuz clar
     m2 = make(Net(), tmp_path, persist=True)
-    m2._confirm_fix(m2.known_scan(), "172.20.10.14", 1900, T0)        # UPnP e UDP: o conexiune TCP nu spune nimic
+    cam = live.LiveDevice(ip="172.20.10.14", mac_masked=None, vendor=None, private_mac=False, first_seen=T0,
+                          last_seen=T0, device_id=lab_nb("172.20.10.14").device_id)
+    m2._confirm_fix(m2.known_scan(), cam, 1900, T0)                   # UPnP e UDP: o conexiune TCP nu spune nimic
     assert m2.fixes == 0
 
 
@@ -132,10 +141,11 @@ def test_dashboard_refreshes_the_score_when_a_fix_is_confirmed(tmp_path):
 
 # ---------- risc nou -> scanarea automată pornește mai devreme ----------
 
-def test_new_risk_asks_the_auto_scan_to_run_now(tmp_path):
+def test_new_risk_asks_the_auto_scan_to_run_now_but_a_new_device_does_not(tmp_path):
     net = Net()
     net.present = {"172.20.10.1": nb("172.20.10.1")}
     m = make(net, tmp_path)
+    m.approve(dev_id("172.20.10.1"))
     (tmp_path / "scans").mkdir()
     (tmp_path / "scans" / scan_job.PROGRESS_FILE).write_text(json.dumps(
         {"state": "waiting_next", "job": "auto", "pid": os.getpid(), "started": time.time()}))
@@ -143,7 +153,11 @@ def test_new_risk_asks_the_auto_scan_to_run_now(tmp_path):
     assert not (tmp_path / "scans" / scan_job.NOW_FILE).exists()      # ce era deja acolo nu e risc nou
     net.present["172.20.10.9"] = nb("172.20.10.9")
     sweep(m, T0 + 20)
-    assert (tmp_path / "scans" / scan_job.NOW_FILE).exists()
+    assert not (tmp_path / "scans" / scan_job.NOW_FILE).exists()      # dispozitiv nou: întâi acordul tău
+    net.open["172.20.10.1"] = {6379}
+    sweep(m, T0 + live.PULSE_EVERY_S + 1)
+    assert m.events[0].kind == "PORT_OPENED" and (tmp_path / "scans" / scan_job.NOW_FILE).exists()
+    m._hb_stop.set()
 
 
 def test_auto_job_runs_early_on_request_but_not_more_often_than_ten_minutes(tmp_path):
@@ -160,6 +174,8 @@ def test_auto_job_runs_early_on_request_but_not_more_often_than_ten_minutes(tmp_
         if len(starts) == 3:
             (scans / scan_job.STOP_FILE).write_text("stop")
 
+    scans.mkdir()
+    (scans / scan_job.APP_ALIVE_FILE).write_text("viu")              # aplicația e deschisă
     scan_job.main(["auto"], scans_dir=scans, run=run, sleep=sleep, now=lambda: clock[0], load_env=False)
     gaps = [b - a for a, b in zip(starts, starts[1:])]
     assert len(starts) == 3 and all(scan_job.MIN_GAP_MIN * 60 <= g < scan_job.AUTO_EVERY_MIN * 60 for g in gaps)
@@ -171,7 +187,7 @@ def test_speed_args_keep_the_rate_rule_and_exclude_this_laptop():
     plan = runner.ScanPlan(True, "OK", "", "", network=HOTSPOT, args=["nmap", "-oX", "x", "172.20.10.0/28"])
     args = runner.speed_args(plan)
     rates = {args[i]: args[i + 1] for i in range(len(args) - 1) if args[i] in ("--min-rate", "--max-rate")}
-    assert rates == {"--min-rate": runner.MAX_RATE} and int(runner.MAX_RATE) <= 100
+    assert rates == {"--min-rate": "80"} and int(runner.MAX_RATE) == 100     # --max-rate 100 vine din build_nmap_args
     assert args[-2:] == ["--exclude", "172.20.10.10"] and "--version-intensity" not in args
     assert runner.speed_args(runner.ScanPlan(True, "OK", "", "")) == runner.SPEED_ARGS
 

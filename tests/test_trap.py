@@ -28,11 +28,16 @@ def running_trap():
 
 
 def connect_and_type(port, text):
+    """Ce primește cel care se conectează: ușa-capcană nu trimite nimic și închide imediat."""
     with socket.create_connection(("127.0.0.1", port), timeout=5) as c:
-        banner = c.recv(256)
-        c.sendall(text)
-        rest = c.recv(256)
-    return banner + rest
+        try:
+            c.sendall(text)
+        except OSError:
+            pass
+        try:
+            return c.recv(256)
+        except OSError:                                # închisă de cealaltă parte (RST): tot nimic primit
+            return b""
 
 
 def wait_for(cond, timeout=3.0):
@@ -45,7 +50,7 @@ def wait_for(cond, timeout=3.0):
 def test_attempt_recorded_with_only_ip_time_port(running_trap):
     srv, port, events = running_trap
     reply = connect_and_type(port, b"admin\r\nparola-secreta-123\r\n")
-    assert b"login:" in reply and b"Login incorrect" in reply
+    assert reply == b""                                # fără prompt de login, fără „Login incorrect”
     assert wait_for(lambda: events)
     assert set(events[0]) == {"ts", "ip", "port"} and events[0]["ip"] == "127.0.0.1" and events[0]["port"] == port
 
