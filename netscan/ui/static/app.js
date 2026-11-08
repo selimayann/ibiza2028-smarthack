@@ -84,10 +84,15 @@
     else init.body = data;
     const busy = form.querySelectorAll("button[type=submit]");
     busy.forEach((b) => { b.disabled = true; });
+    // Răspuns imediat (sub 400 ms): butonul care așteaptă ceva lent (verificarea unui port, până la ~3 s) spune ce face.
+    const label = e.submitter && e.submitter.dataset.busy ? e.submitter.querySelector("span") : null;
+    const before = label ? label.textContent : null;
+    if (label) { label.textContent = e.submitter.dataset.busy; form.setAttribute("aria-busy", "true"); }
     const ok = await swap(url, init, targets(form), form.dataset.focus, method === "GET" || form.dataset.keepUrl === "1");
     if (!ok) {
       // dacă ceva nu merge, revenim la comportamentul normal (cu butonul apăsat, ca valoarea lui să ajungă la server)
       busy.forEach((b) => { b.disabled = false; });
+      if (label) { label.textContent = before; form.removeAttribute("aria-busy"); }
       if (e.submitter && typeof form.requestSubmit === "function") {
         form.removeAttribute("data-swap");
         form.requestSubmit(e.submitter);
