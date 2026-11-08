@@ -76,6 +76,41 @@ def test_ui_uses_real_explanations_not_stub():
     assert ui_get_explanation("MQTT_EXPOSED", "ro") == get_explanation("MQTT_EXPOSED", "ro")
 
 
+def test_vnc_ro_states_the_same_fact_as_en():
+    """VNC arată ecranul ACESTUI dispozitiv altcuiva (nu ecranul altcuiva)."""
+    assert RO["VNC_EXPOSED"]["text"].startswith("VNC îi arată altcuiva din rețea ecranul acestui dispozitiv")
+    assert "altcuiva din rețea și" not in RO["VNC_EXPOSED"]["text"]
+
+
+def test_unknown_device_matches_catalog_rule_no_maker_and_no_name():
+    assert "nici numele, nici producătorul" in RO["UNKNOWN_DEVICE"]["text"]
+    assert "servicii deschise" not in RO["UNKNOWN_DEVICE"]["text"]
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_steps_are_doable_without_admin_jargon(lang):
+    """Pași pe care îi poate face un părinte: fără „adresa locală”, „community strings”, „client”."""
+    banned = ("adresa locală", "local address", "community string", "client", "Network Level Authentication")
+    for code in CATALOG:
+        for step in get_explanation(code, lang)["steps"]:
+            assert not any(b.lower() in step.lower() for b in banned), (code, step)
+
+
+def test_mqtt_ro_and_en_say_the_same_thing():
+    assert "turning the lights on" not in EN["MQTT_EXPOSED"]["text"]
+    assert "hub" in EN["MQTT_EXPOSED"]["steps"][0] and "centralei" in RO["MQTT_EXPOSED"]["steps"][0]
+
+
+def test_smb_first_step_says_where():
+    assert "Setări → Rețea și internet" in RO["SMB_EXPOSED"]["steps"][0]
+    assert "Settings → Network & internet" in EN["SMB_EXPOSED"]["steps"][0]
+    assert RO["SMB_EXPOSED"]["steps"][3] == "Instalează toate actualizările sistemului."
+
+
+def test_outdated_first_step_points_to_the_evidence():
+    assert "„Dovadă”" in RO["OUTDATED_SERVICE"]["steps"][0] and '"Evidence"' in EN["OUTDATED_SERVICE"]["steps"][0]
+
+
 @pytest.mark.parametrize("lang", LANGS)
 def test_glossary(lang):
     g = get_glossary(lang)

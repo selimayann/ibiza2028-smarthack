@@ -137,3 +137,34 @@ def test_llm_gets_kb_context_and_answer_is_checked():
 def test_llm_hallucination_with_kb_still_rejected():
     r = a.answer("Cred că am fost hackuit", V2, llm=lambda ctx: "Sună la 0721 234 567 sau intră pe http://x.ro.")
     assert r.source == "fallback" and r.refs == ["F10"] and "antivirus" in r.text
+
+
+# --- ramura de hotspot (rețeaua echipei e hotspotul unui telefon) -------------------------------------------
+
+def test_hotspot_branch_in_password_and_remove_entries():
+    from netscan.scan.build_kb import HOTSPOT_ADDITIONS, HOTSPOT_EN, HOTSPOT_RO
+    for eid in HOTSPOT_ADDITIONS:
+        e = kb.get(eid)
+        ro, en = kb.answer_text(e, "ro"), kb.answer_text(e, "en")
+        assert HOTSPOT_RO in ro and HOTSPOT_EN in en, eid
+        assert "Setări → Hotspot personal → Parolă Wi-Fi" in ro and "Setări → Conexiuni → Hotspot mobil" in ro
+        assert "Settings → Personal Hotspot → Wi-Fi Password" in en and "Settings → Connections → Mobile Hotspot" in en
+        assert len(e["steps_ro"]) == len(e["steps_en"])
+        assert check_llm_text(ro, V2).ok and check_llm_text(en, V2).ok, eid
+
+
+def test_hotspot_additions_are_idempotent_and_survive_a_rebuild():
+    """build_kb le aplică după citirea PDF-ului; o a doua aplicare nu le dublează."""
+    import copy
+    from netscan.scan.build_kb import HOTSPOT_RO, apply_hotspot_additions
+    entries = copy.deepcopy(kb.load()["entries"])
+    again = apply_hotspot_additions(copy.deepcopy(entries))
+    assert again == entries
+    b3 = next(e for e in entries if e["id"] == "B3")
+    assert b3["steps_ro"].count(HOTSPOT_RO) == 1 and b3["steps_ro"][2].startswith("Dacă nu e al nimănui")
+    assert b3["steps_ro"][3] == HOTSPOT_RO
+
+
+def test_hotspot_question_finds_an_entry_with_the_hotspot_steps():
+    hit = kb.search("Cum schimb parola la hotspot ca să scot un dispozitiv?", 1)[0]
+    assert hit.id in ("B3", "B8")

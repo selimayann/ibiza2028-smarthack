@@ -6,6 +6,10 @@
 Rezultat: netscan/scan/data/knowledge_base.json (intrările A1…G6, regulile botului și ghidul de etică).
 Aplicația citește doar JSON-ul; PDF-ul rămâne sursa editată de echipă. Glosarul (secțiunea E) nu se
 preia de aici: asistentul îl ia direct din netscan/explain/glossary.py (aceleași texte).
+
+HOTSPOT_ADDITIONS: ramura „hotspot de telefon” la intrările despre schimbarea parolei Wi-Fi / scoaterea unui
+dispozitiv (rețeaua echipei e hotspotul unui telefon, nu un router). Se aplică după citirea PDF-ului, ca o
+regenerare să nu le piardă.
 """
 from __future__ import annotations
 
@@ -26,6 +30,31 @@ _ENTRY = re.compile(r"^\[([A-G]\d+)\]\s+(.*)$")
 _SECTION = re.compile(r"^[A-H]\.\s+[A-ZĂÂÎȘȚ]")   # „B. Dispozitive…”; nu „0. Nu coboară…” din text
 BULLETS = ("•", "")
 _STEP = re.compile(r"^(\d+)\.\s+(.*)$")
+
+HOTSPOT_RO = ("Dacă rețeaua e hotspotul unui telefon, parola se schimbă din telefon: pe iPhone, Setări → Hotspot "
+              "personal → Parolă Wi-Fi; pe Android, Setări → Conexiuni → Hotspot mobil.")
+HOTSPOT_EN = ("If the network is a phone's hotspot, change the password on the phone: on iPhone, Settings → Personal "
+              "Hotspot → Wi-Fi Password; on Android, Settings → Connections → Mobile Hotspot.")
+# id -> (unde): "step_after:<n>" = pas nou după pasul n (de la 1); "answer" = propoziție adăugată la răspuns
+HOTSPOT_ADDITIONS = {"B3": "step_after:3", "B8": "answer"}
+HOTSPOT_TAGS = ["hotspot", "parola hotspot", "scot dispozitiv"]
+
+
+def apply_hotspot_additions(entries: list[dict]) -> list[dict]:
+    """Adaugă ramura de hotspot (RO+EN) în intrările din HOTSPOT_ADDITIONS. Idempotent."""
+    for e in entries:
+        where = HOTSPOT_ADDITIONS.get(e["id"])
+        if where is None or HOTSPOT_RO in e["a_ro"] or HOTSPOT_RO in e["steps_ro"]:
+            continue
+        if where == "answer":
+            e["a_ro"] = f"{e['a_ro']} {HOTSPOT_RO}"
+            e["a_en"] = f"{e['a_en']} {HOTSPOT_EN}"
+        else:
+            n = int(where.split(":", 1)[1])
+            e["steps_ro"].insert(n, HOTSPOT_RO)
+            e["steps_en"].insert(n, HOTSPOT_EN)
+        e["tags"] = e["tags"] + [t for t in HOTSPOT_TAGS if t not in e["tags"]]
+    return entries
 
 
 def _lines(pdf: Path) -> list[str]:
@@ -144,6 +173,7 @@ def build(pdf: Path = SRC, out: Path = OUT) -> int:
     ids = [e["id"] for e in entries]
     if ids != EXPECTED_IDS:
         raise SystemExit(f"intrări neașteptate: {ids}")
+    entries = apply_hotspot_additions(entries)
     data = {"source": str(pdf).replace("\\", "/"), "sha256": hashlib.sha256(pdf.read_bytes()).hexdigest(),
             "rules": rules, "ethics": ethics, "entries": entries}
     out.parent.mkdir(parents=True, exist_ok=True)
