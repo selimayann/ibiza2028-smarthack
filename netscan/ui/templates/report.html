@@ -31,45 +31,27 @@
     {% set band = score_band(scan.score) %}
     {% set sev_mark = {'high': '▲', 'medium': '◆', 'low': '○', 'info': 'ℹ'} %}
     {% set nd, nf = devices|length, scan.findings|length %}
-    <section class="r-summary" aria-label="{{ T('report_summary') }}">
-      <div class="r-tiles">
-        <div class="r-score r-{{ band }}">
-          <p class="r-label">{{ T('score_label') }}</p>
-          <p><span class="r-num">{{ scan.score }}</span> {{ T('score_of') }}</p>
-          <p class="r-band">{{ {'good': '●', 'fair': '◆', 'poor': '▲'}[band] }} {{ T('band_' ~ band) }}</p>
-        </div>
-        <div class="r-tile"><span class="r-num">{{ nd }}</span><span>{{ T('report_device')|lower if nd == 1 else T('report_devices')|lower }}</span></div>
-        <div class="r-tile"><span class="r-num">{{ nf }}</span><span>{{ T('report_problem_one') if nf == 1 else T('report_problems')|lower }}</span></div>
+    {# Sus: un singur card de verdict (scorul + o frază + cifrele pe un rând), apoi „Fă asta întâi” pe toată lățimea #}
+    <section class="r-verdict r-{{ band }}" aria-label="{{ T('report_summary') }}">
+      <div class="r-score">
+        <p class="r-label">{{ T('report_score_short') }}</p>
+        <p class="r-score-line"><span class="r-num">{{ scan.score }}</span> <span class="r-of">{{ T('score_of') }}</span></p>
+        <p class="r-band">{{ {'good': '●', 'fair': '◆', 'poor': '▲'}[band] }} {{ T('band_' ~ band) }}</p>
       </div>
-      <div class="r-side">
-      {% if nf %}
-      <div class="r-sevs">
-        <ul class="r-chips">
-          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li class="r-chip r-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }} <strong>{{ counts[sev] }}</strong></li>{% endif %}{% endfor %}
-        </ul>
-        <div class="r-bar" aria-hidden="true">{% for sev in ('high', 'medium', 'low', 'info') %}{% for _ in range(counts[sev]) %}<span class="r-{{ sev }}"></span>{% endfor %}{% endfor %}</div>
-      </div>
-      {% endif %}
-      {% set worst = devices[0] if devices and devices[0].findings else none %}
-      {% if worst %}
-        <div class="r-first">
-          <p><strong>{{ T('do_first') }}</strong> {{ explain(worst.worst.code).steps[0] }}</p>
-          <p class="r-where">{{ device_type_label(worst.host.device_type) }} · <span class="r-mono">{{ worst.host.ip }}{% if worst.worst.port is not none %}:{{ worst.worst.port }}{% endif %}</span></p>
-        </div>
-      {% endif %}
-      {% if compare and proof %}<p class="r-before-after">{{ T('report_before_after')|format(compare.score_before, compare.score_after, proof.n_fixed, proof.n_new) }}</p>{% endif %}
+      <div class="r-verdict-text">
+        <p class="r-verdict-title">{{ T('verdict_clean') if verdict and verdict.clean else T('verdict_' ~ band) }}</p>
+        <p class="r-facts"><strong>{{ nd }}</strong> {{ T('report_device')|lower if nd == 1 else T('report_devices')|lower }} · <strong>{{ nf }}</strong> {{ T('report_problem_one') if nf == 1 else T('report_problems')|lower }}{% if nf %}:{% endif %}
+          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<span class="r-chip r-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }} <strong>{{ counts[sev] }}</strong></span>{% endif %}{% endfor %}</p>
+        {% if compare and proof %}<p class="r-before-after">{{ T('report_before_after')|format(compare.score_before, compare.score_after, proof.n_fixed, proof.n_new) }}</p>{% endif %}
       </div>
     </section>
-
-    {# Legenda: ce înseamnă fiecare etichetă de risc (forma + cuvântul, nu doar culoarea) #}
-    <section class="r-legend" aria-labelledby="legend-h">
-      <h2 id="legend-h">{{ T('legend_title') }}</h2>
-      <table class="r-table">
-        <tbody>
-          {% for sev in ('high', 'medium', 'low', 'info') %}<tr><th scope="row" class="r-nowrap"><span class="r-sev r-sev-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }}</span></th><td>{{ T('legend_' ~ sev) }}</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    </section>
+    {% set worst = devices[0] if devices and devices[0].findings else none %}
+    {% if worst %}
+      <section class="r-first" aria-label="{{ T('do_first') }}">
+        <p><strong>{{ T('do_first') }}</strong> {{ explain(worst.worst.code).steps[0] }}</p>
+        <p class="r-where">{{ device_type_label(worst.host.device_type) }} · <span class="r-mono">{{ worst.host.ip }}{% if worst.worst.port is not none %}:{{ worst.worst.port }}{% endif %}</span></p>
+      </section>
+    {% endif %}
 
     <section>
       <h2>{{ T('report_problems_detail') }}</h2>
@@ -85,8 +67,8 @@
             <td class="r-n">{{ row.n }}</td>
             <td><strong class="r-sev r-sev-{{ f.severity }}"><span aria-hidden="true">{{ sev_mark[f.severity] }}</span> {{ T('sev_' ~ f.severity) }}:</strong> {{ code_name(f.code) }}
               {% if row.status == 'fixed' %}<span class="r-tag r-tag-good">✓ {{ T('fixed_tag') }}</span>{% elif row.status == 'accepted' %}<span class="r-tag">{{ T('accepted_tag') }}</span>{% endif %}
-              <br><span class="r-code">{{ f.code }} · {{ T('sev_csv_' ~ f.severity) }}</span>
-              <br><span class="r-small r-muted">{{ T('evidence') }}: <span class="r-mono">{{ evidence_text(f) }}</span>
+              <br><span class="r-code">{{ f.code }}</span>
+              <span class="r-small r-muted"> · {{ T('evidence') }}: <span class="r-mono">{{ evidence_text(f) }}</span>
               {% if std.groups %}<span class="r-std"><br>{{ T('report_std') }}: {% for g in std.groups %}{{ g.name }} {% for r in g.refs %}{{ r.id }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}; {% endif %}{% endfor %}</span>{% endif %}</span></td>
             <td>{{ device_type_label(row.device.device_type) }}<br><span class="r-mono r-nowrap">{{ row.device.ip }}{% if f.port is not none %}:{{ f.port }}{% endif %}</span></td>
             <td>{{ explain(f.code).steps[0] }}</td>
@@ -94,6 +76,11 @@
         {% endfor %}
         </tbody>
       </table>
+      {# Legenda: sub tabel, doar pentru severitățile care apar (forma + cuvântul, nu doar culoarea) #}
+      <section class="r-legend" aria-labelledby="legend-h">
+        <h3 id="legend-h">{{ T('legend_title') }}</h3>
+        <ul>{% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li><span class="r-sev r-sev-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }}:</span> {{ T('legend_' ~ sev) }}</li>{% endif %}{% endfor %}</ul>
+      </section>
       <p class="r-small r-muted">{{ T('report_more') }}</p>
       {% else %}
         <p>{{ T('report_none') }}</p>

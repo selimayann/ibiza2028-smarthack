@@ -180,7 +180,10 @@ def test_device_page_summary_jump_list_and_technical_details(tmp_path):
 def test_report_has_legend_and_severity_words(tmp_path):
     c, _ = _client(tmp_path, [analyze_file(str(V2))])
     html = c.get("/report").get_data(as_text=True)
-    assert "Ce înseamnă etichetele" in html and "Risc ridicat" in html and "Doar de știut" in html
+    assert "Ce înseamnă etichetele" in html and "Risc ridicat" in html and "Risc mediu" in html
+    legend = html[html.index('class="r-legend"'):]
+    legend = legend[:legend.index("</section>")]
+    assert "Doar de știut" not in legend          # legenda arată doar severitățile care apar (V2: ridicat + mediu)
 
 
 def test_css_contrast_targets_and_reduced_motion():
