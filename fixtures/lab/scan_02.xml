@@ -9,19 +9,19 @@
 <debugging level="0"/>
 <hosthint><status state="up" reason="arp-response" reason_ttl="0"/>
 <address addr="172.20.10.1" addrtype="ipv4"/>
-<address addr="66:48:42:94:C3:64" addrtype="mac"/>
+<address addr="66:48:42:00:00:01" addrtype="mac"/>
 <hostnames>
 </hostnames>
 </hosthint>
 <hosthint><status state="up" reason="arp-response" reason_ttl="0"/>
 <address addr="172.20.10.14" addrtype="ipv4"/>
-<address addr="4E:C7:BC:6F:E3:A1" addrtype="mac"/>
+<address addr="4E:C7:BC:00:00:02" addrtype="mac"/>
 <hostnames>
 </hostnames>
 </hosthint>
 <host starttime="1794053199" endtime="1794053399"><status state="up" reason="arp-response" reason_ttl="0"/>
 <address addr="172.20.10.1" addrtype="ipv4"/>
-<address addr="66:48:42:94:C3:64" addrtype="mac"/>
+<address addr="66:48:42:00:00:01" addrtype="mac"/>
 <hostnames>
 </hostnames>
 <ports><extraports state="closed" count="1003">
@@ -42,7 +42,7 @@
 </host>
 <host starttime="1794053199" endtime="1794053399"><status state="up" reason="arp-response" reason_ttl="0"/>
 <address addr="172.20.10.14" addrtype="ipv4"/>
-<address addr="4E:C7:BC:6F:E3:A1" addrtype="mac"/>
+<address addr="4E:C7:BC:00:00:02" addrtype="mac"/>
 <hostnames>
 </hostnames>
 <ports><extraports state="closed" count="843">

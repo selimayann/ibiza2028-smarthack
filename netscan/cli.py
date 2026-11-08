@@ -17,7 +17,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="netscan", description="Secure Networks, Simply Explained")
     sub = p.add_subparsers(dest="command", required=True)
 
-    a = sub.add_parser("analyze", help="findings.csv + scores.csv pentru un folder de fișiere nmap XML (fără rețea)")
+    a = sub.add_parser("analyze", help="findings.csv + scores.csv pentru un folder de fișiere nmap XML sau un singur fișier (fără rețea)")
     a.add_argument("folder")
     a.add_argument("--out", default=".", help="unde se scriu CSV-urile")
     a.add_argument(
@@ -118,11 +118,12 @@ def _setup_console() -> None:
 
 def cmd_analyze(args) -> int:
     # Import local: celelalte comenzi nu au nevoie de motor la pornire.
-    from netscan.engine import analyze_folder, write_results
+    from netscan.engine import analyze_file, analyze_folder, write_results
     from netscan.engine.common import STATUS_ERROR
 
     try:
-        scans = analyze_folder(args.folder)
+        # un singur fișier (ex. verificarea live „re-run” pe un fișier ales de juriu) sau un folder întreg
+        scans = [analyze_file(args.folder)] if Path(args.folder).is_file() else analyze_folder(args.folder)
     except NotADirectoryError:
         print(f"Eroare: '{args.folder}' nu este un folder.", file=sys.stderr)
         return 2

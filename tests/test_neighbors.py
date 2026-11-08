@@ -13,8 +13,8 @@ INFO = NetworkInfo(iface="Wi-Fi", ip="172.20.10.10", cidr="172.20.10.0/28", gate
 WINDOWS = """
 Interface: 172.20.10.10 --- 0xb
   Internet Address      Physical Address      Type
-  172.20.10.1           66-48-42-94-c3-64     dynamic
-  172.20.10.14          4e-c7-bc-6f-e3-a1     dynamic
+  172.20.10.1           66-48-42-00-00-01     dynamic
+  172.20.10.14          4e-c7-bc-00-00-02     dynamic
   172.20.10.10          aa-bb-cc-dd-ee-ff     dynamic
   172.20.10.15          ff-ff-ff-ff-ff-ff     static
   224.0.0.22            01-00-5e-00-00-16     static
@@ -29,17 +29,17 @@ Interfață: 172.20.10.10 --- 0xb
   Adresă Internet       Adresă fizică         Tip
   172.20.10.3           d0-39-57-11-22-33     dinamic
 """
-MACOS = """? (172.20.10.1) at 66:48:42:94:c3:64 on en0 ifscope [ethernet]
+MACOS = """? (172.20.10.1) at 66:48:42:00:00:01 on en0 ifscope [ethernet]
 ? (172.20.10.2) at d8:c0:a6:1:2:3 on en0 ifscope [ethernet]
 ? (172.20.10.3) at (incomplete) on en0 ifscope [ethernet]
 ? (172.20.10.15) at ff:ff:ff:ff:ff:ff on en0 ifscope [ethernet]
 ? (10.0.0.1) at 11:22:33:44:55:66 on en1 ifscope [ethernet]
 """
-LINUX = """172.20.10.1 dev wlan0 lladdr 66:48:42:94:c3:64 REACHABLE
+LINUX = """172.20.10.1 dev wlan0 lladdr 66:48:42:00:00:01 REACHABLE
 172.20.10.3 dev wlan0  FAILED
 172.20.10.4 dev wlan0 lladdr d0:39:57:11:22:33 STALE
 172.20.10.5 dev wlan0  INCOMPLETE
-172.20.10.6 dev wlan0 lladdr 4e:c7:bc:6f:e3:a1 DELAY
+172.20.10.6 dev wlan0 lladdr 4e:c7:bc:00:00:02 DELAY
 """
 
 
@@ -126,7 +126,7 @@ def test_poke_sends_empty_datagrams_from_the_hotspot_ip_only_to_given_addresses(
 def test_device_id_is_the_engines_and_the_full_mac_is_dropped():
     from netscan.engine.parser import device_identity
     got = neighbors.parse_windows_arp(WINDOWS, "172.20.10.10", "172.20.10.0/28")
-    for ip, raw in (("172.20.10.1", "66:48:42:94:C3:64"), ("172.20.10.14", "4E:C7:BC:6F:E3:A1")):
+    for ip, raw in (("172.20.10.1", "66:48:42:00:00:01"), ("172.20.10.14", "4E:C7:BC:00:00:02")):
         n = got[ip]
         assert n.device_id == device_identity(raw, ip)[0] and len(n.device_id) == 12
         dumped = repr(n).upper()
