@@ -7,22 +7,34 @@
   {%- if f.port is not none -%}{{ T('port') }} <span class="mono" translate="no">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
 {%- endmacro %}
 
-{# Routerul rețelei de acum (la noi, telefonul cu hotspotul): doar eticheta, tipul din motor rămâne același.
-   router_ip vine din app.router_ip(): doar pe hotspotul echipei și doar pentru cea mai nouă scanare a noastră. #}
-{% macro device_name(host) -%}
+{# Numele scurt, ca text: numele dat de utilizator (text nesigur, escapat), altfel tipul. Routerul rețelei de acum
+   (la noi, telefonul cu hotspotul) primește doar eticheta, tipul din motor rămâne același. router_ip vine din
+   app.router_ip(): doar pe hotspotul echipei și doar pentru cea mai nouă scanare a noastră. #}
+{# Tipul, fără numele dat de utilizator (pentru rândul de sub titlu). #}
+{% macro device_kind(host) -%}
   {%- if router_ip and host.ip == router_ip -%}{{ T('live_gateway') }}{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
 {%- endmacro %}
-
-{# Titlul unui dispozitiv: numele anunțat de el (dacă există, text nesigur), altfel tipul. #}
-{% macro device_title(host) -%}
-  {%- set an = announced(host.ip) -%}
-  {%- if an -%}<span class="announced" translate="no">{{ an.name }}</span>{%- else -%}{{ device_name(host) }}{%- endif -%}
+{% macro device_name(host) -%}
+  {%- set cn = custom_name(host.device_id) -%}
+  {%- if cn -%}{{ cn }}{%- else -%}{{ device_kind(host) }}{%- endif -%}
 {%- endmacro %}
 
-{# Sub titlu, când există nume anunțat: tipul + eticheta mică. #}
-{% macro announced_sub(host) -%}
+{# Titlul unui dispozitiv: numele dat de utilizator, apoi numele anunțat de el (ambele text nesigur), apoi tipul. #}
+{% macro device_title(host) -%}
+  {%- set cn = custom_name(host.device_id) -%}
   {%- set an = announced(host.ip) -%}
-  {%- if an -%}<span class="announced-sub">{{ device_name(host) }}{% if an.service %} · {{ an.service }}{% endif %} <span class="announced-tag">{{ T('announced_label') }}</span></span>{%- endif -%}
+  {%- if cn -%}<span class="custom-name">{{ cn }}</span>
+  {%- elif an -%}<span class="announced" translate="no">{{ an.name }}</span>
+  {%- else -%}{{ device_kind(host) }}{%- endif -%}
+{%- endmacro %}
+
+{# Sub titlu: când dispozitivul are un nume dat de utilizator, tipul (și numele anunțat, dacă există); când are
+   doar un nume anunțat, tipul + eticheta mică. #}
+{% macro announced_sub(host) -%}
+  {%- set cn = custom_name(host.device_id) -%}
+  {%- set an = announced(host.ip) -%}
+  {%- if cn -%}<span class="announced-sub">{{ device_kind(host) }}{% if an %} · <span translate="no">{{ an.name }}</span> <span class="announced-tag">{{ T('announced_label') }}</span>{% endif %}</span>
+  {%- elif an -%}<span class="announced-sub">{{ device_kind(host) }}{% if an.service %} · {{ an.service }}{% endif %} <span class="announced-tag">{{ T('announced_label') }}</span></span>{%- endif -%}
 {%- endmacro %}
 
 {# „Ce vede cineva care ascultă”: exemplu inventat, ca un terminal; rândul cu parola e marcat cu etichetă, nu doar culoare. #}
@@ -72,13 +84,34 @@
 {%- endmacro %}
 
 {# Alertele din jurnal (FR-13): iconiță după ton + propoziție simplă. #}
-{% macro alert_list(alerts, two_col=false) -%}
+{% macro alert_list(alerts, two_col=false, short=false) -%}
   {%- set icons = {'bad': 'medium', 'good': 'good', 'info': 'info'} -%}
   <ul class="alerts{% if two_col %} alerts-2col{% endif %}">
     {% for a in alerts %}
-      <li class="alert alert-{{ a.tone }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ icons[a.tone] }}"/></svg><span>{{ alert_text(a) }}</span></li>
+      {%- if a.tone == 'bad' and a.severity %}
+      {# problemă nouă: iconița și eticheta severității ei (formă + text, nu doar culoare) #}
+      <li class="alert alert-bad alert-sev-{{ a.severity }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ a.severity }}"/></svg><span><strong class="alert-sev">{{ T('sev_' ~ a.severity) }}</strong> · {{ alert_text(a, short) }}</span></li>
+      {%- else %}
+      <li class="alert alert-{{ a.tone }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ icons[a.tone] }}"/></svg><span>{{ alert_text(a, short) }}</span></li>
+      {%- endif %}
     {% endfor %}
   </ul>
+{%- endmacro %}
+
+{# Jurnal: alertele unei scanări grupate pe dispozitiv (în ordinea primei apariții), cu textele scurte.
+   Numele dispozitivului și IP-ul apar o singură dată, în antetul grupului. #}
+{% macro alert_groups(alerts) -%}
+  {%- set ns = namespace(ids=[]) -%}
+  {%- for a in alerts %}{% if a.device_id not in ns.ids %}{% set ns.ids = ns.ids + [a.device_id] %}{% endif %}{% endfor -%}
+  <div class="alert-groups">
+  {%- for id in ns.ids %}
+    {%- set da = alerts|selectattr('device_id', 'equalto', id)|list %}
+    <div class="alert-group">
+      <p class="alert-dev">{{ alert_device(da[0]) }} <span class="mono muted" translate="no">{{ da[0].ip }}</span></p>
+      {{ alert_list(da, false, true) }}
+    </div>
+  {%- endfor %}
+  </div>
 {%- endmacro %}
 
 {# Scorul ca etichetă: iconiță + număr + bandă (nu doar culoare). #}
@@ -137,4 +170,12 @@
       {% if button_url %}<a class="button button-primary" href="{{ button_url }}">{{ button_label }}</a>{% endif %}
     </div>
   </section>
+{%- endmacro %}
+
+{# Ce poate face cineva rău intenționat: un rând, cu eticheta scrisă (nu doar iconiță sau culoare). #}
+{% macro harm_line(code) -%}
+  {%- set h = harm(code) -%}
+  {%- if h -%}
+  <p class="harm"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span><strong>{{ T('harm_label') }}</strong> {{ h }}</span></p>
+  {%- endif -%}
 {%- endmacro %}

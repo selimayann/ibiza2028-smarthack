@@ -47,3 +47,14 @@ def get_standards(code: str, lang: str) -> dict:
         return {"groups": groups}
     except Exception:  # standardele sunt un bonus: nu au voie să strice pagina
         return {"groups": []}
+
+
+def get_harm(code: str, lang: str) -> str:
+    """Un rând „ce poate face cineva rău intenționat” (netscan/explain, get_harm). Lipsă sau eroare → nimic."""
+    try:
+        from netscan.explain import get_harm as real
+
+        text = real(code, lang)
+        return text if isinstance(text, str) else ""
+    except Exception:  # e un plus: nu are voie să strice pagina
+        return ""

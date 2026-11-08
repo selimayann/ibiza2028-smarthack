@@ -28,7 +28,7 @@
 - [ ] **Ușa-capcană (doar dacă o arătăm):** regula de firewall doar pe Private (comanda o afișează `python -m netscan trap`), apoi în aplicație bifa „Pornește și ușa-capcană” la pornirea protecției live (sau, din terminal, `python -m netscan trap --confirm`).
   Demo: de pe laptopul-țintă, `telnet <IP-laptop-demo> 2323` → alerta apare live. Capcana nu citește nimic: notează doar IP, ora și portul și închide.
 - [ ] (Opțional) `python -m netscan listen --confirm` și `python -m netscan watch --every 10 --confirm` (terminal de Administrator); apoi, în terminalul normal, `python -m netscan import-scans` ca alertele și scanările să apară în UI.
-- [ ] **UI:** `NETSCAN_SCANS_DIR=fixtures/lab` (pentru istoricul înainte/după al lab-ului) și `python -m netscan ui`.
+- [ ] **UI:** `NETSCAN_SCANS_DIR=fixtures/lab` (pentru istoricul înainte/după al lab-ului) și `python -m netscan ui`. Pașii exacți (istoric încărcat, pagina deschisă, fereastra, notificări oprite, capturi pentru planul B): [demo_setup.md](demo_setup.md).
 
 ## 3a. Demo-ul în aplicație, pas cu pas
 
@@ -42,20 +42,21 @@
 
 ## 3b. „Am făcut asta” și scorul (de ce la unii se schimbă, la alții nu)
 
-Butonul nu crede utilizatorul pe cuvânt (`netscan/ui/verify.py`): încearcă **o singură conexiune TCP** la portul problemei. Scorul se recalculează (de motor) **doar** dacă pasul e confirmat. Altfel pasul e „bifat, neconfirmat” și scorul rămâne, intenționat.
+Butonul nu crede utilizatorul pe cuvânt (`netscan/ui/verify.py`): încearcă **o singură conexiune TCP** la portul problemei. Cifra mare rămâne **scorul standard al scanării** (ca în `scores.csv`); dedesubt apare „După reparațiile confirmate (N): X din 100”, recalculat de motor, **doar** pentru pașii confirmați. Altfel pasul e „bifat, neconfirmat” și scorul rămâne, intenționat.
 
-| Situația | Ce scrie aplicația | Scorul |
+| Situația | Ce scrie aplicația | „După reparațiile confirmate” |
 |---|---|---|
-| Laptopul e pe `RSH-Ibiza2028`, `.env` are `NETSCAN_EXPECTED_SSID=RSH-Ibiza2028`, scanarea e din rețeaua noastră (lab, `172.20.10.x`) și portul **refuză** conexiunea | „Verificat: portul … nu mai răspunde” | **se schimbă** |
-| Aceleași condiții, dar portul **acceptă** conexiunea (serviciul încă rulează) | „răspunde încă, pasul rămâne de făcut” | nu se schimbă |
-| `NETSCAN_EXPECTED_SSID` lipsește din `.env`, laptopul nu e pe hotspot, sau scanarea e din altă rețea (de ex. Validation Set, `192.168.1.x`) | „nu e în rețeaua la care e conectat acum laptopul” | nu se schimbă |
-| Dispozitivul nu răspunde deloc (oprit, firewall care ignoră) | „nu a răspuns deloc … neconfirmat” | nu se schimbă |
-| Port UDP sau problemă fără port (UNKNOWN_DEVICE) | „nu îl pot verifica de aici” | nu se schimbă (doar la o scanare nouă) |
+| Laptopul e pe `RSH-Ibiza2028`, `.env` are `NETSCAN_EXPECTED_SSID=RSH-Ibiza2028`, scanarea e din rețeaua noastră (lab, `172.20.10.x`) și portul **refuză** conexiunea | „Verificat: portul … nu mai răspunde” | **apare / crește** |
+| Aceleași condiții, dar portul **acceptă** conexiunea (serviciul încă rulează) | „răspunde încă, pasul rămâne de făcut” | nu apare |
+| `NETSCAN_EXPECTED_SSID` lipsește din `.env`, laptopul nu e pe hotspot, sau scanarea e din altă rețea (de ex. Validation Set, `192.168.1.x`) | „nu e în rețeaua la care e conectat acum laptopul” | nu apare |
+| Dispozitivul nu răspunde deloc (oprit, firewall care ignoră) | „nu a răspuns deloc … neconfirmat” | nu apare |
+| Port UDP sau problemă fără port (UNKNOWN_DEVICE) | „nu îl pot verifica de aici” | nu apare (doar la o scanare nouă) |
 
 Verificat pe 7 nov. (Oneata), pe hotspot: FTP pe `172.20.10.14:2121` din `scan_03_after.xml` → fără `NETSCAN_EXPECTED_SSID`: „nu e în rețeaua ta”; cu el: „verificat” (lab-ul era oprit); o problemă din V1 (`192.168.1.1`) → „nu e în rețeaua ta”.
 
+- **O scanare mai nouă a aceleiași rețele** confirmă și ea reparațiile (dispozitivul e acolo, problema nu): pe scanarea veche apare „După reparațiile confirmate” și linkul „Există o scanare mai nouă … Vezi scanarea nouă →”. Scorul scanării vechi nu se schimbă (de ex. `scan_01_before` rămâne 0).
 - **Pe Windows:** refuzul unui port închis vine după ~2 s. Timpul de verificare e 3 s din commit-ul `886dcee`; pe un `main` mai vechi (1,5 s) pasul ieșea mereu „fără răspuns”. Dați `git pull` înainte de demo.
-- **Pentru demo:** laptopul de demo pe hotspot, cu `NETSCAN_EXPECTED_SSID` în `.env`, UI cu `NETSCAN_SCANS_DIR=fixtures/lab`. Laptopul-țintă pe hotspot, cu lab-ul **pornit**. Pe laptopul-țintă se oprește un serviciu (de ex. `docker compose -f lab/docker-compose.yml stop redis`), apoi în UI „Am făcut asta” la DB_EXPOSED → „Verificat” și scorul crește. Cu lab-ul oprit de tot, toți pașii ies „verificat” din prima (nu mai e nimic de arătat).
+- **Pentru demo:** laptopul de demo pe hotspot, cu `NETSCAN_EXPECTED_SSID` în `.env`, UI cu `NETSCAN_SCANS_DIR=fixtures/lab`. Laptopul-țintă pe hotspot, cu lab-ul **pornit**. Pe laptopul-țintă se oprește un serviciu (de ex. `docker compose -f lab/docker-compose.yml stop redis`), apoi în UI „Am făcut asta” la DB_EXPOSED → „Verificat”, iar sub scor apare „După reparațiile confirmate (1): …”. Cu lab-ul oprit de tot, toți pașii ies „verificat” din prima (nu mai e nimic de arătat).
 
 ## 4. Cele 7 verificări live, în ordinea juriului
 

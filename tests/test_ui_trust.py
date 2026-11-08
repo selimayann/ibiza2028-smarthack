@@ -198,7 +198,7 @@ def test_journal_folds_port_changes_into_details(tmp_path):
     fold = html.split('<details class="fold port-fold">', 1)[1].split("</details>", 1)[0]
     assert "Porturile din spatele acestor probleme (1)" in fold and "554/tcp" in fold
     outside = html.replace(fold, "")
-    assert "554/tcp" not in outside and "a fost rezolvată" in outside
+    assert "554/tcp" not in outside and "Rezolvată: „" in outside   # Jurnalul: rânduri scurte, grupate pe dispozitiv
 
 
 # ---------- 6. textele ----------

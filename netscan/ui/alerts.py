@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from netscan.model import Host, Scan
+from netscan.model import SEVERITY_ORDER, Host, Scan
 from netscan.ui import storage
 from netscan.ui.view import ip_key
 
@@ -74,7 +74,9 @@ def alerts_between(old: Scan, new: Scan, scan_id: int | None = None) -> list[Ale
             for f in d.new_findings]
     out += [mk(FINDING_RESOLVED, mapping.get(f.device_id, f.device_id), type_from=old_hosts.get(f.device_id),
                ip=f.ip, port=f.port, code=f.code, severity=f.severity) for f in d.resolved_findings]
-    out.sort(key=lambda a: (KIND_ORDER.index(a.kind), ip_key(a.ip), a.port if a.port is not None else -1,
+    # în fiecare tip, problemele cele mai grave primele (ca în Jurnal să nu rămână ascunse sub „Arată încă”)
+    sev_rank = lambda a: -SEVERITY_ORDER.get(a.severity, -1)  # noqa: E731  (high=3 ... info=0; fără severitate la final)
+    out.sort(key=lambda a: (KIND_ORDER.index(a.kind), sev_rank(a), ip_key(a.ip), a.port if a.port is not None else -1,
                             a.code or ""))
     return out
 

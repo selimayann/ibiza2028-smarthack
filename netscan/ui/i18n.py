@@ -11,7 +11,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "nav_new_alerts_sr": "%s alerte noi",
         "monitor_title": "Monitorul rețelei",
         "monitor_hint": "Ce a observat SafeEel cât a urmărit rețeaua, cele mai noi primele.",
-        "monitor_empty": "Monitorul nu a rulat încă. Pornește-l cu:",
+        "monitor_empty": "Monitorul nu a rulat încă. Până atunci, aici jos vezi ce s-a schimbat între scanările salvate în istoric.",
         "monitor_none": "Monitorul rulează, dar nu a observat nimic nou.",
         "scans_changes_title": "Schimbări între scanările salvate",
         "ev_NEW_DEVICE": "Dispozitiv nou",
@@ -36,6 +36,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "scale_title": "Cum citești scorul",
         "score_formula": "Scorul = 100 minus punctele problemelor găsite (minimum 0).",
         "facts_devices": "Dispozitive scanate",
+        "facts_problems": "Probleme",
         "see_inventory": "Vezi toate dispozitivele",
         "devices_all": "Toate dispozitivele (%s)",
         "devices_order": "Ordonate după risc, cel mai periculos primul",
@@ -58,10 +59,12 @@ TEXTS: dict[str, dict[str, str]] = {
         "ask_send": "Trimite întrebarea",
         "j_bad": "De verificat: %s",
         "j_good": "Îmbunătățiri: %s",
+        "j_good_1": "Îmbunătățiri: %s",
         "j_info": "Doar de știut: %s",
+        "j_info_1": "Doar de știut: %s",
         "journal_empty_title": "Nu e nicio alertă încă",
         "go_overview": "Mergi la pagina Acasă",
-        "hist_change": "Față de anterioara",
+        "hist_change": "Față de cea anterioară",
         "hist_up": "A crescut",
         "hist_down": "A scăzut",
         "hist_same": "La fel",
@@ -99,6 +102,13 @@ TEXTS: dict[str, dict[str, str]] = {
         "score_after": "Scanarea a dat %s. Scorul de mai sus e recalculat fără cele %s probleme verificate ca rezolvate.",
         "verify_note": "Când apeși „Verifică”, SafeEel bate o singură dată la ușa problemei. Scorul oficial se schimbă doar după o scanare nouă.",
         "verify_ok": "Dovadă: am bătut o singură dată la ușa %s de pe %s și nu a răspuns nimeni, deci pasul e confirmat. (1 conexiune, nimic altceva trimis.)",
+        "score_newer": "Vezi scanarea nouă →",
+        "score_after_progress": "Progres după reparațiile confirmate (%s)",
+        "score_band_still": "Încă: %s",
+        "score_band_now": "Acum: %s",
+        "score_left_one": "mai ai o problemă de rezolvat",
+        "score_left_many": "mai ai %s probleme de rezolvat",
+        "score_newer_title": "Scanarea mai nouă a acestei rețele: %s (scor %s)",
         "verify_open": "Portul %s de pe %s răspunde încă, deci problema e tot acolo. Pasul rămâne de făcut.",
         "verify_version": "Portul %s de pe %s răspunde încă. Dacă ai actualizat programul, versiunea nouă se vede doar într-o scanare nouă.",
         "verify_udp": "Portul %s de pe %s nu se poate verifica printr-o simplă bătaie la ușă (e de alt tip, UDP). L-am notat ca bifat; se confirmă la o scanare nouă.",
@@ -109,6 +119,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "step_on": "Pentru: %s pe %s, %s",
         "step_done_btn": "Am făcut asta, verifică",
         "step_reset": "Ia pașii de la capăt",
+        "step_how": "Cum se verifică un pas?",
         "steps_all_done": "Ai trecut prin toți pașii pentru această scanare.",
         "steps_all_done_hint": "Confirmate: %s. Bifate de tine: %s (le confirmă o scanare nouă).",
         "inv_title": "Ce e conectat la mine?",
@@ -124,11 +135,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "report_for": "Pentru furnizorul IT sau persoana care administrează rețeaua.",
         "report_generated": "Generat la",
         "report_print": "Tipărește sau salvează ca PDF",
-        "report_download": "Descarcă raportul (HTML)",
         "report_back": "Înapoi",
         "report_summary": "Pe scurt",
         "report_devices": "Dispozitive",
         "report_problems": "Probleme",
+        "report_problem_one": "problemă",
         "report_problems_detail": "Probleme și pași de reparare, în ordinea riscului",
         "report_device": "Dispozitiv",
         "report_none": "Nu am găsit nicio problemă din catalog.",
@@ -167,7 +178,48 @@ TEXTS: dict[str, dict[str, str]] = {
         "scan_file": "Fișier",
         "scan_date": "Data scanării",
         "choose_scan": "Alege scanarea",
+        "shown_scan": "Scanarea afișată",
+        "devices_one": "1 dispozitiv",
+        "devices_many": "%s dispozitive",
         "show": "Arată",
+        "summary_label": "Pe scurt",
+        "history_owner": "Istoric pentru utilizatorul %s pe acest calculator.",
+        "history_owner_unknown": "Istoric pe acest calculator.",
+        "history_empty_owner": "Te așteptai să vezi scanări aici? Poate ești conectat cu alt utilizator de Windows sau ai pornit aplicația din alt folder. Datele nu s-au pierdut: rămân în istoricul acelui utilizator sau al acelui folder.",
+        "history_file": "Caut istoricul în: %s",
+        "recheck_title": "Ai reparat ceva? Verifică din nou.",
+        "recheck_body": "Fă o scanare nouă sau încarcă un fișier nou. Îți arăt scorul de după și ce ai închis.",
+        "recheck_upload_label": "Fișierul scanării noi (.xml)",
+        "recheck_upload_btn": "Verifică din nou",
+        "recheck_newer": "Am găsit deja o scanare mai nouă: %s.",
+        "recheck_compare_btn": "Vezi înainte și după",
+        "recheck_how": "Cum fac o scanare nouă?",
+        "recheck_how_body": "Cel mai simplu: „Scanează acum”, jos pe pagina Acasă (cu confirmarea bifată). Pentru tehnician, din terminal, pe acest calculator, cu comanda de mai jos; apoi încarcă aici fișierul făcut de ea.",
+        "upload_failed": "Nu am putut folosi fișierul ales.",
+        "upload_err_empty": "Nu ai ales niciun fișier.",
+        "upload_err_older": "Fișierul ales e mai vechi decât scanarea cu care îl compar. Alege scanarea făcută după reparații.",
+        "proof_title": "Dovada: înainte și după",
+        "proof_before": "Înainte",
+        "proof_after": "După",
+        "proof_better": "Mai bine",
+        "proof_worse": "Mai rău",
+        "proof_same": "La fel",
+        "proof_resolved": "Rezolvate (%s)",
+        "proof_remaining": "Au rămas (%s)",
+        "proof_new": "Probleme noi (%s)",
+        "proof_nothing": "Nimic aici.",
+        "proof_files": "Înainte: %s · După: %s",
+        "name_title": "Numele dispozitivului",
+        "name_give": "Dă-i un nume",
+        "name_change": "Schimbă numele",
+        "name_hint": "Dă-i un nume ca să-l recunoști ușor, de exemplu „Camera din sufragerie”. Numele rămâne doar pe acest calculator.",
+        "name_label": "Nume (cel mult 40 de caractere)",
+        "name_placeholder": "de exemplu: Camera din sufragerie",
+        "name_save": "Salvează numele",
+        "name_clear": "Șterge numele",
+        "name_saved": "Am salvat numele.",
+        "name_cleared": "Am șters numele.",
+        "name_too_long": "Numele e prea lung. Folosește cel mult 40 de caractere.",
         "worst_title": "Cel mai periculos dispozitiv",
         "worst_problem": "Cea mai gravă problemă",
         "do_first": "Fă asta întâi:",
@@ -201,9 +253,21 @@ TEXTS: dict[str, dict[str, str]] = {
         "findings_title": "Probleme",
         "what_it_means": "Ce înseamnă",
         "how_to_fix": "Cum repari",
+        "dev_steps_more": "Încă %s pași",
+        "dev_steps_more_one": "Încă un pas",
+        "code_label": "Cod",
         "standards_title": "Standarde de securitate",
         "back": "Înapoi la pagina Acasă",
         "history_title": "Progresul rețelei tale",
+        "back_devices": "Înapoi la Dispozitive",
+        "back_alerts": "Înapoi la Alerte",
+        "this_scan": "Scanarea aceasta",
+        "compare_details": "Toate detaliile: probleme, porturi și dispozitive",
+        "other_network_title": "Scanarea anterioară pare din altă rețea",
+        "other_network_body": "Nu are niciun dispozitiv comun cu aceasta, așa că lista de mai jos arată mai mult diferența dintre două rețele decât ce s-a schimbat la tine.",
+        "journal_more": "Arată încă %s schimbări",
+        "monitor_how": "Cum îl pornești (pentru avansați)",
+        "tech_details": "Detalii tehnice (pentru cine te ajută cu rețeaua)",
         "trend_title": "Scorul standard în timp",
         "trend_up": "Scorul a crescut de la %s la %s în ultimele %s scanări.",
         "trend_down": "Scorul a scăzut de la %s la %s în ultimele %s scanări.",
@@ -215,7 +279,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "history_delete_confirm_title": "Sigur ștergi tot istoricul?",
         "history_delete_confirm_body": "Toate scanările salvate pe acest calculator vor fi șterse definitiv. Nu se poate anula.",
         "history_delete_yes": "Da, șterge tot",
-        "history_delete_what": "Se șterg: scanările salvate în istoric, bifele pașilor, alertele monitorului, încercările de intrare și numele anunțate de dispozitive.",
+        "history_delete_what": "Se șterg: scanările salvate în istoric, bifele pașilor, riscurile acceptate, numele date de tine dispozitivelor, alertele monitorului, încercările de intrare și numele anunțate de dispozitive.",
         "history_delete_not": "Nu se șterg fișierele brute ale scanărilor (din folderul scans/), care pot conține adresele MAC reale. Dacă vrei să dispară și ele, șterge folderul scans/ manual.",
         "history_delete_no": "Nu, înapoi",
         "history_deleted": "Istoricul a fost șters.",
@@ -249,6 +313,68 @@ TEXTS: dict[str, dict[str, str]] = {
         "sev_csv_medium": "medium",
         "sev_csv_low": "low",
         "sev_csv_info": "info",
+        "g_start": "Începe depanarea",
+        "g_start_hint": "Te ținem de mână, pas cu pas, cu mici animații.",
+        "g_title": "Depanare pas cu pas",
+        "g_close": "Închide",
+        "g_back": "Înapoi",
+        "g_next": "Mai departe",
+        "g_count": "Pasul %s din %s",
+        "g_note": "Meniurile din aparatul tău pot arăta puțin altfel. Ideea e aceeași.",
+        "g_net_main": "Rețeaua casei",
+        "g_net_guest": "Rețea pentru oaspeți",
+        "g_find": "Găsește %s. Adresa lui în rețea este %s.",
+        "g_label": "Întoarce aparatul și uită-te la eticheta de pe spate. Acolo e adresa de administrare și, de obicei, parola de fabrică. Notează-le.",
+        "g_admin": "Scrie adresa în browser și intră cu numele și parola din etichetă. Dacă ai schimbat deja parola, folosește-o pe a ta.",
+        "g_toggle": "Caută în setări comutatorul pentru %s și trece-l pe oprit.",
+        "g_update": "Caută butonul de actualizare (Update) și apasă-l. Așteaptă până se termină și aparatul pornește din nou. Dacă nu mai există actualizări, oprește serviciul sau înlocuiește aparatul.",
+        "g_password": "Alege o parolă nouă, lungă și greu de ghicit, și salveaz-o. Nu o refolosi de la alt cont.",
+        "g_https": "În setări pornește accesul sigur (HTTPS) și intră doar cu adresa care începe cu https. Unele aparate nu au această opțiune; atunci treci la pasul următor.",
+        "g_windows": "Deschide setările din Windows: %s. Oprește opțiunea.",
+        "g_guest": "Dacă e un aparat al tău (un bec, o priză, o cameră), dă-i un nume în router și mută-l în rețeaua pentru oaspeți.",
+        "g_routerlist": "Intră în routerul tău și caută lista cu aparatele conectate. Vezi dacă îl recunoști pe cel cu adresa %s.",
+        "g_verify": "Gata! Apasă butonul, iar eu verific dacă ușa s-a închis.",
+        "g_svc_TELNET_OPEN": "Telnet",
+        "g_svc_FTP_CLEARTEXT": "FTP",
+        "g_svc_SNMP_EXPOSED": "SNMP",
+        "g_svc_UPNP_EXPOSED": "UPnP",
+        "g_svc_VNC_EXPOSED": "VNC",
+        "g_svc_SSH_OPEN": "SSH",
+        "g_svc_PRINTER_RAW_EXPOSED": "Port 9100",
+        "g_win_RDP_EXPOSED": "Setări, Sistem, Desktop la distanță",
+        "g_win_SMB_EXPOSED": "Setări, Rețea și internet, Setări de rețea avansate, Setări avansate de partajare",
+        "g_config": "Deschide fișierul de configurare și schimbă linia evidențiată. Apoi repornește programul.",
+        "g_svc_CAMERA_STREAM_EXPOSED": "RTSP",
+        "g_toggle_TELNET_OPEN": "Caută în setări comutatorul pentru %s și trece-l pe oprit. Dacă ai nevoie de acces de la distanță, folosește SSH în loc.",
+        "g_password_TELNET_OPEN": "Schimbă parola dispozitivului cu una nouă, lungă și unică. Parola veche a trecut necriptată prin rețea, deci s-ar putea să fi fost văzută.",
+        "g_toggle_FTP_CLEARTEXT": "Dacă nu folosești %s, oprește-l din setări. Dacă ai nevoie să muți fișiere, folosește SFTP, care e criptat.",
+        "g_toggle_SNMP_EXPOSED": "Dacă nu folosești %s, oprește-l. Dacă îl folosești, schimbă parola din fabrică „public” cu una nouă.",
+        "g_verify_SNMP_EXPOSED": "Apasă butonul ca să notezi pasul. Acest serviciu merge prin UDP, așa că se confirmă doar la o scanare nouă.",
+        "g_toggle_UPNP_EXPOSED": "Caută comutatorul pentru %s și trece-l pe oprit. Dacă un joc sau o aplicație are nevoie de un port, deschide-l manual doar pe acela.",
+        "g_verify_UPNP_EXPOSED": "Apasă butonul ca să notezi pasul. Acest serviciu merge prin UDP, așa că se confirmă doar la o scanare nouă.",
+        "g_toggle_VNC_EXPOSED": "Pe acel calculator, oprește programul %s (ecranul la distanță) dacă nu-l folosești. Dacă îl folosești, pune-i o parolă lungă și unică.",
+        "g_verify_VNC_EXPOSED": "Dacă ai oprit VNC, apasă butonul și verific. Dacă îl folosești în continuare, rămâne pe listă: e mai sigur să-l folosești doar prin VPN.",
+        "g_toggle_SSH_OPEN": "SSH e sigur în sine. Oprește %s doar dacă nu-l folosești pe acest aparat. Dacă îl folosești, lasă-l pornit și folosește chei SSH în loc de parolă.",
+        "g_verify_SSH_OPEN": "Dacă l-ai oprit, apasă butonul și verific. Dacă îl folosești și l-ai lăsat pornit, e în regulă: e doar o informare și nu scade scorul.",
+        "g_admin_PRINTER_RAW_EXPOSED": "Scrie adresa imprimantei în browser. Se deschide pagina ei de setări.",
+        "g_toggle_PRINTER_RAW_EXPOSED": "Caută printarea directă (RAW, %s). Oprește-o doar dacă imprimanta poate printa și altfel (de exemplu prin IPP sau AirPrint). Dacă după asta nu mai poți printa, pornește-o la loc.",
+        "g_password_PRINTER_RAW_EXPOSED": "Pune o parolă pe pagina de setări a imprimantei, ca să nu le poată schimba oricine.",
+        "g_config_DB_EXPOSED": "Pe calculatorul cu baza de date, deschide fișierul ei de configurare și pune adresa de ascultare 127.0.0.1, apoi repornește baza de date. Numele setării diferă puțin (MySQL, PostgreSQL, Redis, MongoDB). Dacă o aplicație de pe alt calculator are nevoie de ea, nu face asta: lasă în firewall doar acel calculator.",
+        "g_config_MQTT_EXPOSED": "În setările brokerului MQTT (de exemplu Mosquitto), oprește accesul fără cont și cere nume și parolă, apoi repornește brokerul. Dispozitivele tale vor avea nevoie de numele și parola noi.",
+        "g_verify_MQTT_EXPOSED": "Apasă butonul ca să notezi pasul. Cu parolă, portul rămâne deschis, deci o să vezi „răspunde încă”. Problema dispare din scanare doar dacă lași în firewall numai dispozitivele tale.",
+        "g_password_CAMERA_STREAM_EXPOSED": "Schimbă parola din fabrică a camerei cu una lungă și unică. Acesta e cel mai important pas.",
+        "g_toggle_CAMERA_STREAM_EXPOSED": "Dacă aplicația camerei merge și fără, oprește transmisia directă (%s). Dacă aplicația nu mai arată imaginea, pornește-o la loc.",
+        "g_verify_CAMERA_STREAM_EXPOSED": "Dacă ai oprit transmisia directă, apasă butonul și verific. Dacă ai păstrat-o, parola nouă te protejează, dar camera rămâne pe listă.",
+        "g_verify_OUTDATED_SERVICE": "Apasă butonul ca să notezi pasul. Programul rămâne pornit, deci versiunea nouă se confirmă doar la o scanare nouă.",
+        "g_password_HTTP_ADMIN_CLEARTEXT": "Schimbă parola din fabrică cu una lungă și unică. Oprește și administrarea din internet, dacă nu ai nevoie de ea.",
+        "g_verify_HTTP_ADMIN_CLEARTEXT": "Apasă butonul ca să notezi pasul. Multe aparate lasă pagina veche (http) deschisă și după HTTPS, deci confirmarea poate veni doar la o scanare nouă.",
+        "g_windows_RDP_EXPOSED": "Dacă nu folosești Desktop la distanță, oprește-l: %s, pe Dezactivat. Dacă îl folosești, lasă-l pornit, cu parole lungi, și nu-l deschide spre internet.",
+        "g_verify_RDP_EXPOSED": "Dacă l-ai oprit, apasă butonul și verific. Dacă îl folosești în continuare, e normal să rămână pe listă.",
+        "g_windows_SMB_EXPOSED": "Dacă nu partajezi fișiere, oprește partajarea: %s, apoi „Partajare fișiere și imprimante” pe Dezactivat. Dacă partajezi, lasă-o pornită și cere parolă.",
+        "g_verify_SMB_EXPOSED": "Dacă ai oprit partajarea, apasă butonul și verific. Dacă partajezi în continuare, e normal să rămână pe listă.",
+        "g_routerlist_UNKNOWN_DEVICE": "Intră în router și caută în lista aparatelor conectate adresa %s. Telefoanele și laptopurile noi își ascund adresa reală, deci verifică întâi dacă nu e unul de-al tău.",
+        "g_password_UNKNOWN_DEVICE": "Dacă aparatul NU e al tău, schimbă parola Wi-Fi din router; apoi reconectează aparatele tale cu parola nouă. Dacă e al tău, sari peste acest pas.",
+        "g_verify_UNKNOWN_DEVICE": "Apasă butonul ca să notezi pasul. Aici nu e un port de închis, deci se confirmă la o scanare nouă.",
     },
     "en": {
         "app_title": "Your network, simply explained",
@@ -256,7 +382,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "nav_new_alerts_sr": "%s new alerts",
         "monitor_title": "Network monitor",
         "monitor_hint": "What SafeEel noticed while watching the network, newest first.",
-        "monitor_empty": "The monitor has not run yet. Start it with:",
+        "monitor_empty": "The monitor has not run yet. Until then, below you can see what changed between the scans saved in History.",
         "monitor_none": "The monitor is running but has not noticed anything new.",
         "scans_changes_title": "Changes between saved scans",
         "ev_NEW_DEVICE": "New device",
@@ -281,6 +407,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "scale_title": "How to read the score",
         "score_formula": "Score = 100 minus the points of the problems found (minimum 0).",
         "facts_devices": "Devices scanned",
+        "facts_problems": "Problems",
         "see_inventory": "See all devices",
         "devices_all": "All devices (%s)",
         "devices_order": "Ordered by risk, most dangerous first",
@@ -303,10 +430,12 @@ TEXTS: dict[str, dict[str, str]] = {
         "ask_send": "Send the question",
         "j_bad": "To check: %s",
         "j_good": "Improvements: %s",
+        "j_good_1": "Improvements: %s",
         "j_info": "Just so you know: %s",
+        "j_info_1": "Just so you know: %s",
         "journal_empty_title": "No alerts yet",
         "go_overview": "Go to the Home page",
-        "hist_change": "Compared with previous",
+        "hist_change": "Compared with the previous one",
         "hist_up": "Went up",
         "hist_down": "Went down",
         "hist_same": "Same",
@@ -344,6 +473,13 @@ TEXTS: dict[str, dict[str, str]] = {
         "score_after": "The scan gave %s. The score above is recalculated without the %s problems checked as fixed.",
         "verify_note": "When you press “Check”, SafeEel knocks once on the problem's door. The official score only changes after a new scan.",
         "verify_ok": "Proof: I knocked once on door %s of %s and nobody answered, so the step is confirmed. (1 connection, nothing else sent.)",
+        "score_newer": "See the newer scan →",
+        "score_after_progress": "Progress after the confirmed fixes (%s)",
+        "score_band_still": "Still: %s",
+        "score_band_now": "Now: %s",
+        "score_left_one": "one problem left to fix",
+        "score_left_many": "%s problems left to fix",
+        "score_newer_title": "Newer scan of this network: %s (score %s)",
         "verify_open": "Port %s on %s still answers, so the problem is still there. The step stays to do.",
         "verify_version": "Port %s on %s still answers. If you updated the program, the new version only shows in a new scan.",
         "verify_udp": "Port %s on %s can't be checked with a simple knock on the door (it is a different kind, UDP). I noted it as ticked; a new scan confirms it.",
@@ -354,6 +490,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "step_on": "For: %s on %s, %s",
         "step_done_btn": "I did this, check it",
         "step_reset": "Start the steps again",
+        "step_how": "How is a step checked?",
         "steps_all_done": "You went through every step for this scan.",
         "steps_all_done_hint": "Confirmed: %s. Ticked by you: %s (a new scan confirms them).",
         "inv_title": "What is connected to my network?",
@@ -369,11 +506,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "report_for": "For the IT provider or the person who looks after the network.",
         "report_generated": "Generated on",
         "report_print": "Print or save as PDF",
-        "report_download": "Download the report (HTML)",
         "report_back": "Back",
         "report_summary": "Summary",
         "report_devices": "Devices",
         "report_problems": "Problems",
+        "report_problem_one": "problem",
         "report_problems_detail": "Problems and repair steps, highest risk first",
         "report_device": "Device",
         "report_none": "No problems from the catalog were found.",
@@ -412,7 +549,48 @@ TEXTS: dict[str, dict[str, str]] = {
         "scan_file": "File",
         "scan_date": "Scan date",
         "choose_scan": "Choose scan",
+        "shown_scan": "Scan shown",
+        "devices_one": "1 device",
+        "devices_many": "%s devices",
         "show": "Show",
+        "summary_label": "In short",
+        "history_owner": "History for user %s on this computer.",
+        "history_owner_unknown": "History on this computer.",
+        "history_empty_owner": "Expecting to see scans here? You may be signed in as a different Windows user, or you started the app from a different folder. Your data isn't lost: it stays in that user's or that folder's history.",
+        "history_file": "Looking for the history in: %s",
+        "recheck_title": "Fixed something? Check again.",
+        "recheck_body": "Run a new scan or upload a new file. I'll show you the new score and what you closed.",
+        "recheck_upload_label": "New scan file (.xml)",
+        "recheck_upload_btn": "Check again",
+        "recheck_newer": "I already found a newer scan: %s.",
+        "recheck_compare_btn": "See before and after",
+        "recheck_how": "How do I run a new scan?",
+        "recheck_how_body": "The easiest way: “Scan now”, at the bottom of the Home page (with the confirmation ticked). For a technician, from a terminal on this computer, with the command below; then upload the file it made here.",
+        "upload_failed": "I couldn't use the file you chose.",
+        "upload_err_empty": "You didn't choose a file.",
+        "upload_err_older": "The file you chose is older than the scan I compare it with. Choose the scan made after your fixes.",
+        "proof_title": "Proof: before and after",
+        "proof_before": "Before",
+        "proof_after": "After",
+        "proof_better": "Better",
+        "proof_worse": "Worse",
+        "proof_same": "The same",
+        "proof_resolved": "Fixed (%s)",
+        "proof_remaining": "Still open (%s)",
+        "proof_new": "New problems (%s)",
+        "proof_nothing": "Nothing here.",
+        "proof_files": "Before: %s · After: %s",
+        "name_title": "Device name",
+        "name_give": "Give it a name",
+        "name_change": "Rename",
+        "name_hint": "Give it a name so you can recognise it easily, for example “Living room camera”. The name stays on this computer only.",
+        "name_label": "Name (at most 40 characters)",
+        "name_placeholder": "for example: Living room camera",
+        "name_save": "Save name",
+        "name_clear": "Remove name",
+        "name_saved": "Name saved.",
+        "name_cleared": "Name removed.",
+        "name_too_long": "That name is too long. Use at most 40 characters.",
         "worst_title": "Most dangerous device",
         "worst_problem": "Most serious problem",
         "do_first": "Do this first:",
@@ -446,9 +624,21 @@ TEXTS: dict[str, dict[str, str]] = {
         "findings_title": "Problems",
         "what_it_means": "What it means",
         "how_to_fix": "How to fix it",
+        "dev_steps_more": "%s more steps",
+        "dev_steps_more_one": "One more step",
+        "code_label": "Code",
         "standards_title": "Security standards",
         "back": "Back to the Home page",
         "history_title": "Your network's progress",
+        "back_devices": "Back to Devices",
+        "back_alerts": "Back to Alerts",
+        "this_scan": "This scan",
+        "compare_details": "All the details: problems, ports and devices",
+        "other_network_title": "The previous scan looks like another network",
+        "other_network_body": "It has no device in common with this one, so the list below shows the difference between two networks more than what changed for you.",
+        "journal_more": "Show %s more changes",
+        "monitor_how": "How to start it (advanced)",
+        "tech_details": "Technical details (for whoever helps you with the network)",
         "trend_title": "Standard score over time",
         "trend_up": "The score went up from %s to %s over the last %s scans.",
         "trend_down": "The score went down from %s to %s over the last %s scans.",
@@ -460,7 +650,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "history_delete_confirm_title": "Delete all history?",
         "history_delete_confirm_body": "Every scan saved on this computer will be permanently deleted. This cannot be undone.",
         "history_delete_yes": "Yes, delete everything",
-        "history_delete_what": "This deletes: scans saved to history, ticked steps, monitor alerts, attempts to get in and names announced by devices.",
+        "history_delete_what": "This deletes: scans saved to history, ticked steps, accepted risks, the names you gave devices, monitor alerts, attempts to get in and names announced by devices.",
         "history_delete_not": "It does not delete the raw scan files (in the scans/ folder), which may contain real MAC addresses. If you want them gone too, delete the scans/ folder by hand.",
         "history_delete_no": "No, go back",
         "history_deleted": "History deleted.",
@@ -494,6 +684,68 @@ TEXTS: dict[str, dict[str, str]] = {
         "sev_csv_medium": "medium",
         "sev_csv_low": "low",
         "sev_csv_info": "info",
+        "g_start": "Start fixing it",
+        "g_start_hint": "We hold your hand, step by step, with small animations.",
+        "g_title": "Step-by-step fix",
+        "g_close": "Close",
+        "g_back": "Back",
+        "g_next": "Next",
+        "g_count": "Step %s of %s",
+        "g_note": "The menus on your device may look a little different. The idea is the same.",
+        "g_net_main": "Home network",
+        "g_net_guest": "Guest network",
+        "g_find": "Find %s. Its address on the network is %s.",
+        "g_label": "Turn the device around and look at the label on the back. It has the admin address and usually the factory password. Write them down.",
+        "g_admin": "Type the address in your browser and sign in with the name and password from the label. If you already changed the password, use yours.",
+        "g_toggle": "Look in the settings for the switch for %s and turn it off.",
+        "g_update": "Find the Update button and press it. Wait until it finishes and the device starts again. If there are no more updates, turn the service off or replace the device.",
+        "g_password": "Pick a new password that is long and hard to guess, and save it. Do not reuse it from another account.",
+        "g_https": "In the settings, turn on secure access (HTTPS) and only use the address that starts with https. Some devices don't have this option; then go to the next step.",
+        "g_windows": "Open the Windows settings: %s. Turn the option off.",
+        "g_guest": "If it is one of your devices (a bulb, a plug, a camera), give it a name in the router and move it to the guest network.",
+        "g_routerlist": "Sign in to your router and find the list of connected devices. See if you recognise the one with the address %s.",
+        "g_verify": "Done! Press the button and I will check that the door is closed.",
+        "g_svc_TELNET_OPEN": "Telnet",
+        "g_svc_FTP_CLEARTEXT": "FTP",
+        "g_svc_SNMP_EXPOSED": "SNMP",
+        "g_svc_UPNP_EXPOSED": "UPnP",
+        "g_svc_VNC_EXPOSED": "VNC",
+        "g_svc_SSH_OPEN": "SSH",
+        "g_svc_PRINTER_RAW_EXPOSED": "Port 9100",
+        "g_win_RDP_EXPOSED": "Settings, System, Remote Desktop",
+        "g_win_SMB_EXPOSED": "Settings, Network and internet, Advanced network settings, Advanced sharing settings",
+        "g_config": "Open the configuration file and change the highlighted line. Then restart the program.",
+        "g_svc_CAMERA_STREAM_EXPOSED": "RTSP",
+        "g_toggle_TELNET_OPEN": "Look in the settings for the switch for %s and turn it off. If you need remote access, use SSH instead.",
+        "g_password_TELNET_OPEN": "Change the device password to a new, long, unique one. The old one crossed the network unencrypted, so someone may have seen it.",
+        "g_toggle_FTP_CLEARTEXT": "If you don't use %s, turn it off in the settings. If you need to move files, use SFTP, which is encrypted.",
+        "g_toggle_SNMP_EXPOSED": "If you don't use %s, turn it off. If you use it, change the factory password “public” to a new one.",
+        "g_verify_SNMP_EXPOSED": "Press the button to note the step. This service uses UDP, so it is only confirmed by a new scan.",
+        "g_toggle_UPNP_EXPOSED": "Find the switch for %s and turn it off. If a game or an app needs a port, open only that one by hand.",
+        "g_verify_UPNP_EXPOSED": "Press the button to note the step. This service uses UDP, so it is only confirmed by a new scan.",
+        "g_toggle_VNC_EXPOSED": "On that computer, stop the %s program (remote screen) if you don't use it. If you use it, give it a long, unique password.",
+        "g_verify_VNC_EXPOSED": "If you stopped VNC, press the button and I will check. If you still use it, it stays on the list: it is safer to use it only through a VPN.",
+        "g_toggle_SSH_OPEN": "SSH is safe by itself. Turn %s off only if you don't use it on this device. If you use it, leave it on and use SSH keys instead of a password.",
+        "g_verify_SSH_OPEN": "If you turned it off, press the button and I will check. If you use it and left it on, that's fine: it is only a notice and doesn't lower the score.",
+        "g_admin_PRINTER_RAW_EXPOSED": "Type the printer's address in your browser. Its settings page opens.",
+        "g_toggle_PRINTER_RAW_EXPOSED": "Find direct printing (RAW, %s). Turn it off only if the printer can also print another way (for example IPP or AirPrint). If you can't print afterwards, turn it back on.",
+        "g_password_PRINTER_RAW_EXPOSED": "Put a password on the printer's settings page, so not just anyone can change them.",
+        "g_config_DB_EXPOSED": "On the computer with the database, open its configuration file, set the listening address to 127.0.0.1, then restart the database. The setting's name differs a little (MySQL, PostgreSQL, Redis, MongoDB). If an app on another computer needs it, don't do this: allow only that computer in the firewall.",
+        "g_config_MQTT_EXPOSED": "In the MQTT broker settings (for example Mosquitto), turn off access without an account and require a name and password, then restart the broker. Your devices will need the new name and password.",
+        "g_verify_MQTT_EXPOSED": "Press the button to note the step. With a password the port stays open, so you'll see “still answers”. The problem leaves the scan only if the firewall lets in just your devices.",
+        "g_password_CAMERA_STREAM_EXPOSED": "Change the camera's factory password to a long, unique one. This is the most important step.",
+        "g_toggle_CAMERA_STREAM_EXPOSED": "If the camera's app works without it, turn off direct streaming (%s). If the app no longer shows the picture, turn it back on.",
+        "g_verify_CAMERA_STREAM_EXPOSED": "If you turned off direct streaming, press the button and I will check. If you kept it, the new password protects you, but the camera stays on the list.",
+        "g_verify_OUTDATED_SERVICE": "Press the button to note the step. The program stays on, so the new version is only confirmed by a new scan.",
+        "g_password_HTTP_ADMIN_CLEARTEXT": "Change the factory password to a long, unique one. Also turn off admin from the internet if you don't need it.",
+        "g_verify_HTTP_ADMIN_CLEARTEXT": "Press the button to note the step. Many devices keep the old (http) page open even after HTTPS, so confirmation may only come with a new scan.",
+        "g_windows_RDP_EXPOSED": "If you don't use Remote Desktop, turn it off: %s, set to Off. If you use it, leave it on, with long passwords, and never open it to the internet.",
+        "g_verify_RDP_EXPOSED": "If you turned it off, press the button and I will check. If you still use it, it is normal for it to stay on the list.",
+        "g_windows_SMB_EXPOSED": "If you don't share files, turn sharing off: %s, then “File and printer sharing” to Off. If you share, leave it on and require a password.",
+        "g_verify_SMB_EXPOSED": "If you turned sharing off, press the button and I will check. If you still share, it is normal for it to stay on the list.",
+        "g_routerlist_UNKNOWN_DEVICE": "Sign in to your router and look for the address %s in the list of connected devices. New phones and laptops hide their real address, so first check it isn't one of yours.",
+        "g_password_UNKNOWN_DEVICE": "If the device is NOT yours, change the Wi-Fi password in the router; then reconnect your devices with the new password. If it is yours, skip this step.",
+        "g_verify_UNKNOWN_DEVICE": "Press the button to note the step. There is no port to close here, so a new scan confirms it.",
     },
 }
 
@@ -612,6 +864,45 @@ ALERT_TEXTS: dict[str, dict[str, str]] = {
 }
 
 
+# Textele scurte din Jurnal, unde alertele sunt grupate sub dispozitiv (numele și IP-ul apar o singură dată).
+ALERT_SHORT: dict[str, dict[str, str]] = {
+    "ro": {
+        "NEW_DEVICE": "A apărut în rețea (dispozitiv nou).",
+        "DEVICE_GONE": "Nu mai apare în rețea.",
+        "PORT_OPENED": "Port nou deschis: {port}.",
+        "PORT_CLOSED": "Port închis: {port}.",
+        "FINDING_NEW": "Problemă nouă: „{name}”.",
+        "FINDING_RESOLVED": "Rezolvată: „{name}”.",
+    },
+    "en": {
+        "NEW_DEVICE": "Appeared on the network (new device).",
+        "DEVICE_GONE": "No longer on the network.",
+        "PORT_OPENED": "New port open: {port}.",
+        "PORT_CLOSED": "Port closed: {port}.",
+        "FINDING_NEW": "New problem: “{name}”.",
+        "FINDING_RESOLVED": "Fixed: “{name}”.",
+    },
+}
+
+DEVICE_TYPES_THE: dict[str, dict[str, str]] = {
+    "ro": {
+        "router": "routerul", "camera": "camera", "printer": "imprimanta", "tv": "televizorul",
+        "pc_windows": "calculatorul Windows", "server": "serverul", "phone_laptop": "telefonul sau laptopul",
+        "iot": "dispozitivul inteligent", "unknown": "dispozitivul necunoscut",
+    },
+    "en": {
+        "router": "the router", "camera": "the camera", "printer": "the printer", "tv": "the TV",
+        "pc_windows": "the Windows computer", "server": "the server", "phone_laptop": "the phone or laptop",
+        "iot": "the smart device", "unknown": "the unknown device",
+    },
+}
+
+
+def device_type_the(lang: str, device_type: str | None) -> str:
+    types = DEVICE_TYPES_THE[normalize_lang(lang)]
+    return types.get(device_type or "unknown", types["unknown"])
+
+
 def code_name(lang: str, code: str | None) -> str:
     return CODE_NAMES[normalize_lang(lang)].get(code or "", code or "")
 
@@ -649,12 +940,133 @@ def count_phrase(lang: str, n: int, key_one: str, key_many: str) -> str:
     return template % num
 
 
-def alert_text(lang: str, alert) -> str:
-    """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template)."""
+# Propoziția-rezumat din capul paginii. Numărătoarea e scrisă cu grijă pentru singular/plural (în română,
+# de la 20 în sus apare „de”: „20 de probleme”).
+SUMMARY_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "serious_one": "o problemă gravă", "serious_many": "probleme grave",
+        "minor_only_one": "o problemă mai mică", "minor_only_many": "probleme mai mici",
+        "minor_one": "una mai mică", "minor_many": "mai mici",
+        "has": "Rețeaua ta are {counts}.",
+        "both": "{serious} și {minor}",
+        "start": "Începe cu {device}: {step}",
+        "start_no_step": "Începe cu {device}.",
+        "clean": "Nu am găsit probleme. Rețeaua ta arată bine.",
+        "info": "Nu am găsit probleme. Rețeaua ta arată bine. Am observat doar o informare („{name}”), care nu scade scorul.",
+        "fixed": "Ai rezolvat toate problemele pe care le-am găsit. Bravo!",
+        "error": "Nu pot spune nimic despre rețea din acest fișier. {message}",
+    },
+    "en": {
+        "serious_one": "1 serious problem", "serious_many": "serious problems",
+        "minor_only_one": "1 smaller problem", "minor_only_many": "smaller problems",
+        "minor_one": "1 smaller one", "minor_many": "smaller ones",
+        "has": "Your network has {counts}.",
+        "both": "{serious} and {minor}",
+        "start": "Start with {device}: {step}",
+        "start_no_step": "Start with {device}.",
+        "clean": "I didn't find any problems. Your network looks good.",
+        "info": "I didn't find any problems. Your network looks good. I only noticed one piece of information (“{name}”), which doesn't lower the score.",
+        "fixed": "You fixed all the problems I found. Well done!",
+        "error": "I can't tell anything about the network from this file. {message}",
+    },
+}
+
+
+# Fraza de sub scor în cardul „Dovada”: câte „uși” s-au închis, încotro a mers scorul, ce a apărut nou.
+PROOF_TEXTS: dict[str, dict[str, str]] = {
+    "ro": {
+        "closed_none": "Nicio ușă închisă încă.", "closed_one": "Ai închis o ușă.", "closed_many": "uși",
+        "closed_prefix": "Ai închis",
+        "up": "Scorul a urcat de la {a} la {b}.", "down": "Scorul a coborât de la {a} la {b}.",
+        "same": "Scorul a rămas {a}.",
+        "new_one": "A apărut și o problemă nouă.", "new_many": "Au apărut și {n} probleme noi.",
+    },
+    "en": {
+        "closed_none": "No doors closed yet.", "closed_one": "You closed 1 door.", "closed_many": "doors",
+        "closed_prefix": "You closed",
+        "up": "The score went up from {a} to {b}.", "down": "The score went down from {a} to {b}.",
+        "same": "The score stayed at {a}.",
+        "new_one": "One new problem also appeared.", "new_many": "{n} new problems also appeared.",
+    },
+}
+
+
+def proof_sentence(lang: str, proof) -> str:
+    """Fraza cardului „Dovada”: ce ai închis și ce s-a întâmplat cu scorul. Text simplu, fără date din scanare."""
     lang = normalize_lang(lang)
-    dev = device_type_label(lang, alert.device_type)
+    tx = PROOF_TEXTS[lang]
+    n = proof.closed
+    if n == 0:
+        closed = tx["closed_none"]
+    elif n == 1:
+        closed = tx["closed_one"]
+    else:
+        de = "de " if lang == "ro" and (n % 100 == 0 or n % 100 >= 20) else ""   # „20 de uși”
+        closed = f"{tx['closed_prefix']} {n} {de}{tx['closed_many']}."
+    score = tx[proof.direction].format(a=proof.score_before, b=proof.score_after)
+    parts = [closed, score]
+    if len(proof.new) == 1:
+        parts.append(tx["new_one"])
+    elif proof.new:
+        parts.append(tx["new_many"].format(n=len(proof.new)))
+    return " ".join(parts)
+
+
+def _count(lang: str, n: int, one: str, many: str) -> str:
+    """„o problemă gravă” / „3 probleme grave” / (RO) „20 de probleme grave”; `one` e deja complet."""
+    if n == 1:
+        return one
+    de = "de " if lang == "ro" and (n % 100 == 0 or n % 100 >= 20) and many.startswith("probleme") else ""
+    return f"{n} {de}{many}"
+
+
+def _sentence_end(text: str) -> str:
+    text = text.strip()
+    return text if text.endswith((".", "!", "?")) else text + "."
+
+
+def summary_sentence(lang: str, summary, device_label: str | None = None, step: str | None = None,
+                     error_text: str | None = None) -> str:
+    """Fraza mare din capul paginii. Rezultatul e text simplu: numele dispozitivului poate fi nesigur și se
+    escapează în template (niciodată |safe)."""
+    lang = normalize_lang(lang)
+    tx = SUMMARY_TEXTS[lang]
+    kind = summary.kind
+    if kind == "error":
+        return tx["error"].format(message=error_text or error_message(lang, summary.error_code))
+    if kind == "info":
+        return tx["info"].format(name=code_name(lang, summary.finding.code if summary.finding else None))
+    if kind in ("clean", "fixed"):
+        return tx[kind]
+    serious, minor = summary.serious, summary.minor
+    if serious and minor:
+        counts = tx["both"].format(serious=_count(lang, serious, tx["serious_one"], tx["serious_many"]),
+                                   minor=_count(lang, minor, tx["minor_one"], tx["minor_many"]))
+    elif serious:
+        counts = _count(lang, serious, tx["serious_one"], tx["serious_many"])
+    else:
+        counts = _count(lang, minor, tx["minor_only_one"], tx["minor_only_many"])
+    sentence = tx["has"].format(counts=counts)
+    if not device_label:
+        return sentence
+    if step:
+        return f"{sentence} " + tx["start"].format(device=device_label, step=_sentence_end(step))
+    return f"{sentence} " + tx["start_no_step"].format(device=device_label)
+
+
+def alert_text(lang: str, alert, names: dict[str, str] | None = None, short: bool = False) -> str:
+    """Propoziția simplă pentru o alertă. Rezultatul e text simplu (se escapează în template).
+    `names`: numele date de utilizator, pe device_id; când există, înlocuiește tipul dispozitivului."""
+    lang = normalize_lang(lang)
+    dev = (names or {}).get(alert.device_id) or device_type_label(lang, alert.device_type)
     port = f"{alert.port}/{alert.proto}" if alert.proto else (str(alert.port) if alert.port is not None else "")
-    return ALERT_TEXTS[lang][alert.kind].format(dev=dev, ip=alert.ip, port=port, name=code_name(lang, alert.code))
+    texts = ALERT_SHORT if short else ALERT_TEXTS
+    return texts[lang][alert.kind].format(dev=dev, ip=alert.ip, port=port, name=code_name(lang, alert.code))
+
+
+def alert_device(lang: str, alert, names: dict[str, str] | None = None) -> str:
+    """Numele dispozitivului unei alerte (dat de utilizator sau tipul), pentru antetul grupului din Jurnal."""
+    return (names or {}).get(alert.device_id) or device_type_label(normalize_lang(lang), alert.device_type)
 
 
 MONTHS = {
@@ -680,6 +1092,9 @@ LIVE_TEXTS: dict[str, dict[str, str]] = {
         "live_explain_2": "Porturile riscante (Telnet, FTP, baze de date, camere, desktop la distanță…): verificate în fiecare minut.",
         "live_explain_3": "Ușa-capcană (doar dacă o bifezi la pornire): alertă pe loc când cineva din rețea încearcă să intre.",
         "live_explain_safe": "Nimic nu iese din hotspot: doar conexiuni scurte spre dispozitivele din rețeaua ta, fără parole, fără să citim traficul cuiva și fără MAC-uri complete.",
+        "live_off_short": "Vezi pe loc cine intră în hotspot, ce porturi riscante se deschid și dacă încearcă cineva să intre.",
+        "live_off_when": "Merge cât timp laptopul e pe hotspotul echipei și aplicația e deschisă.",
+        "live_how": "Cum funcționează?",
         "live_paused_starting": "Verific rețeaua…",
         "live_paused_hint": "Protecția pornește singură înapoi când laptopul e din nou pe hotspotul echipei (și doar atunci atinge rețeaua).",
         "live_where": "Pe %s (%s) · laptopul tău: %s",
@@ -717,6 +1132,7 @@ LIVE_TEXTS: dict[str, dict[str, str]] = {
         "scan_waiting": "Aștept permisiunea de administrator…",
         "scan_waiting_hint": "Dacă nu vezi fereastra, caut-o în bara de jos a ecranului (iconița cu scut).",
         "scan_denied": "Nu ai dat permisiunea, așa că scanarea nu a pornit.",
+        "scan_auth_failed": "Parola de administrator n-a fost acceptată (sau fereastra n-a putut fi afișată), așa că scanarea nu a pornit. Încearcă din nou.",
         "scan_launch_failed": "Scanarea nu a pornit. Încearcă din nou. (Pentru tehnician: python -m netscan scan --confirm)",
         "scan_running": "Scanez rețeaua",
         "scan_phase_discover": "caut dispozitivele",
@@ -746,6 +1162,9 @@ LIVE_TEXTS: dict[str, dict[str, str]] = {
         "live_explain_2": "Risky ports (Telnet, FTP, databases, cameras, remote desktop…): checked every minute.",
         "live_explain_3": "Trap door (only if you tick it when starting): an alert right away when someone on the network tries to get in.",
         "live_explain_safe": "Nothing leaves the hotspot: only short connections to the devices on your network, no passwords, no reading anyone's traffic and no full MAC addresses.",
+        "live_off_short": "See right away who joins the hotspot, which risky ports open and whether someone tries to get in.",
+        "live_off_when": "It runs while the laptop is on the team hotspot and the app is open.",
+        "live_how": "How does it work?",
         "live_paused_starting": "Checking the network…",
         "live_paused_hint": "Protection starts again by itself when the laptop is back on the team hotspot (and only then touches the network).",
         "live_where": "On %s (%s) · your laptop: %s",
@@ -783,6 +1202,7 @@ LIVE_TEXTS: dict[str, dict[str, str]] = {
         "scan_waiting": "Waiting for administrator permission…",
         "scan_waiting_hint": "If you don't see the window, look for it in the bar at the bottom of the screen (the shield icon).",
         "scan_denied": "You didn't give permission, so the scan didn't start.",
+        "scan_auth_failed": "The administrator password wasn't accepted (or the window couldn't be shown), so the scan didn't start. Try again.",
         "scan_launch_failed": "The scan didn't start. Please try again. (For a technician: python -m netscan scan --confirm)",
         "scan_running": "Scanning the network",
         "scan_phase_discover": "finding the devices",
@@ -1012,7 +1432,7 @@ HOME_TEXTS: dict[str, dict[str, str]] = {
         "delete_raw_done": "I also deleted the scan files.",
         "trap_note": "The trap door stays off unless you tick it when starting. When it is on, it only notes who tried to get in (the address and the time) and doesn't read anything that is typed.",
         "new_words": "New words",
-        "harm_label": "What a bad actor could do:",
+        "harm_label": "What an attacker could do:",
     },
 }
 for _lang in LANGS:
@@ -1118,6 +1538,8 @@ TRUST_TEXTS: dict[str, dict[str, str]] = {
         "trust_verified": "%s pași confirmați ca reparați",
         "trust_accepted_one": "%s risc acceptat de tine",
         "trust_accepted": "%s riscuri acceptate de tine",
+        "trust_names_one": "%s nume dat de tine unui dispozitiv",
+        "trust_names": "%s nume date de tine dispozitivelor",
         "trust_alerts_one": "%s alertă a protecției live",
         "trust_alerts": "%s alerte ale protecției live",
         "trust_trap_one": "%s încercare prinsă de ușa-capcană",
@@ -1174,6 +1596,8 @@ TRUST_TEXTS: dict[str, dict[str, str]] = {
         "trust_verified": "%s steps confirmed as fixed",
         "trust_accepted_one": "%s risk you accepted",
         "trust_accepted": "%s risks you accepted",
+        "trust_names_one": "%s name you gave a device",
+        "trust_names": "%s names you gave devices",
         "trust_alerts_one": "%s live protection alert",
         "trust_alerts": "%s live protection alerts",
         "trust_trap_one": "%s attempt caught by the trap door",

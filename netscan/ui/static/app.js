@@ -4,6 +4,8 @@
 (() => {
   "use strict";
   if (!window.fetch || !window.DOMParser) return;
+  // De aici, alegerea scanării se aplică singură: butonul „Arată” rămâne doar pentru varianta fără JS.
+  document.documentElement.classList.add("js");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Fiecare înlocuire a panoului live (după un clic al utilizatorului) mărește contorul. O reîmprospătare automată
@@ -23,6 +25,12 @@
     return document.querySelector(fallback) || document.getElementById("main");
   };
 
+  // Butonul asistentului: întreg sus pe pagină, doar Volt după ce derulezi (nu mai acoperă cardurile).
+  // Îl căutăm la fiecare eveniment, pentru că actualizările parțiale îl înlocuiesc.
+  const compactFab = () => document.querySelector(".ai-fab")?.classList.toggle("is-compact", window.scrollY > 120);
+  window.addEventListener("scroll", compactFab, { passive: true });
+  document.addEventListener("DOMContentLoaded", compactFab);
+
   async function swap(url, init, selectors, focusSel, keepUrl) {
     if (selectors.includes("#live")) liveSeq += 1;
     let res;
@@ -41,6 +49,7 @@
         else if (now && !next) now.remove(); // de ex. o scanare ilizibilă nu are asistent
       }
       if (doc.title) document.title = doc.title;
+      compactFab();   // butonul asistentului poate fi unul nou, înlocuit mai sus
     };
     // Focusul merge pe ce s-a schimbat (de ex. pasul nou), ca tastatura și cititorul de ecran să-l găsească.
     const focus = () => {

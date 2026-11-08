@@ -1,14 +1,44 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block with context %}
+{% from "_macros.html" import harm_line, sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block with context %}
 {% block title %}{{ device_name(d.host) }} {{ d.host.ip }} · SafeEel{% endblock %}
 {% block content %}
+{# Înapoi de unde ai venit: din „Dispozitive” sau de pe pagina Acasă #}
+{% if from_devices %}
+<p class="back"><a href="{{ url_for('inventory', **scan_ref) }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back_devices') }}</a></p>
+{% else %}
 <p class="back"><a href="{{ url_for('overview', **scan_ref) }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back') }}</a></p>
+{% endif %}
 
 <header class="device-page-head">
   <h1>{{ device_title(d.host) }}</h1>
   {{ announced_sub(d.host) }}
   <p class="device-ip muted">{{ T('ip') }}: <span class="mono" translate="no">{{ d.host.ip }}</span></p>
 </header>
+
+{# Numele dat de utilizator: salvat local, pe device_id. La cerere (se deschide singur după salvare / eroare).
+   Fără JavaScript merge la fel (formular obișnuit, <details> nativ). #}
+<details class="name-box"{% if name_status %} open{% endif %}>
+  <summary><svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>{{ T('name_change') if custom_name(d.host.device_id) else T('name_give') }}</summary>
+  {% if name_status %}
+    <p class="name-msg name-msg-{{ 'bad' if name_status == 'too_long' else 'good' }}" role="{{ 'alert' if name_status == 'too_long' else 'status' }}">
+      <svg class="icon" aria-hidden="true"><use href="#i-{{ 'medium' if name_status == 'too_long' else 'good' }}"/></svg>{{ T('name_' ~ name_status) }}
+    </p>
+  {% endif %}
+  <p class="muted">{{ T('name_hint') }}</p>
+  <form method="post" action="{{ url_for('device_name_save', device_id=d.host.device_id) }}" class="name-form">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="file" value="{{ scan_ref.file }}">
+    {% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}
+    {% if from_devices %}<input type="hidden" name="from" value="devices">{% endif %}
+    <label for="device-name">{{ T('name_label') }}</label>
+    <div class="name-row">
+      <input id="device-name" name="name" type="text" maxlength="{{ name_max }}" autocomplete="off"
+             value="{{ custom_name(d.host.device_id) or '' }}" placeholder="{{ T('name_placeholder') }}">
+      <button type="submit" class="button-secondary">{{ T('name_save') }}</button>
+      {% if custom_name(d.host.device_id) %}<button type="submit" name="action" value="clear" class="button-link">{{ T('name_clear') }}</button>{% endif %}
+    </div>
+  </form>
+</details>
 
 {# Pe scurt: câte probleme, cel mai mare risc (severitățile motorului) și primul pas ghidat #}
 <section class="device-summary card" aria-labelledby="sum-h">
@@ -41,14 +71,25 @@
   <h2 id="f-h">{{ T('findings_title') }}</h2>
   {% for f in d.findings %}
     {% set ex = explain(f.code) %}
-    <article class="problem" id="p-{{ loop.index }}" aria-labelledby="p-{{ loop.index }}-h">
-      <h3 id="p-{{ loop.index }}-h">{{ sev(f.severity) }} <span>{{ code_name(f.code) }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
+    <article class="problem card" id="p-{{ loop.index }}" aria-labelledby="p-{{ loop.index }}-h">
+      <div class="problem-head">
+        <h3 id="p-{{ loop.index }}-h">{{ sev(f.severity) }}<span class="problem-name">{{ code_name(f.code) }}</span></h3>
+        <p class="problem-meta">{{ port_label(f) }}</p>
+      </div>
       {% if f.key() in fixed_keys %}<p class="badges"><span class="tag tag-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('fixed_tag') }}</span></p>
       {% elif f.key() in accepted_keys %}<p class="badges"><span class="tag">{{ T('accepted_tag') }}</span></p>{% endif %}
       <p class="problem-text">{{ ex.text }}</p>
-      {% set ev = eavesdrop(f.code) %}{% if ev %}{{ eavesdrop_block(ev) }}{% endif %}
+      {{ harm_line(f.code) }}
       <h4>{{ T('how_to_fix') }}</h4>
-      <ol class="steps">{% for s in ex.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+      {# Primul pas vizibil; restul la cerere #}
+      <ol class="steps"><li>{{ ex.steps[0] }}</li></ol>
+      {% if ex.steps|length > 1 %}
+      <details class="steps-more">
+        <summary>{{ T('dev_steps_more_one') if ex.steps|length == 2 else T('dev_steps_more')|format(ex.steps|length - 1) }}</summary>
+        <ol class="steps" start="2">{% for s in ex.steps[1:] %}<li>{{ s }}</li>{% endfor %}</ol>
+      </details>
+      {% endif %}
+      {% set ev = eavesdrop(f.code) %}{% if ev %}<details class="eaves-details"><summary>{{ T('eaves_title') }}</summary>{{ eavesdrop_block(ev) }}</details>{% endif %}
       <details class="fold tech">
         <summary>{{ T('for_technician') }}</summary>
         <div class="fold-body">

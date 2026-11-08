@@ -1,10 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, csv_table, band_icon with context %}
+{% from "_guide.html" import guide_dialog with context %}
+{% from "_macros.html" import harm_line, sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, csv_table, band_icon with context %}
 {% block content %}
+{# Câmpurile ascunse ale formularelor pașilor: scanarea după fișier (+ data), niciodată după poziția în listă. #}
+{% macro hidden_fields() %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="file" value="{{ scan_ref.file }}">{% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}{% endmacro %}
 {# Pașii de reparare, cu starea fiecăruia (verificat pe date reale / bifat / de făcut). Un singur buton principal:
-   „Am făcut asta, verifică”. Restul (progres, accept riscul, nota, de la capăt) stă în „Mai multe opțiuni”. #}
+   „Am făcut asta, verifică”. Ghidul animat e un buton secundar; restul (progres, accept riscul, nota, de la capăt)
+   stă în „Mai multe opțiuni”. #}
 {% macro steps_panel() %}
-        {% set hidden %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="file" value="{{ scan_ref.file }}">{% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}{% endset %}
+        {% set hidden = hidden_fields() %}
         {% if check %}
           {# rezultatul verificării pasului tocmai bifat (date reale: verify.py) #}
           <p class="verify-msg verify-{{ 'good' if check == 'ok' else 'warn' if check in ('open', 'version') else 'info' }}" role="status" tabindex="-1">
@@ -34,14 +38,16 @@
           {% set key_fields %}<input type="hidden" name="device_id" value="{{ st.finding.device_id }}"><input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}"><input type="hidden" name="code" value="{{ st.finding.code }}">{% endset %}
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
-            <form method="post" action="{{ url_for('action_done') }}" data-swap="#score, #worst" data-focus="#worst .verify-msg, #step-now">
+            <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .verify-msg, #step-now">
               {{ hidden }}{{ key_fields }}
               <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</button>
             </form>
+            {# Ghidul animat pas cu pas (dialog). Fără JavaScript, linkul duce la pagina dispozitivului (aceeași scanare). #}
+            <a class="button button-secondary guide-open" href="{{ url_for('device', device_id=st.finding.device_id, **scan_ref) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
             {% endif %}
             <nav class="step-nav" aria-label="{{ T('step_nav') }}">
-              {% if st.number > 1 %}<a class="button button-secondary" href="{{ url_for('overview', step=st.number - 1, **scan_ref) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
-              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', step=st.number + 1, **scan_ref) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now" rel="next">{{ T('step_skip') if st.status == 'todo' else T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
+              {% if st.number > 1 %}<a class="button button-secondary" href="{{ url_for('overview', step=st.number - 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="prev"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('step_prev') }}</a>{% endif %}
+              {% if st.number < steps.total %}<a class="button button-secondary" href="{{ url_for('overview', step=st.number + 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_skip') if st.status == 'todo' else T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
             </nav>
           </div>
           <details class="more-options">
@@ -53,7 +59,7 @@
                 <div class="accept-risk">
                   <p class="opt-title">{{ T('accept_title') }}</p>
                   <p>{{ T('accept_body') }}</p>
-                  <form method="post" action="{{ url_for('action_accept') }}" data-swap="#score, #worst" data-focus="#step-now">
+                  <form method="post" action="{{ url_for('action_accept') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
                     {{ hidden }}{{ key_fields }}
                     <button type="submit" class="button-secondary">{{ T('accept_btn') }}</button>
                   </form>
@@ -63,7 +69,7 @@
               {% endif %}
               <p class="verify-note">{{ T('verify_note') }}</p>
               {% if steps.verified_count or steps.declared_count or steps.accepted_count %}
-                <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">
+                <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
                   {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
                 </form>
               {% endif %}
@@ -76,13 +82,52 @@
           <p class="do-first-for">{{ T('steps_all_done_hint')|format(steps.verified_count, steps.declared_count) }}</p>
           {% if steps.accepted_count %}<p class="do-first-for">{{ plural(steps.accepted_count, 'steps_all_done_accepted') }}</p>{% endif %}
           <div class="do-first-actions">
-            <a class="button button-secondary" href="{{ url_for('overview', step=1, **scan_ref) }}#worst-h" data-swap="#score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
-            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#score, #worst" data-focus="#step-now">
+            <a class="button button-secondary" href="{{ url_for('overview', step=1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
+            <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
               {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
             </form>
           </div>
         </div>
         {% endif %}
+        {{ recheck_panel() }}
+{% endmacro %}
+
+{# Pasul de după bifare: „Verifică din nou”. O scanare mai nouă care există deja sau un fișier nou; apoi vine dovada.
+   Doar analiză de fișiere (motorul), fără nimic trimis în rețea. Butoanele sunt secundare (unul singur e principal). #}
+{% macro recheck_panel() %}
+  {% if recheck %}
+  <div class="recheck" role="region" aria-labelledby="recheck-h">
+    <h3 id="recheck-h" tabindex="-1">{{ T('recheck_title') }}</h3>
+    {% if upload_error %}
+      <p class="verify-msg verify-warn" role="alert">
+        <svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>
+        <span>{{ T('upload_failed') }} {{ T('upload_err_empty') if upload_error == 'NO_FILE' else T('upload_err_older') if upload_error == 'OLDER' else error_message(upload_error) }}</span>
+      </p>
+    {% endif %}
+    <p>{{ T('recheck_body') }}</p>
+    {% if recheck.newer_ref %}
+      <p class="recheck-newer">{{ T('recheck_newer')|format(recheck.newer_file) }}</p>
+      <form method="post" action="{{ url_for('compare_scans') }}">
+        {{ hidden_fields() }}
+        <input type="hidden" name="after" value="{{ recheck.newer_ref }}">
+        <button type="submit" class="button-secondary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('recheck_compare_btn') }}</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('scan_upload') }}" enctype="multipart/form-data" class="recheck-form">
+      {{ hidden_fields() }}
+      <label for="scanfile">{{ T('recheck_upload_label') }}</label>
+      <div class="name-row">
+        <input id="scanfile" name="scanfile" type="file" accept=".xml,text/xml,application/xml" required>
+        <button type="submit" class="button-secondary">{{ T('recheck_upload_btn') }}</button>
+      </div>
+    </form>
+    <details class="recheck-how">
+      <summary>{{ T('recheck_how') }}</summary>
+      <p>{{ T('recheck_how_body') }}</p>
+      <p><code class="mono" translate="no">python -m netscan scan --confirm</code></p>
+    </details>
+  </div>
+  {% endif %}
 {% endmacro %}
 
 {# Protecția live a văzut ceva urgent: o linie mică sus, cu link spre panoul de jos. #}
@@ -91,7 +136,12 @@
 {% endif %}
 {% if notice %}<p class="notice-msg" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ notice }}</p>{% endif %}
 {% if history_id is not none %}
+  {# Înapoi de unde ai venit: din „Alerte” sau din „Progres” #}
+  {% if from_journal %}
+  <p class="back"><a href="{{ url_for('journal_page') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back_alerts') }}</a></p>
+  {% else %}
   <p class="back"><a href="{{ url_for('history') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back_progress') }}</a></p>
+  {% endif %}
 {% endif %}
 
 {% if scan is none %}
@@ -140,7 +190,18 @@
   </div>
 </div>
 
+{# Fraza-rezumat: cu ce începi (aceleași date ca în cardul „Cel mai periculos dispozitiv”). Text simplu: se escapează
+   (poate conține nume nesigure). Pe pagina unei scanări din istoric vine după dovadă. #}
+{% macro summary_block() %}
+{% if summary %}
+<section class="summary summary-{{ 'problems' if scan.status == 'ok' and worst else 'calm' }}" id="summary" aria-label="{{ T('summary_label') }}">
+  <p class="summary-text">{{ summary }}</p>
+</section>
+{% endif %}
+{% endmacro %}
+
 {% if scan.status == 'error' %}
+  {{ summary_block() }}
   {# Scanare care nu se poate citi: un card calm, fără raport, cu drum spre scanarea anterioară. #}
   <section class="panel panel-error card" aria-labelledby="err-h">
     <h1 id="err-h"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-info"/></svg>{{ T('error_title') }}</h1>
@@ -156,52 +217,42 @@
 {# Scorul mare e MEREU scorul standard al motorului (scan.score, ca în scores.csv); cel după reparațiile confirmate e separat #}
 {% set band = score_band(score_std) %}
 
-{# 1. Verdictul, într-o propoziție (doar numărători ale severităților din motor) #}
+{# 1. Verdictul, într-o propoziție (doar din datele motorului) #}
 <section class="verdict-head" aria-labelledby="verdict-h">
   <p class="band-pill b-{{ band }}">{{ band_icon(band) }}<span class="sr-only">{{ T('verdict_band') }} </span>{{ T('band_' ~ band) }}</p>
-  {% if history_id is not none and proof %}
+  {% if history_id is not none and proof and proof.direction %}
     {% set dir = proof.direction %}
     {% set pb, pa = fmt_time(proof.started_before), fmt_time(proof.started_after) %}
     <h1 id="verdict-h" class="verdict-title">{% if dir == 'up' %}{{ T('proof_headline')|format(pb, pa, proof.score_before, proof.score_after) }}{% elif dir == 'down' %}{{ T('proof_headline_down')|format(pb, pa, proof.score_before, proof.score_after) }}{% else %}{{ T('proof_headline_same')|format(pb, pa, proof.score_after) }}{% endif %}</h1>
-    <p class="verdict-counts">{{ T('verdict_clean') if verdict.clean else T('verdict_' ~ band) }}{% if not verdict.clean %} {{ verdict.counts_text }}{% endif %}</p>
   {% else %}
     <h1 id="verdict-h" class="verdict-title">{{ T('verdict_clean') if verdict.clean else T('verdict_' ~ band) }}</h1>
-    {% if not verdict.clean %}<p class="verdict-counts">{{ verdict.counts_text }}</p>{% endif %}
   {% endif %}
+  {% if not verdict.clean %}<p class="verdict-counts">{{ verdict.counts_text }}</p>{% endif %}
 </section>
 
-{# Comparația cu scanarea anterioară (doar în istoric): dovada, deasupra cardurilor #}
+{# Dovada înainte/după (doar în istoric, cu o scanare citibilă dinainte): prima după verdict #}
+{% if history_id is not none and proof and proof.direction %}{% include "_proof.html" %}{% endif %}
+
+{# 2. Fraza-rezumat: câte probleme și cu ce începi #}
+{{ summary_block() }}
+
+{# Comparația cu scanarea anterioară (doar în istoric): detaliile, la cerere #}
 {% if history_id is not none %}
   <section class="section compare" aria-labelledby="cmp-h">
     <div class="section-head"><h2 id="cmp-h">{{ T('compare_title') }}</h2></div>
-    {% if compare is none or not proof %}
+    {% if compare is none %}
       <p>{{ T('compare_none') }}</p>
     {% else %}
-      <p class="compare-score">{{ T('score_change') }}: <strong class="mono">{{ compare.score_before }} → {{ compare.score_after }}</strong></p>
-      <div class="proof-grid">
-        {% for kind, icon, items in (('fixed', 'good', proof.fixed|sort(attribute='finding.points', reverse=true)), ('new', 'high', proof.new|sort(attribute='points', reverse=true)), ('still', 'medium', proof.still|sort(attribute='points', reverse=true)), ('not_seen', 'info', proof.not_seen|sort(attribute='points', reverse=true))) %}
-        <div class="proof-col proof-{{ kind }}">
-          <h3><svg class="icon" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>{{ T('proof_' ~ kind)|format(items|length) }}</h3>
-          <ul>
-            {% for it in items %}
-              {% set f = it.finding if kind == 'fixed' else it %}
-              <li>{{ sev(f.severity) }} <span>{{ code_name(f.code) }}</span>
-                <span class="muted proof-where"><span class="mono" translate="no">{{ f.ip }}</span> · {{ port_label(f) }}</span>
-                {% if kind == 'fixed' and it.likely_same %}<span class="tag">{{ T('proof_likely_same') }}</span>{% endif %}</li>
-            {% else %}
-              <li class="muted">{{ T('none_f') }}</li>
-            {% endfor %}
-          </ul>
+      {% if not same_network %}
+        <div class="ip-note" role="note">
+          <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('other_network_title') }}</h3>
+          <p>{{ T('other_network_body') }}</p>
         </div>
-        {% endfor %}
-      </div>
-      <div class="proof-limits" role="note">
-        <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('proof_limits_title') }}</h3>
-        <p>{{ T('proof_limits_body') }}</p>
-      </div>
-      <details class="fold">
+      {% endif %}
+      <details class="fold compare-details">
         <summary>{{ T('proof_changes') }}</summary>
         <div class="fold-body">
+          <p class="compare-score">{{ T('score_change') }}: <strong class="mono">{{ compare.score_before }} → {{ compare.score_after }}</strong></p>
           <h3 class="alerts-title">{{ T('alerts_title') }}</h3>
           {% if alerts %}{{ alert_list(alerts, true) }}{% else %}<p class="muted">{{ T('journal_no_change') }}</p>{% endif %}
           {% if compare.matched_by_ip %}
@@ -235,14 +286,26 @@
   </section>
 {% endif %}
 
-<div class="verdict">
-  {# 2. Scorul standard (al motorului), cu scala și formula pliate #}
+<div class="verdict{% if history_id is not none %} verdict-history{% endif %}">
+  {# 3. Scorul standard (al motorului), cu scala și formula pliate #}
   <section class="score card score-{{ band }}" id="score" aria-labelledby="score-h">
     <h2 id="score-h" class="score-label">{{ T('score_label') }}</h2>
     <p class="score-value"><span class="score-num">{{ score_std }}</span><span class="score-of">{{ T('score_of') }}</span></p>
     {{ meter(score_std) }}
     <p class="score-band">{{ band_icon(band, true) }}{{ T('band_' ~ band) }}</p>
-    {% if score_now_differs %}<p class="score-after"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('score_after_line')|format(score_now) }}</p>{% endif %}
+    {% if score_now_differs %}
+      {# Progresul după reparațiile confirmate, separat de scorul standard. Culoarea urmează eticheta scorului NOU
+         (verde doar la „Bun”), ca o casetă verde să nu sugereze „gata” când rețeaua e încă în risc. #}
+      {% set band_after = score_band(score_now) %}
+      {% set left = steps.total - steps.verified_count %}
+      <div class="score-after after-{{ band_after }}">
+        <p class="after-label"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-7M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('score_after_progress')|format(steps.verified_count) }}</p>
+        <p class="after-value"><span class="mono">{{ score_std }}</span> → <strong class="mono">{{ score_now }}</strong> <span class="after-of">{{ T('score_of') }}</span></p>
+        <p class="after-band">{{ band_icon(band_after) }}<span>{{ T('score_band_now' if band_after == 'good' else 'score_band_still')|format(T('band_' ~ band_after)) }}{% if left %} · {{ T('score_left_one') if left == 1 else T('score_left_many')|format(left) }}{% endif %}</span></p>
+        <p class="after-note">{{ T('score_after_line')|format(score_now) }}</p>
+        {% if newer_hint %}{% set newer_title = T('score_newer_title')|format(newer_hint.file, newer_hint.score) %}<a class="score-newer" href="{{ url_for('overview', **newer_hint.ref) }}" title="{{ newer_title }}" aria-label="{{ newer_title }}">{{ T('score_newer') }}</a>{% endif %}
+      </div>
+    {% endif %}
     {{ sev_counts(scan.findings, 'score-facts') }}
     <details class="how-score">
       <summary>{{ T('how_score') }}</summary>
@@ -260,17 +323,23 @@
     </details>
   </section>
 
-  {# 3. Cel mai periculos dispozitiv — fă asta întâi (un singur buton principal) #}
+  {# 4. Cel mai periculos dispozitiv — fă asta întâi (un singur buton principal) #}
   {% if worst %}
     {% set w = worst.worst %}
     {% set ex = explain(w.code) %}
     <section class="worst card" id="worst" aria-labelledby="worst-h">
       <h2 id="worst-h" class="worst-label">{{ T('worst_title') }}</h2>
       {% if history_id is none and steps and steps.verified_count %}<p class="worst-note">{{ T('worst_after_verified') }}</p>{% endif %}
-      <p class="worst-device">{{ device_title(worst.host) }}</p>
+      {# Unde: dispozitivul și adresa:portul împreună (ca în raport). Codul tehnic e la „Detalii tehnice”. #}
+      <p class="worst-device">{{ device_title(worst.host) }} <span class="mono ip" translate="no">{{ worst.host.ip }}{% if w.port is not none %}:{{ w.port }}{% endif %}</span></p>
       {{ announced_sub(worst.host) }}
-      <p class="worst-problem">{{ sev(w.severity) }} <strong>{{ code_name(w.code) }}</strong></p>
-      <p class="worst-text">{{ ex.text }}</p>
+      {# Ce: severitatea (etichetă), numele problemei (subtitlu) și explicația, legate de bara în culoarea severității #}
+      <div class="worst-issue issue-{{ w.severity }}">
+        <p class="sev-pill">{{ sev(w.severity) }}</p>
+        <h3 class="worst-problem">{{ code_name(w.code) }}</h3>
+        <p class="worst-text">{{ ex.text }}</p>
+        {{ harm_line(w.code) }}
+      </div>
       {% if history_id is none and steps %}
         {{ steps_panel() }}
       {% else %}
@@ -305,7 +374,7 @@
   {% endif %}
 </div>
 
-{# 4. Lista dispozitivelor, în ordinea riscului (contractul: risc ↓); detaliile fiecăruia sunt pliate #}
+{# 5. Lista dispozitivelor, în ordinea riscului (contractul: risc ↓); detaliile fiecăruia sunt pliate #}
 <section class="section" aria-labelledby="dev-h">
   <div class="section-head">
     <h2 id="dev-h">{{ T('devices_all')|format(devices|length) }}</h2>
@@ -349,7 +418,7 @@
   </ol>
 </section>
 
-{# 5. Rezultatul exact ca în CSV (pentru juriu și tehnicieni): codurile catalogului apar doar aici #}
+{# 6. Rezultatul exact ca în CSV (pentru juriu și tehnicieni): codurile catalogului apar doar aici #}
 {% if csv and csv.findings is defined %}
 <details class="fold csv-view">
   <summary>{{ T('csv_view_title') }}</summary>
@@ -360,9 +429,19 @@
 {% endif %}
 {% endif %}
 
-{# 6. Protecția live: ultima, compactă cât e oprită #}
+{# 7. Protecția live: ultima, compactă cât e oprită #}
 {% if live %}
   {% include "_live.html" %}
   <p id="live-announce" class="sr-only" aria-live="polite"></p>
+{% endif %}
+{% endblock %}
+
+{# Ghidul „Începe depanarea” pentru pasul curent: o fereastră (dialog) în afara drumului principal al paginii.
+   Se deschide doar din butonul „Începe depanarea” (fără JavaScript, butonul duce la pagina dispozitivului). #}
+{% block dialogs %}
+{% if history_id is none and scan is not none and scan.status == 'ok' and steps and show_steps and steps.current.status != 'verified' %}
+  {% set st = steps.current %}
+  {% set hidden %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="file" value="{{ scan_ref.file }}">{% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}{% endset %}
+  {{ guide_dialog(st, hidden, guide_icon(st.device.device_type)) }}
 {% endif %}
 {% endblock %}

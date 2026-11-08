@@ -5,6 +5,7 @@ MAC-ul real nu ajunge niciodată aici: doar mac_masked și device_id (așa vine 
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 import time
 from contextlib import closing
@@ -89,7 +90,17 @@ CREATE TABLE IF NOT EXISTS accepted_risks (
     accepted_at INTEGER NOT NULL,
     PRIMARY KEY (scan_key, device_id, port, code)
 );
+-- numele date de utilizator dispozitivelor („Camera din sufragerie”), pe device_id (nu pe MAC și nu pe IP).
+-- CREATE TABLE IF NOT EXISTS: o bază veche primește tabelul la prima conectare, fără să-și piardă datele.
+CREATE TABLE IF NOT EXISTS device_names (
+    device_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    named_at INTEGER NOT NULL
+);
 """
+
+DEVICE_NAME_MAX = 40
+_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 def db_path() -> Path:
@@ -208,6 +219,7 @@ class StoredCounts:
     done: int = 0             # pași bifați de utilizator
     verified: int = 0         # pași confirmați pe date reale
     accepted: int = 0         # riscuri acceptate
+    names: int = 0            # nume date de utilizator dispozitivelor
     mac_example: str | None = None   # un MAC MASCAT din baza de date (niciodată cel complet; nu există aici)
 
 
@@ -221,7 +233,7 @@ def stored_counts(path: str | Path | None = None) -> StoredCounts:
             scans=one("SELECT COUNT(*) FROM scans"), hosts=one("SELECT COUNT(*) FROM hosts"),
             devices=one("SELECT COUNT(DISTINCT device_id) FROM hosts"), findings=one("SELECT COUNT(*) FROM findings"),
             done=one("SELECT COUNT(*) FROM done_actions"), verified=one("SELECT COUNT(*) FROM verified_steps"),
-            accepted=one("SELECT COUNT(*) FROM accepted_risks"),
+            accepted=one("SELECT COUNT(*) FROM accepted_risks"), names=one("SELECT COUNT(*) FROM device_names"),
             mac_example=mac["mac_masked"] if mac else None,
         )
 
@@ -242,7 +254,8 @@ def previous_scan_id(scan_id: int, path: str | Path | None = None) -> int | None
 def delete_history(path: str | Path | None = None) -> None:
     """Șterge tot istoricul (NFR-02)."""
     with closing(connect(path)) as conn, conn:
-        for table in ("accepted_risks", "verified_steps", "done_actions", "findings", "ports", "hosts", "scans"):
+        for table in ("device_names", "accepted_risks", "verified_steps", "done_actions", "findings", "ports", "hosts",
+                      "scans"):
             conn.execute(f"DELETE FROM {table}")  # nume fixe din cod, nu date din scanare
     with closing(connect(path)) as conn:
         conn.execute("VACUUM")
@@ -274,6 +287,38 @@ def delete_raw_scans(folder: str | Path) -> int:
             p.unlink()
             deleted += 1
     return deleted
+
+
+# ---------- numele date dispozitivelor ----------
+
+def clean_device_name(raw: str | None) -> str:
+    """Numele scris de utilizator, curățat: fără caractere de control, spațiile multiple strânse. Poate ieși gol.
+    Lungimea nu se taie aici: peste DEVICE_NAME_MAX numele e refuzat (vezi set_device_name)."""
+    return " ".join(_CONTROL_RE.sub(" ", raw or "").split())
+
+
+def device_names(path: str | Path | None = None) -> dict[str, str]:
+    """{device_id: nume}. Text scris de utilizator: se escapează la afișare, ca orice alt text."""
+    with closing(connect(path)) as conn:
+        return {r["device_id"]: r["name"] for r in conn.execute("SELECT device_id, name FROM device_names")}
+
+
+def set_device_name(device_id: str, name: str | None, path: str | Path | None = None) -> str | None:
+    """Salvează numele unui dispozitiv; un nume gol îl șterge. Întoarce numele salvat (curățat) sau None.
+    Ridică ValueError dacă numele depășește DEVICE_NAME_MAX caractere (nu îl tăiem pe tăcute)."""
+    cleaned = clean_device_name(name)
+    if len(cleaned) > DEVICE_NAME_MAX:
+        raise ValueError("device name too long")
+    with closing(connect(path)) as conn, conn:
+        if not cleaned:
+            conn.execute("DELETE FROM device_names WHERE device_id = ?", (device_id,))
+            return None
+        conn.execute(
+            "INSERT INTO device_names (device_id, name, named_at) VALUES (?, ?, ?)"
+            " ON CONFLICT(device_id) DO UPDATE SET name = excluded.name, named_at = excluded.named_at",
+            (device_id, cleaned, int(time.time())),
+        )
+    return cleaned
 
 
 @dataclass

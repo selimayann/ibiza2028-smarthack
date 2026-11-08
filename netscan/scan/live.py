@@ -29,6 +29,7 @@ confirmă o reparație decât pe ACELAȘI dispozitiv (același device_id) ca în
 from __future__ import annotations
 
 import errno
+import inspect
 import ipaddress
 import json
 import re
@@ -869,11 +870,24 @@ class LiveMonitor:
         return "OK"
 
     def _do_launch(self, job: str) -> None:
-        result = self.launcher(job)
+        since = self._launch.get("since") or 0.0
+
+        def started() -> bool:
+            """Procesul de admin a scris progresul pentru această pornire (= permisiune dată)."""
+            prog = scan_job.read_progress(self.scans_dir)
+            return prog is not None and (prog.get("started") or 0) >= since - 2
+
+        # elevate.launch primește `started` (pe Linux așteaptă răspunsul la fereastra pkexec);
+        # launcherele de test, cu un singur parametru, sunt chemate ca înainte
+        try:
+            takes_started = "started" in inspect.signature(self.launcher).parameters
+        except (TypeError, ValueError):
+            takes_started = False
+        result = self.launcher(job, started=started) if takes_started else self.launcher(job)
         with self._lock:
             if not result.ok:
-                self._launch = {"state": "denied" if result.code == elevate.DENIED else "launch_failed",
-                                "job": job, "since": self.clock()}
+                state = {elevate.DENIED: "denied", elevate.AUTH_FAILED: "auth_failed"}.get(result.code, "launch_failed")
+                self._launch = {"state": state, "job": job, "since": self.clock()}
             else:
                 self._launch["launched"] = True
 

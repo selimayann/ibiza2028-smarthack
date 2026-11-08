@@ -6,38 +6,39 @@
 """
 from __future__ import annotations
 
-import base64
+import getpass
 import hashlib
 import hmac
 import json
 import os
 import re
 import secrets
+import tempfile
 import threading
 import time
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
-from markupsafe import Markup
+from werkzeug.utils import secure_filename
 
 from netscan.cli import load_env_file
-from netscan.engine import analyze_folder
+from netscan.engine import analyze_file, analyze_folder
+from netscan.engine.parser import MAX_BYTES
 from netscan.engine.parser import _DEFAULT_SALT as DEFAULT_SALT   # doar comparat: „cheia echipei sau cea implicită?”
 from netscan.model import Scan
 from netscan.scan import live as live_mod
-from netscan.ui import extras, i18n, storage, verify
+from netscan.ui import extras, guide, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, fold_port_alerts, journal
-from netscan.ui.explain_stub import get_explanation, get_standards
-from netscan.ui.view import (action_plan, csv_view, evidence_text, ip_key, most_dangerous, order_devices, proof_view,
-                             rank_devices, score_band, score_trend, steps_view, verdict_view, verified_by_newer,
-                             worst_device)
+from netscan.ui.explain_stub import get_explanation, get_harm, get_standards
+from netscan.ui.view import (action_plan, csv_view, evidence_text, ip_key, most_dangerous, order_devices, proof_of,
+                             proof_view, rank_devices, remaining_scan, score_band, score_trend, steps_view, summary_of,
+                             verdict_view, verified_by_newer, worst_device)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_PATH = REPO_ROOT / "fixtures" / "sample.json"
 VALIDATION_DIR = REPO_ROOT / "fixtures" / "validation"
-REPORT_CSS = Path(__file__).resolve().parent / "static" / "report.css"
-LOGO_SVG = Path(__file__).resolve().parent / "static" / "brand" / "safeeel-lockup-horizontal-light.svg"
 LANG_COOKIE = "lang"
 LOCAL_HOSTS = ("127.0.0.1", "localhost")   # serverul ascultă doar pe 127.0.0.1 (IPv4)
 MASKED_MAC = re.compile(r"^([0-9A-Fa-f]{2}:){3}XX:XX:XX$")   # pe /trust arătăm doar un MAC deja mascat
@@ -151,8 +152,19 @@ MAX_QUESTION_LEN = 500
 NETWORK_TTL_S = 15           # rețeaua curentă (citită din sistem) se recitește cel mult o dată la 15 s
 LIVE_MSG_TTL_S = 60          # un mesaj al panoului live rămâne vizibil un minut (nu dispare la următorul refresh)
 URGENT_WINDOW_S = 600        # alertele urgente din ultimele 10 minute apar într-un banner mic sus
+UPLOAD_ERRORS = frozenset(set(i18n.ERROR_MESSAGES["ro"]) - {"_default"}) | {"NO_FILE", "OLDER"}   # coduri afișabile la încărcare
+UPLOAD_SLACK = 1024 * 1024   # peste limita fișierului: câmpurile formularului (jeton etc.)
 _ASK_LOCK = threading.Lock()
 _VERIFY_LOCK = threading.Lock()   # o singură verificare live odată   # modelul local răspunde la o singură întrebare odată (altfel se poate bloca placa video)
+
+
+def current_user() -> str | None:
+    """Utilizatorul de sistem sub care rulează aplicația (istoricul e al lui, pe acest calculator). None dacă
+    sistemul nu îl spune. Text de la sistem: se escapează în template, ca orice altceva."""
+    try:
+        return getpass.getuser().strip()[:60] or None
+    except Exception:  # fără nume de utilizator în mediu (ex. cont de serviciu): pagina merge și fără
+        return None
 
 
 def same_site_request() -> bool:
@@ -358,16 +370,25 @@ def create_app(test_config: dict | None = None) -> Flask:
 
         return {
             "lang": lang,
+            "from_devices": request.args.get("from") == "devices",   # pagina dispozitivului deschisă din „Dispozitive”
+            "from_journal": request.args.get("from") == "journal",   # comparația deschisă din „Jurnal”
             "other_lang": other,
             "lang_url": lang_url,
             "T": lambda key: i18n.t(lang, key),
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
+            "device_type_the": lambda dt: i18n.device_type_the(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
+            "harm": lambda code: get_harm(code, lang),
             "eavesdrop": lambda code: extras.eavesdrop(code, lang),
             "announced": lambda ip: g.names.get(ip),
+            "guide_plan": guide.guide_for,
+            "guide_icon": guide.device_icon,
             "new_alerts": new_alerts,
-            "alert_text": lambda a: i18n.alert_text(lang, a),
+            "alert_text": lambda a, short=False: i18n.alert_text(lang, a, custom_names(), short),
+            "alert_device": lambda a: i18n.alert_device(lang, a, custom_names()),
+            "custom_name": lambda device_id: custom_names().get(device_id),
+            "proof_sentence": lambda proof: i18n.proof_sentence(lang, proof),
             "code_name": lambda code: i18n.code_name(lang, code),
             "standards": lambda code: get_standards(code, lang),
             "fmt_time": lambda epoch: _fmt_time(epoch, lang),
@@ -408,6 +429,30 @@ def create_app(test_config: dict | None = None) -> Flask:
                 return i
         return None
 
+    def custom_names() -> dict[str, str]:
+        """Numele date de utilizator ({device_id: nume}), citite o dată pe cerere. O bază ilizibilă nu strică pagina."""
+        if "custom_names" not in g:
+            try:
+                g.custom_names = storage.device_names(app.config["DB_PATH"])
+            except Exception:
+                g.custom_names = {}
+        return g.custom_names
+
+    def summary_sentence(scan: Scan, worst, all_fixed: bool = False) -> str:
+        """Fraza de sub verdict (cu ce să începi). `scan` și `worst` sunt cele ale cardului de dedesubt (fără
+        problemele confirmate ca rezolvate), ca fraza și cardul să spună același lucru."""
+        summary = summary_of(scan, worst, all_fixed)
+        label = step = None
+        if summary.device is not None and summary.finding is not None:
+            host = summary.device.host
+            # numele anunțate doar unde le arată și pagina (g.names = names_for(scan): cea mai nouă scanare a noastră)
+            announced = (g.get("names") or {}).get(host.ip)
+            # aceeași ordine ca în pagină: numele dat de utilizator, apoi cel anunțat de dispozitiv, apoi tipul
+            label = (custom_names().get(host.device_id) or (announced["name"] if announced else None)
+                     or i18n.device_type_label(g.lang, host.device_type))
+            steps = get_explanation(summary.finding.code, g.lang).get("steps") or []
+            step = steps[0] if steps else None
+        return i18n.summary_sentence(g.lang, summary, label, step)
     def pick(scan_list: list[Scan]) -> tuple[Scan | None, int]:
         """Scanarea cerută prin GET: după fișier (+ dată), ca linkurile să rămână corecte când apare o scanare
         nouă. ?scan=<poziție> merge încă (linkuri vechi), doar la citire."""
@@ -447,6 +492,14 @@ def create_app(test_config: dict | None = None) -> Flask:
                                verified_by_newer(scan, newer_scans(scan, scan_list)),
                                request.args.get("step", type=int), accepted=accepted)
         fixed = steps.fixed_keys if steps is not None else set()
+        # reparațiile confirmate de o scanare mai nouă: link spre acea scanare (cea mai nouă), după fișier + dată
+        newer_hint = None
+        if steps is not None:
+            by_files = {s.verified_by for s in steps.steps if s.verified_by not in (None, "live")}
+            found = [s for s in scan_list if s.file in by_files and s.status == "ok"]
+            if found:
+                s_new = max(found, key=lambda s: s.started_at or 0)
+                newer_hint = {"ref": scan_ref(s_new), "file": s_new.file, "score": s_new.score}
         check = request.args.get("check")
         checked = request.args.get("checked", type=int)
         if check not in verify.RESULTS or steps is None or not (checked and 1 <= checked <= steps.total):
@@ -458,15 +511,27 @@ def create_app(test_config: dict | None = None) -> Flask:
         score_std = scan.score if ok else None
         score_now = steps.score_now if steps is not None else score_std
         notice = request.args.get("notice")
+        worst = worst_device(scan, fixed) if ok else None
+        # După ce a bifat ceva, utilizatorul vede pasul următor: „Verifică din nou” (fișier nou sau scanare mai nouă).
+        recheck = None
+        if ok and steps is not None and (steps.declared_count or steps.verified_count):
+            newer = newest_after(scan, scan_list)
+            recheck = {"newer_ref": newer[0] if newer else None, "newer_file": newer[1].file if newer else None}
+        upload_error = request.args.get("upload_error")
+        if upload_error not in UPLOAD_ERRORS:
+            upload_error = None
         return render_template(
             "overview.html", scan=scan, scan_list=scan_list, selected=idx, live=live_ctx(),
             steps=steps, check=check, checked=checked_step,
             check_text=check_text(check, checked_step.finding if checked_step else None),
+            recheck=recheck, upload_error=upload_error,
             show_steps=steps is not None and (request.args.get("step") is not None or not steps.all_resolved),
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", **scan_ref(scan)), scan, scan_ref(scan),
                                     question, reply, False),
+            summary=summary_sentence(remaining_scan(scan, fixed) if ok else scan, worst,
+                                     bool(steps and steps.verified_count)) if scan is not None else None,
             devices=order_devices(scan, fixed) if ok else (rank_devices(scan) if scan else []),
-            worst=worst_device(scan, fixed) if ok else None,
+            worst=worst,
             fixed_keys=fixed, accepted_keys=accepted,
             score_std=score_std, score_now=score_now,
             score_now_differs=score_now is not None and score_std is not None and score_now != score_std,
@@ -474,6 +539,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             csv=csv_view(scan), scan_ref=scan_ref(scan), own_scan=bool(ok and app.config["OWN_SCAN_CHECK"](scan)),
             notice=i18n.t(g.lang, notice) if notice == "scan_list_changed" else None,
             history_id=None, compare=None, saved_id=saved_id, token=app.config["FORM_TOKEN"],
+            newer_hint=newer_hint,
         )
 
     def newer_scans(scan: Scan, scan_list: list[Scan]) -> list[Scan]:
@@ -500,6 +566,52 @@ def create_app(test_config: dict | None = None) -> Flask:
                 "Content-Type": "text/plain; charset=utf-8"}
         return redirect(url_for("overview", notice="scan_list_changed"))
 
+    # ---------- „Verifică din nou”: o scanare nouă (fișier încărcat sau deja existentă) și dovada înainte/după ----------
+
+    def ensure_saved(scan: Scan) -> int:
+        """Id-ul scanării în istoric; o salvează dacă încă nu e (aceeași pereche fișier + dată nu se dublează)."""
+        db = app.config["DB_PATH"]
+        found = storage.find_scan(scan.file, scan.started_at, db)
+        return found if found is not None else storage.save_scan(scan, db)
+
+    def folder_ref(scan: Scan) -> str:
+        """Referința unei scanări din folder, după identitatea ei (fișier + dată), nu după poziția în listă."""
+        return f"f:{scan.file}" + (f"|{scan.started_at}" if scan.started_at is not None else "")
+
+    def newest_after(scan: Scan, scan_list: list[Scan]) -> tuple[str, Scan] | None:
+        """Cea mai nouă scanare citibilă de după `scan`, ca referință: "f:<fișier>|<dată>" (din folder) sau
+        "h<id>" (din istoric)."""
+        if scan.started_at is None:
+            return None
+        found: list[tuple[int, str, Scan]] = []
+        for s in scan_list:
+            if s.status == "ok" and (s.started_at or 0) > scan.started_at:
+                found.append((s.started_at, folder_ref(s), s))
+        seen = {(s.file, s.started_at) for _, _, s in found}
+        db = app.config["DB_PATH"]
+        for item in storage.list_scans(db):
+            if item.status == "ok" and (item.started_at or 0) > scan.started_at and (item.file, item.started_at) not in seen:
+                saved = storage.get_scan(item.id, db)
+                if saved is not None:
+                    found.append((item.started_at, f"h{item.id}", saved))
+        if not found:
+            return None
+        _, ref, newest = max(found, key=lambda t: t[0])
+        return ref, newest
+
+    def resolve_ref(ref: str, scan_list: list[Scan]) -> Scan | None:
+        """Scanarea numită de o referință "f:<fișier>|<dată>" / "h<id>". Orice altceva: None."""
+        ref = (ref or "")[:260]
+        match = re.fullmatch(r"h(\d{1,9})", ref)
+        if match:
+            return storage.get_scan(int(match.group(1)), app.config["DB_PATH"])
+        if not ref.startswith("f:"):
+            return None
+        name, sep, started = ref[2:].rpartition("|")
+        if not sep or not started.isdigit():
+            name, started = ref[2:], None
+        idx = _find(scan_list, name, started)
+        return scan_list[idx] if idx is not None else None
     def _form_scan() -> tuple[Scan, int]:
         """Scanarea pe care a văzut-o utilizatorul: după fișier (+ data), NICIODATĂ după poziția în listă (lista se
         poate schimba între afișare și clic, iar acțiunea ar ajunge pe altă scanare)."""
@@ -560,6 +672,48 @@ def create_app(test_config: dict | None = None) -> Flask:
             abort(400)
         storage.mark_accepted(scan, key, app.config["DB_PATH"])
         return redirect(url_for("overview", **scan_ref(scan)) + "#worst-h")
+
+    @app.post("/scan/upload")
+    def scan_upload():
+        """„Verifică din nou” cu un fișier nmap XML nou: îl analizează motorul, ambele scanări intră în istoric și
+        se arată dovada înainte/după. Fișierul nu e păstrat (doar rezultatul), iar fără rețea."""
+        if not same_site_request():
+            abort(403)
+        request.max_content_length = MAX_BYTES + UPLOAD_SLACK   # doar pentru această cerere (restul rămân la 1 MB)
+        before, _ = _form_scan()
+        upload = request.files.get("scanfile")
+        data = upload.read(MAX_BYTES + 1) if upload is not None else b""
+        back = lambda code: redirect(url_for("overview", **scan_ref(before), upload_error=code) + "#recheck-h")  # noqa: E731
+        if not data:
+            return back("NO_FILE")
+        # Același motor ca pentru fișierele din folder (analyze_file): defusedxml, limită de mărime, erori ca valori.
+        # Fișierul stă doar cât durează analiza, într-un folder temporar, sub un nume curățat.
+        name = secure_filename(upload.filename or "") or "scan.xml"
+        if not name.lower().endswith(".xml"):
+            name += ".xml"
+        with tempfile.TemporaryDirectory(prefix="netscan-upload-") as tmp:
+            path = Path(tmp) / name
+            path.write_bytes(data)
+            after = analyze_file(path)
+        if after.status != "ok":
+            return back(after.error_code or "INVALID_XML")
+        if before.status == "ok" and None not in (before.started_at, after.started_at) \
+                and after.started_at < before.started_at:
+            return back("OLDER")
+        before_id, after_id = ensure_saved(before), ensure_saved(after)
+        return redirect(url_for("history_scan", scan_id=after_id, vs=before_id) + "#proof-h")
+
+    @app.post("/compare")
+    def compare_scans():
+        """„Vezi înainte și după” pentru o scanare mai nouă care există deja (în folder sau în istoric)."""
+        if not same_site_request():
+            abort(403)
+        before, _ = _form_scan()
+        after = resolve_ref(request.form.get("after", ""), scans())
+        if after is None or after.status != "ok" or before.status != "ok":
+            abort(400)
+        before_id, after_id = ensure_saved(before), ensure_saved(after)
+        return redirect(url_for("history_scan", scan_id=after_id, vs=before_id) + "#proof-h")
 
     @app.post("/action/reset")
     def action_reset():
@@ -762,7 +916,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         fixed, accepted = progress_keys(scan, scan_list)
         devices = sorted(rank_devices(scan), key=lambda d: ip_key(d.host.ip)) if scan and scan.status == "ok" else []
         return render_template("inventory.html", scan=scan, scan_list=scan_list, selected=idx, devices=devices,
-                               fixed_keys=fixed, accepted_keys=accepted, scan_ref=scan_ref(scan), csv=csv_view(scan))
+                               fixed_keys=fixed, accepted_keys=accepted, scan_ref=scan_ref(scan), csv=csv_view(scan),
+                               dev_ref={**scan_ref(scan), "from": "devices"})   # pagina dispozitivului știe că vii din „Dispozitive”
 
     @app.get("/device/<device_id>")
     def device(device_id: str):
@@ -785,9 +940,32 @@ def create_app(test_config: dict | None = None) -> Flask:
         for f in view.findings:
             ex = get_explanation(f.code, g.lang)
             shown += [ex.get("text") or "", *(ex.get("steps") or [])]
+        name_status = request.args.get("name")
         return render_template("device.html", scan=scan, d=view, selected=idx, fixed_keys=fixed,
                                accepted_keys=accepted, scan_ref=scan_ref(scan), first_step=first_step,
-                               first_finding=first, words=glossary_terms(" ".join(shown), g.lang))
+                               first_finding=first, words=glossary_terms(" ".join(shown), g.lang),
+                               token=app.config["FORM_TOKEN"],
+                               name_status=name_status if name_status in ("saved", "cleared", "too_long") else None,
+                               name_max=storage.DEVICE_NAME_MAX)
+
+    @app.post("/device/<device_id>/name")
+    def device_name_save(device_id: str):
+        """Numele dat dispozitivului, salvat pe device_id. Gol = șterge numele. Prea lung = refuzat, nu tăiat."""
+        if not same_site_request():
+            abort(403)
+        scan, _ = _form_scan()   # verifică și jetonul formularului; scanarea după fișier + dată
+        if not any(h.device_id == device_id for h in scan.hosts):
+            abort(404)             # nu salvăm nume pentru dispozitive care nu există în scanare
+        db = app.config["DB_PATH"]
+        raw = "" if request.form.get("action") == "clear" else request.form.get("name", "")
+        try:
+            saved = storage.set_device_name(device_id, raw, db)
+        except ValueError:
+            status = "too_long"
+        else:
+            status = "saved" if saved else "cleared"
+        back = {"from": "devices"} if request.form.get("from") == "devices" else {}
+        return redirect(url_for("device", device_id=device_id, **scan_ref(scan), name=status, **back) + "#name-h")
 
     @app.get("/trust")
     def trust():
@@ -833,11 +1011,13 @@ def create_app(test_config: dict | None = None) -> Flask:
             deleted=request.args.get("deleted") == "1",
             # None = nu s-a cerut ștergerea scanărilor brute; True = șterse; False = nu s-au putut șterge
             deleted_raw={"1": True, "0": False}.get(request.args.get("raw", "")),
+            owner=current_user(),   # al cui e istoricul; când e gol, poate fi alt utilizator sau alt folder
+            db_file=str(Path(app.config["DB_PATH"] or storage.db_path()).resolve()),
         )
 
-    def render_report(scan: Scan, back_url: str, download_url: str, download: bool, fixed: set = frozenset(),
-                      accepted: set = frozenset(), compare=None, prev: Scan | None = None):
-        """FR-14: raportul de o pagină pentru furnizorul IT. Doar date din motor; MAC mascat.
+    def render_report(scan: Scan, back_url: str, fixed: set = frozenset(), accepted: set = frozenset(), compare=None,
+                      prev: Scan | None = None):
+        """FR-14: raportul de o pagină pentru furnizorul IT. Doar date din motor; MAC mascat. PDF = Tipărește.
         Problemele apar în aceeași ordine ca pașii de pe pagina Acasă (dispozitivul cel mai riscant primul, apoi
         problemele lui, cea mai gravă prima); `rows` le numerotează exact ca pașii."""
         devices = rank_devices(scan) if scan.status == "ok" else []
@@ -845,22 +1025,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         rows = [{"n": i, "finding": f, "device": d.host,
                  "status": "fixed" if f.key() in fixed else "accepted" if f.key() in accepted else "todo"}
                 for i, (d, f) in enumerate(((d, f) for d in devices for f in d.findings), 1)]
-        html = render_template(
+        return render_template(
             "report.html", scan=scan, devices=devices, counts=counts, generated=_fmt_time(int(time.time()), g.lang),
             rows=rows, fixed_keys=set(fixed), accepted_keys=set(accepted), csv=csv_view(scan),
             verdict=verdict_view(scan, fixed, accepted, g.lang) if scan.status == "ok" else None,
             score_std=scan.score if scan.status == "ok" else None, compare=compare,
             proof=proof_view(prev, scan, compare) if (compare is not None and prev is not None) else None,
-            back_url=back_url, download_url=download_url, inline_css=Markup(REPORT_CSS.read_text(encoding="utf-8")) if download else None,  # fișierul nostru, nu date
-            # raportul descărcat trebuie să meargă singur, fără server: logo-ul intră în fișier ca data URI
-            logo_src=("data:image/svg+xml;base64," + base64.b64encode(LOGO_SVG.read_bytes()).decode("ascii")) if download
-            else url_for("static", filename="brand/safeeel-lockup-horizontal-light.svg"),
+            back_url=back_url, logo_src=url_for("static", filename="brand/safeeel-lockup-horizontal-light.svg"),
         )
-        if not download:
-            return html
-        name = re.sub(r"[^A-Za-z0-9_.-]+", "_", Path(scan.file).stem)[:60] or "scan"
-        return app.response_class(html, mimetype="text/html", headers={
-            "Content-Disposition": f'attachment; filename="raport-{name}.html"'})
 
     @app.get("/report")
     def report():
@@ -870,8 +1042,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             abort(404)
         g.names = names_for(scan)
         fixed, accepted = progress_keys(scan, scan_list)
-        return render_report(scan, url_for("overview", **scan_ref(scan)), url_for("report", **scan_ref(scan), download=1),
-                             request.args.get("download") == "1", fixed, accepted)
+        return render_report(scan, url_for("overview", **scan_ref(scan)), fixed, accepted)
 
     @app.get("/scan/<int:scan_id>/report")
     def history_report(scan_id: int):
@@ -882,9 +1053,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         prev_id = storage.previous_scan_id(scan_id, db)
         prev = storage.get_scan(prev_id, db) if prev_id is not None else None
         compare = storage.diff(prev, scan) if prev is not None and scan.status == "ok" else None
-        return render_report(scan, url_for("history_scan", scan_id=scan_id),
-                             url_for("history_report", scan_id=scan_id, download=1), request.args.get("download") == "1",
-                             compare=compare, prev=prev if compare is not None else None)
+        return render_report(scan, url_for("history_scan", scan_id=scan_id), compare=compare,
+                             prev=prev if compare is not None else None)
 
     @app.get("/journal")
     def journal_page():
@@ -939,21 +1109,39 @@ def create_app(test_config: dict | None = None) -> Flask:
         scan = storage.get_scan(scan_id, db)
         if scan is None:
             abort(404)
-        prev_id = storage.previous_scan_id(scan_id, db)
-        prev = storage.get_scan(prev_id, db) if prev_id is not None else None
-        compare = storage.diff(prev, scan) if prev is not None else None
-        alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None else None
+        # „Înainte”: cea cerută explicit (?vs=<id>, după „Verifică din nou”) sau ultima citibilă de dinainte
+        prev = None
+        vs = request.args.get("vs", type=int)
+        if vs is not None and vs != scan_id:
+            prev = storage.get_scan(vs, db)
+            if prev is not None and prev.status != "ok":
+                prev = None
+        if prev is None:
+            prev_id = storage.previous_scan_id(scan_id, db)
+            prev = storage.get_scan(prev_id, db) if prev_id is not None else None
+        compare = storage.diff(prev, scan) if prev is not None and scan.status == "ok" else None
+        # Dovada: ce a dispărut de pe dispozitive văzute din nou (reparat) e separat de ce a dispărut pentru că
+        # dispozitivul nu a mai fost văzut (nu înseamnă reparat). Fraza („Ai închis N uși”) numără doar reparatele.
+        proof = proof_view(prev, scan, compare) if compare is not None else None
+        door = proof_of(prev, scan, compare) if compare is not None else None
+        proof_line = None
+        if proof is not None and door is not None:
+            proof_line = i18n.proof_sentence(g.lang, replace(door, resolved=[x["finding"] for x in proof["fixed"]]))
+        alerts = alerts_between(prev, scan, scan_id=scan_id) if prev is not None and scan.status == "ok" else None
+        # niciun dispozitiv comun = scanarea anterioară e din altă rețea: comparația nu spune mare lucru
+        same_network = prev is None or bool(storage.match_devices(prev, scan))
         question = request.args.get("q", "")[:MAX_QUESTION_LEN] if same_site_request() else ""
         ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
         ok = scan.status == "ok"
+        worst = most_dangerous(scan)
         return render_template(
             "overview.html", scan=scan, scan_list=[], selected=0,
-            devices=rank_devices(scan), worst=most_dangerous(scan),
+            devices=rank_devices(scan), worst=worst,
+            summary=summary_sentence(scan, worst),
             score_std=scan.score if ok else None, score_now=scan.score if ok else None, score_now_differs=False,
             verdict=verdict_view(scan, set(), set(), g.lang) if ok else None, fixed_keys=set(), accepted_keys=set(),
-            csv=csv_view(scan),
-            proof=proof_view(prev, scan, compare) if compare is not None else None,
-            history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts,
+            csv=csv_view(scan), proof=proof, proof_line=proof_line,
+            history_id=scan_id, compare=compare, ip_of=ip_of, alerts=alerts, same_network=same_network,
             assistant=assistant_ctx(url_for("history_scan", scan_id=scan_id), url_for("api_ask", history=scan_id),
                                     scan, None, question, ask_assistant(question, scan, g.lang, previous=prev), True),
         )

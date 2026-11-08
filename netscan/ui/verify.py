@@ -38,8 +38,9 @@ RESULTS = (VERIFIED, STILL_OPEN, STILL_OPEN_VERSION, UDP, NO_PORT, OTHER_NETWORK
 # Rezultate care primesc doar IP-ul în text (restul primesc portul și IP-ul; FILE_ONLY nu primește nimic).
 IP_ONLY = (NO_PORT, OTHER_NETWORK, OTHER_DEVICE)
 
-PROBE_TIMEOUT = 3.0  # secunde, o singură încercare. Pe Windows refuzul (port închis) vine abia după ~2 s,
-                     # pentru că sistemul reîncearcă conexiunea; sub 2 s un port închis ar ieși mereu „fără răspuns”.
+# Secunde, o singură încercare. Pe Windows o conexiune refuzată se anunță abia după ~2 s (sistemul mai
+# retrimite SYN de două ori înainte să renunțe): cu 1,5 s un port închis ar părea „fără răspuns".
+PROBE_TIMEOUT = 3.0
 
 Probe = Callable[[str, int], str]           # (ip, port) -> "closed" | "open" | "unknown"
 TargetCheck = Callable[[str], bool]         # ip -> e în rețeaua mea?

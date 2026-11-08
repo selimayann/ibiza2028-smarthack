@@ -15,14 +15,16 @@
       </p>
     {% endif %}
     <p class="lead">{{ T('history_hint') }}</p>
+    {# Al cui e istoricul: utilizatorul de sistem (text de la sistem, escapat) #}
+    <p class="history-owner"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{% if owner %}{{ T('history_owner')|format(owner) }}{% else %}{{ T('history_owner_unknown') }}{% endif %}</p>
   </div>
 </div>
 {% if deleted %}<p class="notice-msg" role="status" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('history_deleted') }}{% if deleted_raw %} {{ T('delete_raw_done') }}{% endif %}</p>{% endif %}
 
 {% if items %}
-  {# Rândurile: cea mai nouă scanare prima; data e textul linkului spre comparație (dovada) #}
-  <div class="table-wrap">
-  <table class="history-table">
+  {# Rândurile: cea mai nouă scanare prima; data e textul linkului spre comparație (dovada).
+     Pe telefon tabelul devine o listă de carduri (ca la „Dispozitive”), ca linkurile să nu iasă din ecran. #}
+  <table class="rtable hist-table history-table">
     <caption class="sr-only">{{ T('history_title') }}</caption>
     <thead><tr>
       <th scope="col">{{ T('scan_date') }}</th>
@@ -33,16 +35,16 @@
       {% for r in rows|reverse %}
         {% set s = r.item %}
         <tr>
-          <td><a class="row-main-link" href="{{ url_for('history_scan', scan_id=s.id) }}" title="{{ s.file }}">{{ fmt_time(s.started_at) }}<span class="sr-only"> ({{ s.file }})</span></a></td>
-          <td>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_pill(s.score) }}{% endif %}</td>
-          <td>
+          <td class="rt-main"><a class="row-main-link" href="{{ url_for('history_scan', scan_id=s.id) }}" title="{{ s.file }}">{{ fmt_time(s.started_at) }}<span class="sr-only"> ({{ s.file }})</span></a></td>
+          <td data-label="{{ T('score_label') }}"><div>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_pill(s.score) }}{% endif %}</div></td>
+          <td data-label="{{ T('hist_change') }}"><div>
             {% if s.status == 'error' %}<span class="muted">{{ error_message(s.error_code) }}</span>
             {% elif r.prev is none %}<span class="delta delta-same">{{ T('hist_first') }}</span>
             {% elif s.score > r.prev %}<span class="delta delta-up"><span aria-hidden="true">▲</span> {{ T('hist_up') }}: {{ r.prev }} → {{ s.score }}</span>
             {% elif s.score < r.prev %}<span class="delta delta-down"><span aria-hidden="true">▼</span> {{ T('hist_down') }}: {{ r.prev }} → {{ s.score }}</span>
             {% else %}<span class="delta delta-same">{{ T('hist_same') }}: {{ s.score }}</span>{% endif %}
-          </td>
-          <td><span class="row-links">
+          </div></td>
+          <td class="rt-links"><span class="row-links">
             {% if s.status == 'ok' and r.prev is not none %}<a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('see_proof') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
             {% if s.status == 'ok' %}<a href="{{ url_for('history_report', scan_id=s.id) }}">{{ T('report_short') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
           </span></td>
@@ -50,7 +52,6 @@
       {% endfor %}
     </tbody>
   </table>
-  </div>
 
   <section class="trend section" aria-labelledby="trend-h">
     <h2 id="trend-h">{{ T('trend_title') }}</h2>
@@ -92,9 +93,11 @@
 
   <div class="danger-zone">
     <p>{{ T('history_delete_hint') }}</p>
-    <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
+    <a class="button button-danger-quiet" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
   </div>
 {% else %}
   {{ empty_state(T('history_empty'), T('history_empty_hint'), url_for('overview'), T('go_overview')) }}
+  <p class="notice history-owner-note" role="note">{{ T('history_empty_owner') }}</p>
+  <p class="muted history-file">{{ T('history_file')|format(db_file) }}</p>
 {% endif %}
 {% endblock %}

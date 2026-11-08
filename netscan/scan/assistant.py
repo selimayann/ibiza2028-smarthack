@@ -870,6 +870,29 @@ def answer(question: str, scan: Scan, lang: str = "ro", previous: Optional[Scan]
         facts = Scan(file=scan.file, status="ok", score=scan.score, hosts=[*scan.hosts, *previous.hosts],
                      findings=[*scan.findings, *previous.findings])
     check = ai_check.check_llm_text(generated, facts)
+    if check.ok and wrong_language(generated, context["lang"]):
+        # Modelele mici răspund uneori în engleză deși platforma e în română (găsit la mentor): textul predefinit
+        return Answer(text, "fallback", intent, ["WRONG_LANG"], refs=refs)
     if check.ok:
         return Answer(generated.strip(), "llm", intent, refs=refs)
     return Answer(text, "fallback", intent, check.problems, refs=refs)
+
+
+_RO_DIACRITICS = set("ăâîșțşţ")
+_RO_WORDS = {"și", "si", "este", "sunt", "la", "pe", "din", "nu", "să", "sa", "care", "un", "cu", "în", "de", "ce",
+             "tău", "ta", "tale", "dispozitivul", "parola", "portul", "rețea", "retea", "fă", "fa", "acest", "dacă"}
+_EN_WORDS = {"the", "is", "and", "your", "you", "to", "of", "this", "it", "with", "for", "are", "be", "can",
+             "should", "that", "there", "has", "have", "network", "first", "close", "change"}
+
+
+def wrong_language(text: str, lang: str) -> bool:
+    """True dacă textul modelului e vizibil în cealaltă limbă decât cea cerută (verificare simplă, deterministă:
+    diacritice românești și cuvinte foarte dese din fiecare limbă)."""
+    low = (text or "").lower()
+    words = re.findall(r"[a-zăâîșțşţ]+", low)
+    ro = sum(w in _RO_WORDS for w in words)
+    en = sum(w in _EN_WORDS for w in words)
+    has_diacritics = any(c in _RO_DIACRITICS for c in low)
+    if lang == "en":
+        return has_diacritics or (ro >= 2 and ro > en)
+    return not has_diacritics and en >= 2 and en > ro

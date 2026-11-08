@@ -20,6 +20,7 @@
       <li>{{ plural(counts.done, 'trust_done') }}</li>
       <li>{{ plural(counts.verified, 'trust_verified') }}</li>
       <li>{{ plural(counts.accepted, 'trust_accepted') }}</li>
+      {% if counts.names %}<li>{{ plural(counts.names, 'trust_names') }}</li>{% endif %}
       <li>{{ plural(n_alerts, 'trust_alerts') }}</li>
       <li>{{ plural(n_trap, 'trust_trap') }}</li>
       <li>{{ plural(n_raw, 'trust_raw') }}</li>
