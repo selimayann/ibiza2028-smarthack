@@ -29,14 +29,15 @@
           {% endif %}
           {# Unde se face pasul, pe înțeles, după tipul dispozitivului (routerul = la noi, telefonul cu hotspotul) #}
           {% set is_gw = (live and live.gateway and live.gateway == st.device.ip) or (router_ip and router_ip == st.device.ip) %}
-          {% set howto %}<p class="step-howto"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{{ T('howto_gateway') if is_gw else T('howto_' ~ (st.device.device_type if st.device.device_type in ('router', 'camera', 'printer', 'tv', 'pc_windows', 'server', 'phone_laptop', 'iot') else 'unknown')) }}</span></p>{% endset %}
+          {% set howto %}<p class="step-howto"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{{ T('howto_hotspot') if st.device.device_type in ('hotspot_iphone', 'hotspot_phone') or hotspot_kind(st.device) else T('howto_gateway') if is_gw else T('howto_' ~ (st.device.device_type if st.device.device_type in ('router', 'camera', 'printer', 'tv', 'pc_windows', 'server', 'phone_laptop', 'iot') else 'unknown')) }}</span></p>{% endset %}
           {% set evd = eavesdrop(st.finding.code) %}
           {% set key_fields %}<input type="hidden" name="device_id" value="{{ st.finding.device_id }}"><input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}"><input type="hidden" name="code" value="{{ st.finding.code }}">{% endset %}
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
             <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .verify-msg, #step-now">
               {{ hidden }}{{ key_fields }}
-              <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</button>
+              {# Laptopul nu e în hotspotul echipei: nu se poate verifica, deci butonul e dezactivat și spune de ce #}
+              <button type="submit" class="button-primary"{% if verify_block %} disabled aria-describedby="verify-block"{% endif %}><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</button>
             </form>
             {# Ghidul animat pas cu pas (dialog). Fără JavaScript, linkul duce la pagina dispozitivului (aceeași scanare). #}
             <a class="button button-secondary guide-open" href="{{ url_for('device', device_id=st.finding.device_id, **scan_ref) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
@@ -46,6 +47,7 @@
               {% if st.number < steps.total %}<a class="step-link" href="{{ url_for('overview', step=st.number + 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_skip') if st.status == 'todo' else T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
             </nav>
           </div>
+          {% if verify_block and st.status != 'verified' %}<p class="verify-block" id="verify-block"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{% if verify_block.file %}{{ T('verify_blocked_file') }}{% elif verify_block.ssid %}{{ T('verify_blocked')|format(expected_ssid, verify_block.ssid) }}{% else %}{{ T('verify_blocked_nossid')|format(expected_ssid) }}{% endif %}</span></p>{% endif %}
           <details class="more-options">
             <summary>{{ T('more_options') }}</summary>
             <div class="more-body">
@@ -294,27 +296,28 @@
 {% else %}
 <div class="verdict">
   {# 3. Scorul standard (al motorului), cu scala și formula pliate #}
-  <section class="score card score-{{ band }}" id="score" aria-labelledby="score-h">
-    <h2 id="score-h" class="score-label">{{ T('score_label') }}</h2>
+  {# După reparații confirmate pe date reale, cifra mare e scorul DE ACUM (cu eticheta lui); scorul oficial al scanării
+     (al motorului, ca în scores.csv) rămâne scris dedesubt. CSV-urile și „Toate verificările” folosesc doar scorul oficial. #}
+  {% set shown = score_now if score_now_differs else score_std %}
+  {% set shown_band = score_band(shown) %}
+  <section class="score card score-{{ shown_band }}" id="score" aria-labelledby="score-h">
+    <h2 id="score-h" class="score-label">{{ T('score_label_now') if score_now_differs else T('score_label') }}</h2>
     {# Inelul scorului: atribute SVG (nu stil inline), deci merge cu CSP-ul strict #}
     <div class="ring-wrap">
       <svg class="score-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
         <circle class="ring-track" cx="60" cy="60" r="50" pathLength="100"/>
+        {# arcul verde-deschis: câștigul din reparațiile confirmate (de la scorul oficial până la cel de acum) #}
+        {% if score_now_differs %}<circle class="ring-gain" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="0 {{ score_std }} {{ score_now - score_std }} 100"/>{% endif %}
         <circle class="ring-fill" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="{{ score_std }} 100"/>
       </svg>
-      <p class="score-value"><span class="score-num">{{ score_std }}</span><span class="score-of">{{ T('score_of') }}</span></p>
+      <p class="score-value"><span class="score-num">{{ shown }}</span><span class="score-of">{{ T('score_of') }}</span></p>
     </div>
-    <p class="score-band">{{ band_icon(band, true) }}{{ T('band_' ~ band) }}</p>
+    <p class="score-band">{{ band_icon(shown_band, true) }}{{ T('band_' ~ shown_band) }}</p>
     {% if score_now_differs %}
-      {# Progresul după reparațiile confirmate, separat de scorul standard. Culoarea urmează eticheta scorului NOU
-         (verde doar la „Bun”), ca o casetă verde să nu sugereze „gata” când rețeaua e încă în risc. #}
-      {% set band_after = score_band(score_now) %}
       {% set left = steps.total - steps.verified_count %}
-      <div class="score-after after-{{ band_after }}">
-        <p class="after-label"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-7M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('score_after_progress')|format(steps.verified_count) }}</p>
-        <p class="after-value"><span class="mono">{{ score_std }}</span> → <strong class="mono">{{ score_now }}</strong> <span class="after-of">{{ T('score_of') }}</span></p>
-        <p class="after-band">{{ band_icon(band_after) }}<span>{{ T('score_band_now' if band_after == 'good' else 'score_band_still')|format(T('band_' ~ band_after)) }}{% if left %} · {{ T('score_left_one') if left == 1 else T('score_left_many')|format(left) }}{% endif %}</span></p>
-        <p class="after-note">{{ T('score_after_line')|format(score_now) }}</p>
+      <div class="score-after">
+        <p class="after-label"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-7M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('score_after_progress')|format(steps.verified_count) }}{% if left %} · {{ T('score_left_one') if left == 1 else T('score_left_many')|format(left) }}{% endif %}</p>
+        <p class="after-official">{{ T('score_official_line')|format(score_std) }}</p>
         {% if newer_hint %}{% set newer_title = T('score_newer_title')|format(newer_hint.file, newer_hint.score) %}<a class="score-newer" href="{{ url_for('overview', **newer_hint.ref) }}" title="{{ newer_title }}" aria-label="{{ newer_title }}">{{ T('score_newer') }}</a>{% endif %}
       </div>
     {% endif %}

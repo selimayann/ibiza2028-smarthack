@@ -1340,3 +1340,23 @@ body { background: radial-gradient(70rem 26rem at 15% -8rem, #E2E5FF 0, rgba(226
   .button-primary { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
   .button-primary:hover { transform: translateY(-1px); }
 }
+
+/* Verificarea nu se poate face (laptopul nu e pe hotspot): motivul, lângă butonul dezactivat */
+.verify-block { display: flex; align-items: flex-start; gap: .5rem; margin-top: .75rem; color: var(--ink); }
+.verify-block .icon { flex: none; margin-top: .2em; color: var(--brand); }
+.do-first-actions button:disabled { opacity: 1; cursor: not-allowed; background: var(--tint); border-color: var(--line-strong); color: var(--muted); box-shadow: none; transform: none; --on-icon: var(--tint); }
+
+/* Inelul: arcul deschis = unde ajunge scorul după reparațiile confirmate (cifra din mijloc rămâne cea oficială) */
+.ring-gain { fill: none; stroke: var(--good); stroke-opacity: .5; stroke-width: 10; stroke-linecap: round; }
+@media (prefers-reduced-motion: no-preference) { .ring-gain { animation: kk-fade .6s ease .6s both; } @keyframes kk-fade { from { opacity: 0; } } }
+
+/* Scorul de acum e cifra mare; dedesubt, pe scurt: câte reparații, câte au rămas și scorul oficial al scanării */
+.score-after { background: var(--tint); border-color: var(--line); color: var(--ink); text-align: center; }
+.score-after .after-label { justify-content: center; color: var(--good); }
+.after-official { color: var(--muted); margin-top: .35rem; }
+
+/* Cât timp așteptăm răspunsul (de ex. la Verifică): butonul rămâne albastru și are un cerc care se învârte */
+form[aria-busy="true"] .button-primary:disabled { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); cursor: progress; }
+form[aria-busy="true"] .button-primary::after { content: ""; width: 1em; height: 1em; margin-left: .5rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: kk-spin .7s linear infinite; }
+@keyframes kk-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { form[aria-busy="true"] .button-primary::after { animation: none; border-right-color: currentColor; opacity: .6; } }

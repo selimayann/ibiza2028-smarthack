@@ -27,6 +27,7 @@ from netscan.cli import load_env_file
 from netscan.engine import analyze_file, analyze_folder
 from netscan.engine.parser import MAX_BYTES
 from netscan.engine.parser import _DEFAULT_SALT as DEFAULT_SALT   # doar comparat: „cheia echipei sau cea implicită?”
+from netscan.scan.device_info import phone_hotspot
 from netscan.model import Scan
 from netscan.scan import live as live_mod
 from netscan.ui import extras, guide, i18n, storage, verify
@@ -149,6 +150,7 @@ def own_newest_scan(scan: Scan | None, own_dir: str | Path | None = None, env: d
 
 
 MAX_QUESTION_LEN = 500
+VERIFY_NET_MAX_AGE_S = 5      # la „Verifică”: rețeaua trebuie citită în ultimele 5 s (altfel o recitim)
 NETWORK_TTL_S = 15           # rețeaua curentă (citită din sistem) se recitește cel mult o dată la 15 s
 LIVE_MSG_TTL_S = 60          # un mesaj al panoului live rămâne vizibil un minut (nu dispare la următorul refresh)
 URGENT_WINDOW_S = 600        # alertele urgente din ultimele 10 minute apar într-un banner mic sus
@@ -288,11 +290,12 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     # ---------- limbă și helperi pentru template-uri ----------
 
-    def current_network():
+    def current_network(max_age: float = NETWORK_TTL_S):
         """Rețeaua de acum (NetworkInfo) sau None dacă nu s-a putut citi. Doar citește setările sistemului (ruta
-        implicită, numele Wi-Fi): nu pornește nimic și nu trimite nimic în rețea. Păstrată NETWORK_TTL_S secunde."""
+        implicită, numele Wi-Fi): nu pornește nimic și nu trimite nimic în rețea. Păstrată NETWORK_TTL_S secunde
+        (max_age mai mic = o citire mai proaspătă, de ex. chiar înainte de verificarea unui pas)."""
         with net_lock:
-            if net_cache["ts"] is not None and time.monotonic() - net_cache["ts"] < NETWORK_TTL_S:
+            if net_cache["ts"] is not None and time.monotonic() - net_cache["ts"] < max_age:
                 return net_cache["info"]
         detect = app.config.get("NETWORK_DETECT") or getattr(app.config["LIVE"], "detect", None)
         info = None
@@ -376,6 +379,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             "lang_url": lang_url,
             "T": lambda key: i18n.t(lang, key),
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
+            # hotspot de pe telefon vs. router adevărat, din datele scanării (doar etichete; CSV-urile și scorul nu se schimbă)
+            "hotspot_kind": lambda h: phone_hotspot(h, h.vendor, g.get("router_ip")),
             "device_type_the": lambda dt: i18n.device_type_the(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
@@ -517,6 +522,26 @@ def create_app(test_config: dict | None = None) -> Flask:
         if ok and steps is not None and (steps.declared_count or steps.verified_count):
             newer = newest_after(scan, scan_list)
             recheck = {"newer_ref": newer[0] if newer else None, "newer_file": newer[1].file if newer else None}
+        # Se poate verifica pasul de acum? Doar pe cea mai nouă scanare a noastră, pe un port TCP, și doar dacă laptopul
+        # e chiar în hotspotul echipei. Altfel butonul „Verifică” e dezactivat, cu motivul lângă el (nu bate la nicio ușă).
+        verify_block = None
+        if steps is not None and getattr(steps, "current", None) is not None and ok and not app.config["OWN_SCAN_CHECK"](scan):
+            verify_block = {"file": True}   # scanare veche / din fișier: adresele de atunci pot fi acum alte dispozitive
+        elif steps is not None and getattr(steps, "current", None) is not None and ok:
+            f_now = steps.current.finding
+            h_now = next((h for h in scan.hosts if h.device_id == f_now.device_id), None)
+            if f_now.port is not None and verify._tcp_port(h_now, f_now.port):
+                try:   # pe pagină: rețeaua citită în ultimele 15 s (la click, verificarea o recitește, pentru siguranță)
+                    net_check = app.config["NET_CHECK"]
+                    if net_check is verify.target_in_my_network:
+                        reachable = verify.target_in_my_network(f_now.ip, detect=current_network)
+                    else:
+                        reachable = bool(net_check(f_now.ip))
+                except Exception:
+                    reachable = False
+                if not reachable:
+                    info = current_network()
+                    verify_block = {"ssid": getattr(info, "ssid", None) if info else None}
         upload_error = request.args.get("upload_error")
         if upload_error not in UPLOAD_ERRORS:
             upload_error = None
@@ -524,7 +549,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             "overview.html", scan=scan, scan_list=scan_list, selected=idx, live=live_ctx(),
             steps=steps, check=check, checked=checked_step,
             check_text=check_text(check, checked_step.finding if checked_step else None),
-            recheck=recheck, upload_error=upload_error,
+            recheck=recheck, upload_error=upload_error, verify_block=verify_block,
+            expected_ssid=os.environ.get("NETSCAN_EXPECTED_SSID") or "RSH-Ibiza2028",
             show_steps=steps is not None and (request.args.get("step") is not None or not steps.all_resolved),
             assistant=assistant_ctx(url_for("overview"), url_for("api_ask", **scan_ref(scan)), scan, scan_ref(scan),
                                     question, reply, False),
@@ -648,15 +674,18 @@ def create_app(test_config: dict | None = None) -> Flask:
         probe_allowed = bool(app.config["OWN_SCAN_CHECK"](scan))
         same = getattr(app.config["LIVE"], "same_device", None)
         with _VERIFY_LOCK:
-            result = verify.check_finding(scan, finding, app.config["PORT_PROBE"], app.config["NET_CHECK"],
+            net_check = app.config["NET_CHECK"]
+            if net_check is verify.target_in_my_network:   # rețeaua citită în ultimele VERIFY_NET_MAX_AGE_S secunde
+                net_check = lambda ip: verify.target_in_my_network(ip, detect=lambda: current_network(VERIFY_NET_MAX_AGE_S))  # noqa: E731
+            result = verify.check_finding(scan, finding, app.config["PORT_PROBE"], net_check,
                                           probe_allowed=probe_allowed, same_device=same)
         if result.verified:   # portul e închis: toate problemele de pe acel port al dispozitivului au dispărut
             storage.mark_verified(scan, [f.key() for f in scan.findings
                                          if f.device_id == finding.device_id and f.port == finding.port], db)
-        elif result.result not in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION):
-            storage.mark_done(scan, key, db)
+        elif result.result not in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION, verify.OTHER_NETWORK):
+            storage.mark_done(scan, key, db)   # în altă rețea nu bifăm nimic: nu s-a verificat nimic
         number = [f.key() for f in action_plan(scan)].index(key) + 1
-        stay = {"step": number} if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION) else {}
+        stay = {"step": number} if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION, verify.OTHER_NETWORK) else {}
         return redirect(url_for("overview", **scan_ref(scan), checked=number, check=result.result, **stay)
                         + "#worst-h")
 

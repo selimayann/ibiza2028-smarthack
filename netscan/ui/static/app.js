@@ -84,7 +84,9 @@
     else init.body = data;
     const busy = form.querySelectorAll("button[type=submit]");
     busy.forEach((b) => { b.disabled = true; });
+    form.setAttribute("aria-busy", "true");   // butonul arată că lucrează (CSS), până vine răspunsul
     const ok = await swap(url, init, targets(form), form.dataset.focus, method === "GET" || form.dataset.keepUrl === "1");
+    form.removeAttribute("aria-busy");
     if (!ok) {
       // dacă ceva nu merge, revenim la comportamentul normal (cu butonul apăsat, ca valoarea lui să ajungă la server)
       busy.forEach((b) => { b.disabled = false; });
