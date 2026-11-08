@@ -84,11 +84,13 @@
     else init.body = data;
     const busy = form.querySelectorAll("button[type=submit]");
     busy.forEach((b) => { b.disabled = true; });
+    form.setAttribute("aria-busy", "true");   // butonul arată că lucrează (cerc în CSS), până vine răspunsul
     // Răspuns imediat (sub 400 ms): butonul care așteaptă ceva lent (verificarea unui port, până la ~3 s) spune ce face.
     const label = e.submitter && e.submitter.dataset.busy ? e.submitter.querySelector("span") : null;
     const before = label ? label.textContent : null;
-    if (label) { label.textContent = e.submitter.dataset.busy; form.setAttribute("aria-busy", "true"); }
+    if (label) label.textContent = e.submitter.dataset.busy;
     const ok = await swap(url, init, targets(form), form.dataset.focus, method === "GET" || form.dataset.keepUrl === "1");
+    form.removeAttribute("aria-busy");
     if (!ok) {
       // dacă ceva nu merge, revenim la comportamentul normal (cu butonul apăsat, ca valoarea lui să ajungă la server)
       busy.forEach((b) => { b.disabled = false; });

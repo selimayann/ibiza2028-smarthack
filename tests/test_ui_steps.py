@@ -84,21 +84,11 @@ def test_closed_port_is_verified_and_engine_rescores(tmp_path):
     assert storage.verified_keys(s, app.config["DB_PATH"]) == same_port
     html = client.get(resp.headers["Location"]).get_data(as_text=True)
     expected = compute_score(f for f in s.findings if f.key() not in same_port)
-    # scorul mare rămâne cel standard (al motorului, ca în scores.csv); cel recalculat apare separat
-    assert expected > s.score and f'<span class="score-num">{s.score}</span>' in html
-    assert f"ar fi ~{expected}" in html
+    # cifra mare = scorul de acum (recalculat de motor); cel oficial al scanării (ca în scores.csv) e scris dedesubt
+    assert expected > s.score and f'<span class="score-num">{expected}</span>' in html
+    assert f"Scorul oficial al acestei scanări: {s.score}." in html
     assert "am bătut o singură dată la ușa 554" in html
-    # cifra mare rămâne scorul standard al scanării (ca în scores.csv); scorul după reparații e dedesubt
-    assert f'<span class="score-num">{s.score}</span>' in html
-    assert "Progres după reparațiile confirmate (1)" in html and f'<strong class="mono">{expected}</strong>' in html
-    # culoarea casetei urmează eticheta scorului NOU: verde doar la „Bun”, altfel „Încă: …” + câte au rămas
-    from netscan.ui.view import score_band
-    band = score_band(expected)
-    assert f'class="score-after after-{band}"' in html
-    if band != "good":
-        assert "Încă:" in html and "de rezolvat" in html
-    assert "Vezi scanarea nouă" not in html   # confirmat live, nu de o scanare mai nouă
-
+    assert "Progres după reparațiile confirmate (1)" in html
 
 def test_open_port_keeps_step_and_score(tmp_path):
     s = sample()
@@ -112,11 +102,12 @@ def test_open_port_keeps_step_and_score(tmp_path):
 
 
 def test_unconfirmable_step_is_only_declared(tmp_path):
+    # o scanare din fișier (nu rețeaua de acum): nu se atinge rețeaua, pasul e doar bifat
     s = sample()
-    client, app = client_for(tmp_path, [s], net=False)
+    client, app = client_for(tmp_path, [s], net=False, own=False)
     first = action_plan(s)[0]
     html = client.get(tick(client, app, first).headers["Location"]).get_data(as_text=True)
-    assert "nu e în rețeaua" in html and ">40<" in html and "Pasul 2 din 5" in html
+    assert "nu verific nimic în rețea" in html and ">40<" in html and "Pasul 2 din 5" in html
     assert storage.done_keys(s, app.config["DB_PATH"]) == {first.key()}
     html = client.get("/?step=1").get_data(as_text=True)
     assert "Bifat, dar neconfirmat" in html and "Verifică din nou" in html
@@ -200,9 +191,8 @@ def test_all_verified_shows_fixed_card_with_steps(tmp_path):
     html = client.get("/?scan=0").get_data(as_text=True)
     card = _worst_card(html)
     assert "Toate problemele au fost verificate ca rezolvate" in card and "Revezi pașii" in card
-    assert '<span class="score-num">40</span>' in html and "ar fi ~100" in html
-    assert '<strong class="mono">100</strong>' in html    # scorul după reparațiile confirmate
-    assert 'class="score-after after-good"' in html and "Acum: Bun" in html and "de rezolvat" not in html
+    assert '<span class="score-num">100</span>' in html and "Scorul oficial al acestei scanări: 40." in html
+    assert 'class="score-band"' in html and "de rezolvat" not in html
     # reparațiile au fost confirmate de after.xml: link spre scanarea mai nouă
     assert "Vezi scanarea nouă →" in html
     assert 'title="Scanarea mai nouă a acestei rețele: after.xml (scor 100)"' in html
@@ -211,3 +201,23 @@ def test_all_verified_shows_fixed_card_with_steps(tmp_path):
     assert "Pasul 1 din 5" in _worst_card(client.get("/?scan=0&step=1").get_data(as_text=True))
     # o scanare care chiar nu a găsit nimic își păstrează textul obișnuit
     assert "Nicio problemă găsită" in _worst_card(client.get("/?scan=1").get_data(as_text=True))
+
+
+def test_off_the_team_hotspot_the_check_button_is_disabled_and_nothing_is_ticked(tmp_path):
+    s = sample()
+    never = lambda ip, port: (_ for _ in ()).throw(AssertionError("nu trebuia atins"))
+    client, app = client_for(tmp_path, [s], probe=never, net=False, own=True)
+    tcp = next(f for f in action_plan(s) if f.port is not None)
+    step = action_plan(s).index(tcp) + 1
+    html = client.get(f"/?step={step}").get_data(as_text=True)
+    assert 'disabled aria-describedby="verify-block"' in html and 'id="verify-block"' in html
+    r = tick(client, app, tcp)
+    assert "check=network" in r.headers["Location"]
+    assert tcp.key() not in storage.done_keys(s, app.config["DB_PATH"])     # nimic bifat fără verificare
+
+
+def test_on_the_team_hotspot_the_check_button_is_active(tmp_path):
+    s = sample()
+    client, _ = client_for(tmp_path, [s], net=True, own=True)
+    html = client.get("/?step=1").get_data(as_text=True)
+    assert 'id="verify-block"' not in html and 'aria-describedby="verify-block"' not in html
