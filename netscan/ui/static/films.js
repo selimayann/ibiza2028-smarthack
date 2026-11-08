@@ -82,7 +82,7 @@
      cadre: 1 găsești aparatul · 2 citești eticheta · 3 scrii adresa · 4 intri cu parola · apoi câte un click pe cadru ·
      acțiunea · salvezi (bifa apare după apăsare). */
   /* CTX.generic = aparatul nu e router: filmul începe din SafeEel (adresa aparatului), nu de la eticheta routerului */
-  const CTX = { generic: false };
+  const CTX = { generic: false, prog: "", dev: "", devip: "", lang: "ro", port: "" };
   const GENERIC_IP = "192.168.1.50";
   function webFilm(o) {
     if (CTX.generic && o.device !== "printer") return genericWebFilm(o);
@@ -186,6 +186,26 @@
       { cap: o.final.cap, f: '[data-shot-page] [data-t="tg"]', tap: true },
       { cap: o.doneCap }];
     return { html: `<div class="floor"></div>${monitor(inner)}${o.tagHtml || ""}${done(String(last), o.done)}${mouse}`, shots, note: o.note };
+  }
+
+
+  /* ================= fluxul „Mac”: simbolul din colțul stânga-sus → Setări de sistem → General → Partajare ================= */
+  function macFilm(o) {
+    const items = ["General", "Rețea", "Bluetooth", "Confidențialitate"];
+    const menu = `<div class="macmenu slide-up" data-show="2"><span class="pick" data-act="2" data-delay="900" data-t="go">Setări de sistem…</span><span>Repornește…</span><span>Oprește…</span></div>`;
+    const inner = `<div class="macbar"><span class="appleish" data-t="start"></span><b>Finder</b><span>Fișier</span><span>Editare</span></div>${menu}`
+      + winWindow("3", "Setări de sistem", items, { go: 0, shot: 3 }, `<div class="muted-big">Alege o categorie din stânga.</div>`)
+      + winWindow("4", "General", items, { on: 0, go: -1 }, `<b class="wt">General</b>${rows(["Despre", "Actualizare software", "Partajare", "Data și ora"], 2, 4)}`)
+      + winWindow("5,6", "Partajare", items, { on: 0, go: -1 }, `<b class="wt">Partajare</b><div class="row dim"><span>Partajarea internetului</span></div><div class="row"><span>${esc(o.item)}</span>${toggle(5, false)}</div>`);
+    const shots = [
+      { cap: "Pe Mac, apasă simbolul din colțul din stânga-sus al ecranului." , f: '[data-t="start"]', tap: true },
+      { cap: "În meniul care se deschide, apasă „Setări de sistem…”.", f: '[data-shot-page] [data-t="go"]', tap: true },
+      { cap: "În stânga, apasă „General”.", f: '[data-shot-page] [data-t="go"]', tap: true },
+      { cap: "În dreapta, apasă „Partajare”.", f: '[data-shot-page] [data-t="go"]', tap: true },
+      { cap: o.cap, f: '[data-shot-page] [data-t="tg"]', tap: true },
+      { cap: o.doneCap },
+    ];
+    return { html: `<div class="floor"></div>${monitor(inner).replace('class="actor monitor"', 'class="actor monitor mac"')}${done("6", o.done)}${mouse}`, shots, note: o.note };
   }
 
   /* ================= aparatul necunoscut: cum afli care e =================
@@ -380,6 +400,32 @@
     };
   }
 
+
+  /* Bun venit: ce face SafeEel, în 5 cadre (scanezi, apar aparatele, scorul, primul pas, verifici) */
+  function welcomeFilm() {
+    const head = (t) => `<div class="safeeel"><b>SafeEel</b> · ${t}</div>`;
+    const devs = (act) => ["Routerul", "Imprimanta", "Telefonul tău"].map((n, k) =>
+      `<div class="row newrow" data-act="${act}" data-delay="${600 + k * 700}"><span>${n}</span><b class="okc">găsit</b></div>`).join("");
+    const pages = [
+      { show: "1", html: head("Bun venit") + '<div class="kv tiny">Prima ta scanare completă</div><span class="btn" data-t="go">Scanează acum</span>' },
+      { show: "2", html: head("Scanez") + '<div class="pbar"><i data-act="2" data-delay="200"></i></div><div class="kv tiny">Caut aparatele din hotspot…</div>' + devs(2) },
+      { show: "3", html: head("Acasă") + '<div class="wscore"><span class="wnum">70</span><span>din 100</span></div><div class="row"><span>3 lucruri de reparat</span><b class="badc">vezi</b></div>' },
+      { show: "4", html: head("Acasă") + '<div class="row"><span>Pasul 1: mergi la router</span></div><div class="row dim"><span>Pasul 2: întoarce-l</span></div><span class="btn" data-t="go">Am făcut asta, verifică</span>' },
+      { show: "5", html: head("Acasă") + '<div class="wscore"><span class="wnum good">85</span><span>din 100</span></div><div class="row"><span>Pasul 1</span><b class="okc">reparat</b></div>' },
+    ];
+    const url = [{ show: "1,2,3,4,5", text: "SafeEel" }];
+    return {
+      html: `<div class="floor"></div>${laptop("1,2,3,4,5", url, pages, "SafeEel")}${done("5", "Rețeaua e mai sigură")}${mouse}`,
+      shots: [
+        { cap: "Apeși „Scanează acum”. SafeEel verifică singur rețeaua.", f: '[data-shot-page] [data-t="go"]', tap: true },
+        { cap: "Găsește toate aparatele din hotspot: routerul, imprimanta, telefoanele." },
+        { cap: "Primești un scor: cu cât e mai aproape de 100, cu atât ești mai în siguranță." },
+        { cap: "Pentru fiecare problemă îți arătăm, pas cu pas, ce faci. Apoi apeși „verifică”.", f: '[data-shot-page] [data-t="go"]', tap: true },
+        { cap: "Am verificat pe loc: problema a dispărut, iar scorul crește." },
+      ],
+    };
+  }
+
   /* ================= filmele ================= */
   const ROUTER_MENU = ["Stare", "Wi-Fi", "Avansat", "Sistem"];
   const homeRight = '<h4>Stare</h4><div class="row"><span>Internet</span><b class="okc">Conectat</b></div><div class="row"><span>Aparate conectate</span><b>5</b></div>';
@@ -508,6 +554,107 @@
       doneCap: "Gata: nimeni nu-ți mai vede și nu-ți mai controlează ecranul.", done: "Program dezinstalat",
       tagHtml: tag("1", "bad", 196, 22, "iconița VNC, lângă ceas ↓"),
     }) },
+
+
+    /* ===== „aparat necunoscut” într-un hotspot de telefon ===== */
+    { code: "HOTSPOT_SELF", title: "Aparatul necunoscut e chiar telefonul cu hotspotul", make: () => {
+      const screens = homeScreen("1", { n: "Setări", c: "linear-gradient(#AEB4BC,#8E8E93)", glyph: '<span class="glyph">⚙</span>' })
+        + `<div class="ps slide" data-show="2,3"><h5>Hotspot personal</h5><div class="list"><span data-t="go">Permite altora să se conecteze <i class="chev"></i></span><span>Parola Wi-Fi <i class="chev"></i></span></div><div class="note">Acesta e telefonul care dă internetul laptopului.</div></div>`;
+      return {
+        html: `<div class="floor"></div>${phone("", "1,2,3", screens)}${done("3", "E telefonul tău · totul e în regulă")}${finger}`,
+        shots: [
+          { cap: "Aparatul „necunoscut” de la adresa .1 e chiar telefonul care face hotspotul: de la el vine internetul.", touch: true },
+          { cap: "Îl recunoști după „Hotspot personal” pornit în Setări. E al tău, deci nu e un străin.", f: '[data-shot-page] [data-t="go"]', touch: true },
+          { cap: "Nu ai nimic de reparat aici: apasă „Sar peste, pe riscul meu” și treci mai departe.", touch: true },
+        ],
+        note: "SafeEel nu poate afla singur numele telefonului (nu-l anunță în rețea). De aceea îl vede „necunoscut”.",
+      };
+    } },
+    { code: "HOTSPOT_UNKNOWN", title: "Un aparat necunoscut în hotspotul de pe telefon", make: () => {
+      const pw = hotspotPw(2);
+      const ctx = `<div class="ps slide" data-show="1"><h5>Hotspot personal</h5><div class="list"><span data-t="go">Conectate acum: <b>4</b></span><span>Parola Wi-Fi <i class="chev"></i></span></div><div class="note">Pe telefon vezi doar câte aparate sunt, nu și care.</div></div>`;
+      const html = pw.html.replace('<div class="sbar">', '<div class="sbar">').replace(/(<div class="actor phone[^"]*" data-show=")([^"]*)"/, (m, a, b) => `${a}1,${b}"`);
+      return {
+        html: `<div class="floor"></div>${html.replace('<div class="screen">\n      <div class="sbar"><span>9:41</span><span class="bat"></span></div>', '<div class="screen">\n      <div class="sbar"><span>9:41</span><span class="bat"></span></div>' + ctx)}${finger}`,
+        shots: [{ cap: "Pe telefonul cu hotspotul vezi câte aparate sunt conectate, dar nu și care. Un străin nu poate fi dat afară separat.", f: '[data-shot-page] [data-t="go"]', touch: true }].concat(pw.shots),
+        note: "Știi cine e (un telefon nou din casă)? Atunci nu e o problemă: apasă „Sar peste”. " + pw.note,
+      };
+    } },
+    /* ===== calculatoare Windows: problema e un PROGRAM de pe calculator (pagină web, mesaje de casă inteligentă, FTP…) ===== */
+    { code: "WIN_APP", title: "Un program de pe calculator, deschis în rețea", make: () => {
+      const en = CTX.lang === "en";
+      const port = CTX.port || "8080";
+      const guess = CTX.prog ? esc(CTX.prog) : "";
+      const dev = CTX.dev ? esc(CTX.dev) : "";
+      const ip = CTX.devip ? esc(CTX.devip) : "192.168.1.50";
+      const safe = `<div class="win slide" data-show="1"><div class="wbar"><span>SafeEel</span><span class="wbtn">— ▢ ✕</span></div>
+          <div class="safe-hint"><b class="wt">Problema de pe ${dev || "calculator"}</b><div class="kv">adresa ${ip}</div>
+          <div class="kv" data-t="go">portul <span class="hl">${port}</span>${guess ? ` · pare „${guess}”` : ""}</div></div></div>`;
+      const start = `<div class="start slide-up" data-show="2"><input class="search" value="Monitor de resurse" disabled><span class="pick" data-act="2" data-delay="900" data-t="go">Monitor de resurse</span><span>Setări</span></div>`;
+      const tabs = (on) => `<div class="rm-tabs"><span>Prezentare</span><span>CPU</span><span>Memorie</span><span>Disc</span><span class="${on ? "on" : "pick"}" ${on ? "" : 'data-act="3" data-delay="900" data-t="go"'}>Rețea</span></div>`;
+      const ports = (pick) => `<b class="wt rm-sec">Porturi de ascultare</b><div class="rm-head"><span>Imagine</span><span>Port</span></div>
+          <div class="row dim"><span>svchost.exe</span><b>135</b></div>
+          <div class="row ${pick ? "pick" : ""}" ${pick ? `data-act="${pick}" data-delay="500" data-t="go"` : ""}><span class="rm-img">program-${port}.exe</span><b>${port}</b></div>
+`;
+      const W = (show, body) => `<div class="win slide rm" data-show="${show}"><div class="wbar"><span>Monitor de resurse</span><span class="wbtn">— ▢ ✕</span></div><div class="rm-body">${body}</div></div>`;
+      /* cazul des întâlnit: portul e al unui container (numele e com.docker… / wslrelay / vmmem): îl oprești din programul de containere */
+      const dock = `<div class="win slide dk" data-show="7,8"><div class="wbar"><span>Docker Desktop</span><span class="wbtn">— ▢ ✕</span></div>
+          <div class="side"><div class="menu"><span class="on">Containers</span><span>Images</span><span>Volumes</span></div><div class="right">
+          <b class="wt">Containers</b><div class="rm-head"><span>Nume</span><span>Port(s)</span></div>
+          <div class="row pick" data-act="7" data-delay="500"><span>${guess || "web"}</span><b>${port}:80</b><span class="btn danger" data-t="stop">■</span></div>
+          <div class="row dim"><span>alt container</span><b>—</b></div></div></div></div>`;
+      const inner = safe + start + W("3", tabs(false) + `<div class="muted-big">Alege fila „Rețea”.</div>`) + W("4", tabs(true) + ports(4))
+        + W("5,6", tabs(true) + `<b class="wt rm-sec">Porturi de ascultare</b><div class="rm-menu"><span>Terminare proces</span><span>Căutare online</span></div><div class="row pick act"><span class="rm-img">program-${port}.exe</span><b>${port}</b></div>`)
+        + dock;
+      return {
+        html: `<div class="floor"></div>${monitor(inner).replace(/data-t="tg"/g, "")}${done("6", "Program găsit și oprit")}${done("8", "Container oprit")}${mouse}`,
+        shots: [
+          { cap: dev ? `În SafeEel vezi pe ce calculator e problema („${dev}”) și portul ei: ${port}. Mergi la acel calculator.` : `În SafeEel vezi portul problemei: ${port}. Mergi la calculatorul cu problema.`, f: '[data-shot-page] [data-t="go"]' },
+          { cap: "Apasă Start și scrie „Monitor de resurse”. Deschide-l.", f: '[data-shot-page] [data-t="go"]', tap: true },
+          { cap: "Sus, apasă fila „Rețea”.", f: '[data-shot-page] [data-t="go"]', tap: true },
+          { cap: `Deschide „Porturi de ascultare” și caută rândul cu portul ${port}. În stânga, la „Imagine”, e numele programului.`, f: '[data-shot-page] [data-t="go"]', tap: true },
+          { cap: "Nu-l folosești? Click dreapta pe el → „Terminare proces”. Apoi dezinstalează-l sau oprește-l din setările lui.", f: '.rm-menu span' , tap: true },
+          { cap: "Gata. Apasă apoi „Am făcut asta, verifică” în SafeEel." },
+          { cap: `La „Imagine” scrie „com.docker…”, „wslrelay” sau „vmmem”? Atunci portul e al unui container. Deschide Docker Desktop, la „Containers”, și caută portul ${port}.`, f: '[data-shot-page] .row.pick' },
+          { cap: "Apasă ■ (Stop) lângă el. Îl folosești? Pornește-l din nou doar pentru acest calculator (portul pus ca 127.0.0.1).", f: '[data-shot-page] [data-t="stop"]', tap: true },
+        ],
+        note: "Numele e „com.docker…”, „wslrelay” sau „vmmem”? Programul rulează într-un program de containere sau de mașini virtuale: deschide acel program și oprește ce rulează în el. E un program pe care îl folosești? Nu-l opri: caută în setările lui „doar pe acest calculator”.",
+      };
+    } },
+    { code: "WIN_SNMP", title: "SNMP pornit pe calculator", make: () => windowsFilm({
+      left: { items: ["Sistem", "Rețea și internet", "Aplicații", "Conturi"], go: 0, cap: "În stânga, apasă „Sistem”." },
+      rights: [{ title: "Sistem", items: ["Ecran", "Sunet", "Caracteristici opționale", "Despre"], go: 2, cap: "În dreapta, apasă „Caracteristici opționale”." }],
+      final: { title: "Caracteristici opționale", cap: "Apasă pe „SNMP”, apoi „Elimină”.", html: () => `<div class="row"><span>SNMP</span><span class="btn danger" data-t="tg">Elimină</span></div><div class="row dim"><span>Notepad</span></div>` },
+      doneCap: "Gata: calculatorul nu mai spune altora din rețea detalii despre el.", done: "SNMP eliminat",
+      note: "Pe calculatoarele mai vechi, „Caracteristici opționale” e la Aplicații.",
+    }) },
+    { code: "WIN_UPNP", title: "Calculatorul se anunță în rețea (UPnP)", make: () => windowsFilm({
+      left: { items: ["Sistem", "Rețea și internet", "Aplicații", "Conturi"], go: 1, cap: "În stânga, apasă „Rețea și internet”." },
+      rights: [
+        { title: "Rețea și internet", items: ["Wi-Fi", "Ethernet", "VPN", "Proxy"], go: 0, cap: "Apasă „Wi-Fi”." },
+        { title: "Wi-Fi", items: ["Proprietățile rețelei la care ești conectat", "Rețele cunoscute", "Hardware"], go: 0, cap: "Apasă pe proprietățile rețelei la care ești conectat (primul rând)." },
+      ],
+      final: { title: "Tipul profilului de rețea", cap: "La „Tipul profilului de rețea”, alege „Public”.", html: (s) => `<div class="row"><span>Public (recomandat)</span>${checkbox(s)}</div><div class="row dim"><span>Privat</span></div>` },
+      doneCap: "Gata: calculatorul nu se mai anunță altor aparate din rețea.", done: "Rețea setată ca Public",
+    }) },
+    { code: "WIN_UPDATE", title: "Program vechi pe calculator", make: () => windowsFilm({
+      left: { items: ["Sistem", "Rețea și internet", "Aplicații", "Windows Update"], go: 3, cap: "În stânga, jos, apasă „Windows Update”." },
+      rights: [],
+      final: { title: "Windows Update", cap: "Apasă „Caută actualizări” și instalează tot ce apare.", html: () => `<div class="row"><span>Ultima verificare: acum o lună</span></div><span class="btn" data-t="tg">Caută actualizări</span>` },
+      doneCap: "Gata: calculatorul are cele mai noi reparații de siguranță. Actualizează și programul arătat de SafeEel.", done: "Actualizări instalate",
+      note: "Problema e într-un program anume (îl vezi în SafeEel)? Deschide-l și caută „Actualizare” sau „Verifică actualizări” în meniul lui.",
+    }) },
+
+    /* ===== Mac / Linux („Server” cu MAC aleatoriu, fără semne de Windows): Setări de sistem → General → Partajare ===== */
+    { code: "MAC_SSH", title: "Login la distanță, pornit pe Mac", make: () => macFilm({ item: "Login la distanță",
+      cap: "Mută butonul „Login la distanță” pe oprit.", doneCap: "Gata: nimeni nu mai poate încerca parole pe calculatorul tău.", done: "Login la distanță oprit",
+      note: "Pe Linux: deschide Terminalul și scrie „sudo systemctl disable --now ssh”, sau cere ajutor celui care a instalat calculatorul." }) },
+    { code: "MAC_VNC", title: "Partajarea ecranului, pornită pe Mac", make: () => macFilm({ item: "Partajarea ecranului",
+      cap: "Mută butonul „Partajarea ecranului” pe oprit.", doneCap: "Gata: nimeni nu-ți mai vede și nu-ți mai controlează ecranul.", done: "Partajarea ecranului oprită",
+      note: "Pe Linux: în Setări, la „Partajare”, oprește „Partajarea ecranului” / „Desktop la distanță”." }) },
+    { code: "MAC_SMB", title: "Partajarea fișierelor, pornită pe Mac", make: () => macFilm({ item: "Partajarea fișierelor",
+      cap: "Mută butonul „Partajarea fișierelor” pe oprit.", doneCap: "Gata: folderele tale nu se mai văd în rețea.", done: "Partajarea fișierelor oprită",
+      note: "Pe Linux: în Setări, la „Partajare”, oprește „Partajarea fișierelor”." }) },
     { code: "FTP_WEB", title: "FTP pe pagina aparatului", make: () => webFilm({
       clicks: [menuClick(["Stare", "Rețea", "Servicii", "Sistem"], 0, 2, homeRight, "În meniul din stânga, apasă „Servicii”.")],
       action: finalToggle(["Stare", "Rețea", "Servicii", "Sistem"], 2, "Servicii", "Server FTP", false, "Găsește „Server FTP” și mută butonul pe „Oprit”."),
@@ -530,19 +677,33 @@
      Filmele de router doar pe router (sau gateway), cele de Windows doar pe calculatoare; pe hotspotul de pe telefon,
      filmul cu Setări → Hotspot personal. Fără potrivire: rămâne textul (nimic nu se schimbă). */
   const BY = { PAGE_LIVE: { make: liveFilm }, PAGE_TRUST: { make: trustFilm }, PAGE_DEVICES: { make: devicesFilm },
-    PAGE_JOURNAL: { make: journalFilm }, PAGE_HISTORY: { make: historyFilm }, PAGE_HOTSPOT_PW: { make: hotspotPwFilm } };
-  FILMS.forEach((f) => { if (/hotspot/i.test(f.title)) BY.HOTSPOT = f; else BY[f.code] = f; });
+    PAGE_JOURNAL: { make: journalFilm }, PAGE_HISTORY: { make: historyFilm }, PAGE_WELCOME: { make: welcomeFilm }, PAGE_HOTSPOT_PW: { make: hotspotPwFilm } };
+  FILMS.forEach((f) => { if (f.code === "FTP_CLEARTEXT" && /hotspot/i.test(f.title)) BY.HOTSPOT = f; else BY[f.code] = f; });   /* doar filmul „oprește hotspotul” e HOTSPOT */
   const ROUTER_CODES = ["UPNP_EXPOSED", "TELNET_OPEN", "SNMP_EXPOSED", "HTTP_ADMIN_CLEARTEXT", "OUTDATED_SERVICE"];
   const PC_CODES = ["RDP_EXPOSED", "SMB_EXPOSED", "SSH_OPEN", "DB_EXPOSED", "VNC_EXPOSED"];
   const PC_TYPES = ["pc_windows", "server", "phone_laptop", "unknown", ""];
   const WEB_ALT = { FTP_CLEARTEXT: "FTP_WEB", SSH_OPEN: "SSH_WEB", DB_EXPOSED: "DB_WEB" };
   const OWN_FILM = ["PRINTER_RAW_EXPOSED", "CAMERA_STREAM_EXPOSED", "MQTT_EXPOSED", "UNKNOWN_DEVICE"];
   /* întoarce [cheia filmului, varianta generică?] */
-  function choose(code, dtype, isRouter) {
+  /* probleme aflate pe un calculator Windows: ce program / ce setare din Windows */
+  const WIN_EXTRA = { SNMP_EXPOSED: "WIN_SNMP", UPNP_EXPOSED: "WIN_UPNP", OUTDATED_SERVICE: "WIN_UPDATE",
+    HTTP_ADMIN_CLEARTEXT: "WIN_APP", MQTT_EXPOSED: "WIN_APP", FTP_CLEARTEXT: "WIN_APP", TELNET_OPEN: "WIN_APP",
+    PRINTER_RAW_EXPOSED: "WIN_APP", CAMERA_STREAM_EXPOSED: "WIN_APP" };
+  /* pe un calculator fără semne de Windows („Server” cu MAC aleatoriu: de obicei Mac sau Linux): Partajare */
+  const MAC_FILM = { SSH_OPEN: "MAC_SSH", VNC_EXPOSED: "MAC_VNC", SMB_EXPOSED: "MAC_SMB" };
+  function choose(code, dtype, isRouter, net) {
     const hotspot = dtype.indexOf("hotspot") === 0;
+    /* „aparat necunoscut” într-un hotspot de telefon: nu există router cu listă de aparate */
+    if (code === "UNKNOWN_DEVICE" && hotspot) return ["HOTSPOT_SELF", false];
+    if (code === "UNKNOWN_DEVICE" && net === "hotspot") return ["HOTSPOT_UNKNOWN", false];
     /* pe hotspotul de pe telefon: imprimanta, camera, aparatele smart și aparatul necunoscut au filmul lor;
        serviciile telefonului nu se pot opri separat, deci filmul cu oprirea hotspotului */
     if (hotspot) return [OWN_FILM.includes(code) ? code : "HOTSPOT", false];
+    if (!isRouter && dtype === "pc_windows") {                     /* calculator Windows (și cele reetichetate) */
+      if (PC_CODES.includes(code)) return [code, false];
+      if (WIN_EXTRA[code]) return [WIN_EXTRA[code], false];
+    }
+    if (!isRouter && (dtype === "server" || dtype === "phone_laptop") && MAC_FILM[code]) return [MAC_FILM[code], false];
     if (OWN_FILM.includes(code)) return [code, false];
     const pc = ["pc_windows", "server", "phone_laptop"].includes(dtype);
     if (PC_CODES.includes(code) && pc && !isRouter) return [code, false];          /* calculator: Setările din Windows */
@@ -605,10 +766,12 @@
     const EN = window.SAFEEEL_FILMS_EN || {};
     const tr = (s) => (lang === "en" && EN[s]) || s;
     const [key, generic] = slot.dataset.page ? ["PAGE_" + slot.dataset.page.toUpperCase(), false]
-      : choose(slot.dataset.code || "", slot.dataset.dtype || "", slot.dataset.router === "1");
+      : choose(slot.dataset.code || "", slot.dataset.dtype || "", slot.dataset.router === "1", slot.dataset.net || "");
     if (!key || !BY[key]) return;
     slot.dataset.film = key;   /* ce film s-a ales (util la verificare) */
-    CTX.generic = generic; const f = BY[key].make(); CTX.generic = false;
+    CTX.generic = generic; CTX.prog = (slot.dataset.prog || "").slice(0, 40);
+    CTX.dev = (slot.dataset.devname || "").slice(0, 40); CTX.devip = (slot.dataset.devip || "").slice(0, 40); CTX.lang = lang; CTX.port = String(parseInt(slot.dataset.port || "", 10) || "");
+    const f = BY[key].make(); CTX.generic = false; CTX.prog = ""; CTX.dev = ""; CTX.devip = ""; CTX.port = "";
     let html = f.html, shots = f.shots.map((s) => Object.assign({}, s, { cap: tr(s.cap) }));
     if (lang === "en" && f.note) f.note = tr(f.note);
     const ip = slot.dataset.ip || "";
@@ -695,7 +858,14 @@
     let normalCap = Math.min(1.6, Math.max(1, (window.innerHeight * 0.5) / 290));
     /* Acasă: animația ia locul rămas până jos (cât să nu derulezi), dar rămâne mereu destul de mare */
     const room = homeRoom(film);
-    if (room < Infinity) normalCap = Math.min(1.7, Math.max(0.75, room / 290));   /* niciodată mai mică decât înainte: mai bine puțin scroll decât o animație mică */
+    if (room < Infinity) normalCap = Math.min(1.7, Math.max(0.75, room / 290));
+    /* paginile cu film (Live, Dispozitive…): filmul, săgețile și „Vezi ↓” încap în primul ecran */
+    if (!film.max && film.slot.dataset.page && !film.slot.dataset.ephemeral) {
+      const top = film.root.getBoundingClientRect().top + window.scrollY;
+      const below = film.root.offsetHeight - film.view.offsetHeight;
+      const space = window.innerHeight - top - below - 12;
+      normalCap = Math.min(normalCap, Math.max(0.8, space / 290));
+    }   /* niciodată mai mică decât înainte: mai bine puțin scroll decât o animație mică */
     const s = film.max ? Math.min(w / 360, h / 290, 4) : Math.min(w / 360, normalCap);   /* mărit: exact cât încape, fără derulare */
     film.scale = s;
     film.view.style.height = (290 * s) + "px";
@@ -910,20 +1080,50 @@
     msg.setAttribute("data-toasted", "");
     const en = document.documentElement.lang === "en";
     const kind = msg.classList.contains("verify-good") ? "good" : msg.classList.contains("verify-warn") ? "warn" : "info";
-    const title = { good: en ? "Fixed!" : "Reparat!", warn: en ? "Not fixed yet" : "Încă nu e reparat", info: en ? "Step ticked" : "Pas bifat" }[kind];
-    /* „bifat, dar neverificat”: o singură propoziție scurtă, nu explicația lungă din pagină */
-    const text = kind === "info" ? (en ? "We'll confirm it at your next scan." : "Îl confirmăm la următoarea scanare.") : msg.textContent.trim();
+    /* „bifat, dar neverificat”: DE CE nu s-a putut verifica și CE faci, pe scurt (nu explicația lungă din pagină) */
+    const WHY = {
+      noanswer: en ? ["The device didn't answer", "It may be off. Turn it on and press “check” again."]
+                   : ["Aparatul n-a răspuns", "Poate e oprit. Pornește-l și apasă din nou „verifică”."],
+      noport: en ? ["Can't check this one here", "Run a new scan: it shows whether the problem is gone."]
+                 : ["Pe asta n-o pot verifica de aici", "Fă o scanare nouă: îți arată dacă problema a dispărut."],
+      udp: en ? ["Can't check this one here", "Run a new scan: it shows whether the problem is gone."]
+              : ["Pe asta n-o pot verifica de aici", "Fă o scanare nouă: îți arată dacă problema a dispărut."],
+      file_only: en ? ["Old scan: nothing checked", "To check for real, run a new scan on the team hotspot."]
+                    : ["Scanare veche: n-am verificat nimic", "Ca să verifici de-adevăratelea, fă o scanare nouă pe hotspotul echipei."],
+      other_device: en ? ["Another device is at that address", "Run a new scan to see where your device is now."]
+                       : ["La adresa aia e acum alt aparat", "Fă o scanare nouă, ca să vezi unde e acum aparatul tău."],
+    };
+    const why = WHY[msg.dataset.check] || (en ? ["Step noted", "A new scan will confirm it."] : ["Am notat pasul", "O scanare nouă îl confirmă."]);
+    const WARN = {
+      noanswer: en ? ["The device didn't answer", "Turn it on, wait a moment and press “check” again."]
+                   : ["Aparatul n-a răspuns", "Pornește-l, așteaptă puțin și apasă din nou „verifică”."],
+      present: en ? ["It's still on the network", "Not yours? Change the Wi-Fi password, then check again."]
+                  : ["E încă în rețea", "Nu e al tău? Schimbă parola Wi-Fi, apoi verifică din nou."],
+    };
+    WARN.noport = WARN.udp = en ? ["Couldn't check it right now", "Press “Try again” in a moment."] : ["N-am putut verifica acum", "Apasă „Reîncearcă” peste puțin."];
+    WARN.file_only = en ? ["Couldn't check it", "Connect to the team hotspot, then try again."] : ["N-am putut verifica", "Conectează-te la hotspotul echipei, apoi reîncearcă."];
+    WARN.other_device = en ? ["Another device is at that address", "Run a new scan, then try again."] : ["La adresa aia e alt aparat", "Fă o scanare nouă, apoi reîncearcă."];
+    const w = WARN[msg.dataset.check];
+    const title = { good: en ? "Fixed!" : "Reparat!", warn: w ? w[0] : (en ? "Not fixed yet" : "Încă nu e reparat"), info: why[0] }[kind];
+    const text = kind === "info" ? why[1] : kind === "warn" && w ? w[1] : msg.textContent.trim();
     document.querySelectorAll(".verify-toast").forEach((x) => x.remove());
     const toast = document.createElement("div");
     toast.className = "verify-toast toast-" + kind; toast.setAttribute("aria-hidden", "true");
     const icon = { good: "M5 12.5l4.5 4.5L19 7.5", warn: "M12 7v6m0 4h.01", info: "M12 11v6m0-10h.01" }[kind];
     toast.innerHTML = `<span class="vt-icon"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="${icon}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <div class="vt-body"><p class="vt-title">${esc(title)}</p><p class="vt-text">${esc(text)}</p></div>
+      ${kind === "warn" && w ? `<button type="button" class="vt-retry">${en ? "Try again" : "Reîncearcă"}</button>` : ""}
       <button type="button" class="vt-close" aria-label="${en ? "Close" : "Închide"}">✕</button>`;
     document.body.appendChild(toast);
     msg.classList.add("toasted");
     const close = () => { toast.classList.remove("on"); setTimeout(() => toast.remove(), 300); };
     toast.querySelector(".vt-close").addEventListener("click", close);
+    const retry = toast.querySelector(".vt-retry");
+    if (retry) retry.addEventListener("click", () => {
+      close();
+      const b = document.querySelector('#worst form[action$="/action/done"] button[type="submit"]:not([disabled])');
+      if (b) b.click();
+    });
     requestAnimationFrame(() => toast.classList.add("on"));
     setTimeout(close, 7000);
   }
@@ -984,26 +1184,42 @@
       if (instant) { void el.offsetWidth; el.classList.remove("instant"); }
     };
     let cur = nav.querySelector('a[aria-current="page"]');
-    place(pill, cur, true);
+    /* pastila pornește de unde era pe pagina de dinainte (ținută minte la click) și alunecă spre pagina de acum.
+       films.js blochează prima afișare (blocking="render"), deci pastila apare direct acolo: fără să clipească. */
+    let from = null, sliding = false;
+    try { from = JSON.parse(sessionStorage.getItem("safeeel-pill") || "null"); sessionStorage.removeItem("safeeel-pill"); } catch (e) { from = null; }
+    if (from && cur && !reduce && Date.now() - from.t < 5000 && from.href !== cur.href) {
+      pill.classList.add("instant", "on");
+      pill.style.width = from.w + "px"; pill.style.height = from.h + "px";
+      pill.style.transform = `translate(${from.x}px, ${from.y}px)`;
+      cur.classList.add("pill-wait");
+      void pill.offsetWidth; pill.classList.remove("instant");
+      sliding = true;
+      requestAnimationFrame(() => requestAnimationFrame(() => { place(pill, cur, false); cur.classList.remove("pill-wait"); }));
+      setTimeout(() => { sliding = false; }, 450);
+    } else {
+      place(pill, cur, true);
+    }
     links().forEach((a) => {
       a.addEventListener("mouseenter", () => { if (a !== cur) place(hov, a, !hov.classList.contains("on")); else hov.classList.remove("on"); });
       a.addEventListener("click", (e) => {
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a === cur || reduce) return;
-        e.preventDefault();
+        /* fără așteptare: pastila alunecă aici, pe pagina de acum, cât se încarcă pagina nouă (browserul o ține
+           pe ecran până e gata cea nouă); pe pagina nouă apare direct la locul ei, deci nu sare înapoi */
         hov.classList.remove("on");
-        if (cur) cur.classList.add("pill-leave");
-        a.classList.add("pill-target");
-        place(pill, a, !cur);
+        if (cur) {
+          try { sessionStorage.setItem("safeeel-pill", JSON.stringify({ x: cur.offsetLeft, y: cur.offsetTop, w: cur.offsetWidth, h: cur.offsetHeight, href: cur.href, t: Date.now() })); } catch (err) { /* nimic */ }
+        }
         cur = a;
-        setTimeout(() => { window.location.href = a.href; }, 280);
       });
     });
     nav.addEventListener("mouseleave", () => hov.classList.remove("on"));
-    window.addEventListener("resize", () => place(pill, cur, true));
+    window.addEventListener("resize", () => place(pill, cur, false));
     /* pagina întoarsă din istoric (Înapoi): pastila revine pe pagina curentă */
     window.addEventListener("pageshow", (e) => { if (!e.persisted) return; links().forEach((x) => x.classList.remove("pill-target", "pill-leave"));
       cur = nav.querySelector('a[aria-current="page"]'); place(pill, cur, true); });
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => place(pill, cur, true));
+    /* fonturile încărcate mai târziu pot muta puțin meniul: pastila se potrivește LIN, fără să taie alunecarea */
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(() => place(pill, cur, !sliding), sliding ? 460 : 0));
   }
 
 
@@ -1022,6 +1238,206 @@
     const film = [...live].find((f) => f.slot === slot);
     if (film) toggleMax(film); else slot.remove();
   }, true);
+
+  document.addEventListener("change", (e) => {
+    const inp = e.target.closest && e.target.closest("input[data-autosubmit-file]");
+    if (inp && inp.files && inp.files.length && inp.form) {
+      const lbl = inp.form.querySelector(".hm-import-btn"); if (lbl) lbl.classList.add("busy");
+      inp.form.submit();
+    }
+  });
+
+
+  /* ================= „Bun venit”: progresul scanării se actualizează singur ================= */
+  /* doar caseta scanării se reîmprospătează (pagina și animația rămân pe loc); cronometrul numără invers de la 3:00 */
+  (function () {
+    const SKEY = "safeeel-wc-start", TOTAL = 180;
+    const startAt = () => { try { let v = parseInt(sessionStorage.getItem(SKEY) || "0", 10);
+      if (!v) { v = Date.now(); sessionStorage.setItem(SKEY, String(v)); } return v; } catch (e) { return Date.now(); } };
+    const clearStart = () => { try { sessionStorage.removeItem(SKEY); } catch (e) { /* nimic */ } };
+    /* toate numărătorile din pagină (Live și „Bun venit”): 3 minute de la începutul scanării (data-start, de la scanare) */
+    function tickAll() {
+      const en = document.documentElement.lang === "en";
+      document.querySelectorAll(".scan-timer[data-start]").forEach((t) => {
+        if (t.closest("#wc-scan")) return;
+        const el = Math.max(0, Date.now() / 1000 - parseFloat(t.dataset.start)), left = Math.max(0, Math.round(TOTAL - el));
+        t.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : (en ? "almost done" : "aproape gata");
+      });
+      document.querySelectorAll(".scan-bar[data-start]:not(.wc-bar) > span").forEach((s) => {
+        const bar = s.parentElement, el = Math.max(0, Date.now() / 1000 - parseFloat(bar.dataset.start));
+        s.style.width = Math.min(98, Math.max(parseFloat(bar.dataset.pct || "0"), (el / TOTAL) * 100)).toFixed(1) + "%";
+      });
+    }
+    setInterval(tickAll, 1000);
+    function tickTimer() {
+      tickAll();
+      const box = document.getElementById("wc-scan"); if (!box) return;
+      const t = box.querySelector(".wc-timer"), fill = box.querySelector(".wc-fill");
+      if (!t) return;
+      const begin = t.dataset.start ? parseFloat(t.dataset.start) * 1000 : startAt();
+      const el = Math.max(0, (Date.now() - begin) / 1000), left = Math.max(0, Math.round(TOTAL - el));
+      const en = document.documentElement.lang === "en";
+      if (left > 0) { t.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`; }
+      else { t.textContent = en ? "almost done…" : "aproape gata…"; const l = box.querySelector(".wc-left"); if (l) l.textContent = ""; }
+      if (fill) {   /* bara: cât arată nmap sau cât a trecut din cele 3 minute (cel mai mare), dar nu 100 până la final */
+        const pct = Math.min(98, Math.max(parseInt(fill.dataset.pct || "0", 10), (el / TOTAL) * 100));
+        fill.style.width = pct.toFixed(1) + "%";
+      }
+    }
+    async function poll() {
+      const box = document.getElementById("wc-scan");
+      if (!box || !box.dataset.wcPoll) return;
+      try {
+        const r = await fetch("/bun-venit/stare", { headers: { "X-Requested-With": "fetch" }, credentials: "same-origin" });
+        if (r.ok) {
+          const html = await r.text();
+          const next = new DOMParser().parseFromString(html, "text/html").getElementById("wc-scan");
+          if (next) {
+            if (next.dataset.state !== box.dataset.state || next.dataset.state !== "running") box.replaceWith(next);
+            else {   /* tot rulează: schimbăm doar procentul și etapa, fără să clipească nimic */
+              const f = box.querySelector(".wc-fill"), nf = next.querySelector(".wc-fill");
+              if (f && nf) f.dataset.pct = nf.dataset.pct;
+              const p = box.querySelector(".wc-phase"), np = next.querySelector(".wc-phase");
+              if (p && np && p.textContent !== np.textContent) p.textContent = np.textContent;
+            }
+            if (next.dataset.state === "done") clearStart();
+          }
+        }
+      } catch (e) { /* serverul nu răspunde: încercăm din nou */ }
+      tickTimer();
+      const cur = document.getElementById("wc-scan");
+      if (cur && cur.dataset.wcPoll) setTimeout(poll, parseInt(cur.dataset.wcPoll, 10) || 2000);
+    }
+    function boot() {
+      const box = document.getElementById("wc-scan"); if (!box) return;
+      if (box.dataset.state === "running" || box.dataset.state === "waiting_next") startAt();
+      if (box.dataset.state === "idle" || box.dataset.state === "done") clearStart();
+      tickTimer();
+      setInterval(tickTimer, 1000);
+      if (box.dataset.wcPoll) setTimeout(poll, 2000);
+    }
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
+  })();
+
+  /* ================= Turul aplicației: o casetă care arată, pe rând, fiecare parte (și pe celelalte pagini) =================
+     Pornește cu ?tour=1 (după „Bun venit” sau din meniul „Scanarea din…”). Pasul curent stă în sessionStorage. */
+  const TOUR = [
+    { path: "/", sel: ".home-head .score, .home-head .ring-wrap",
+      ro: ["Scorul rețelei tale", "E ca nota de la revizia mașinii: 100 înseamnă că totul e în regulă. Fiecare problemă scade din notă, iar fiecare reparație o ridică la loc."],
+      en: ["Your network score", "It's like the grade from a car service: 100 means all is well. Each problem lowers it, each fix brings it back up."] },
+    { path: "/", sel: ".step-title",
+      ro: ["Ce trebuie reparat", "SafeEel îți arată întâi problema cea mai gravă, ca un medic care tratează mai întâi febra. Apasă săgeata de lângă titlu ca să afli de ce contează."],
+      en: ["What needs fixing", "SafeEel shows the most serious problem first, like a doctor treating the fever first. Press the arrow next to the title to learn why it matters."] },
+    { path: "/", sel: "#worst .film-slot .film-view, #worst .film-slot",
+      ro: ["Cum o repari, pas cu pas", "E ca o rețetă video: îți arată exact pe ce apeși, pe telefon sau pe laptop. O poți opri, da înapoi sau mări pe tot ecranul."],
+      en: ["How to fix it, step by step", "It's like a video recipe: it shows exactly what to press, on the phone or the laptop. You can pause it, go back or make it full screen."] },
+    { path: "/", sel: "#worst .do-first-actions",
+      ro: ["Ai făcut pasul? Verifică", "Apasă aici după ce ai făcut pasul. SafeEel verifică pe loc, ca atunci când încerci clanța după ce ai încuiat ușa. Dacă e reparat, scorul crește."],
+      en: ["Done the step? Check it", "Press here after doing the step. SafeEel checks right away, like trying the handle after locking the door. If it's fixed, the score goes up."] },
+    { path: "/", sel: ".home-menu > summary",
+      ro: ["Scanările tale și raportul", "Aici găsești scanările mai vechi, poți aduce un fișier de scanare și poți descărca raportul. E ca dosarul pe care îl dai electricianului sau firmei de IT."],
+      en: ["Your scans and the report", "Here you find older scans, can bring in a scan file and download the report. It's like the folder you hand to the electrician or the IT company."] },
+    { path: "/", sel: ".ai-fab",
+      ro: ["Întreabă-l pe SafeEel", "Nu înțelegi ceva? Întreabă-l cu cuvintele tale, de exemplu „ce e un router?”. Răspunde doar despre rețeaua ta."],
+      en: ["Ask SafeEel", "Don't understand something? Ask in your own words, for example “what is a router?”. It answers only about your network."] },
+    { path: "/protectie", sel: ".page-film .film-view, .page-film",
+      ro: ["Live: paznicul rețelei", "Cât e pornită, protecția live e ca un paznic la intrare: îți spune pe loc dacă intră cineva nou în hotspot. Tot de aici pornești o scanare nouă."],
+      en: ["Live: the network's guard", "While it's on, live protection is like a guard at the door: it tells you right away when someone new joins the hotspot. You also start a new scan here."] },
+    { path: "/devices", sel: ".page-film .film-view, .page-film",
+      ro: ["Dispozitive: cine e la tine acasă", "Lista cu tot ce e conectat: telefoane, laptopuri, imprimante, televizoare. Un aparat pe care nu-l cunoști e ca un musafir pe care nu l-ai invitat."],
+      en: ["Devices: who's at your place", "The list of everything connected: phones, laptops, printers, TVs. A device you don't know is like a guest you didn't invite."] },
+    { path: "/journal", sel: ".page-film .film-view, .page-film",
+      ro: ["Alerte: ce s-a schimbat", "E ca jurnalul casei: aici vezi când a apărut un aparat nou sau când o problemă a dispărut."],
+      en: ["Alerts: what changed", "It's like the house's diary: here you see when a new device showed up or when a problem went away."] },
+    { path: "/history", sel: ".page-film .film-view, main .page-head",
+      ro: ["Progres: cât de departe ai ajuns", "Ca un grafic al pașilor făcuți într-o lună: vezi cum crește scorul de la o scanare la alta și dovada a ce ai reparat."],
+      en: ["Progress: how far you've come", "Like a chart of your steps over a month: you see the score grow from one scan to the next, with proof of what you fixed."] },
+    { path: "/", sel: null,
+      ro: ["Gata!", "Acum știi tot ce trebuie. Începe cu primul pas de pe Acasă: durează doar câteva minute. Turul îl poți relua oricând din meniul „Scanarea din…”."],
+      en: ["All done!", "Now you know everything you need. Start with the first step on Home: it only takes a few minutes. You can take the tour again anytime from the “Scan from…” menu."] },
+  ];
+  const TKEY = "safeeel-tour";
+  const tourGet = () => { try { const v = sessionStorage.getItem(TKEY); return v === null ? null : parseInt(v, 10); } catch (e) { return null; } };
+  const tourSet = (i) => { try { if (i === null) sessionStorage.removeItem(TKEY); else sessionStorage.setItem(TKEY, String(i)); } catch (e) { /* nimic */ } };
+  function tourGo(i) {
+    if (i < 0 || i >= TOUR.length) { tourEnd(); return; }
+    tourSet(i);
+    if (TOUR[i].path !== location.pathname) { window.location.href = TOUR[i].path; return; }
+    tourShow(i);
+  }
+  function tourEnd() {
+    tourSet(null);
+    document.querySelectorAll(".tour-spot, .tour-bubble, .tour-shade").forEach((x) => { x.classList.remove("on"); setTimeout(() => x.remove(), 250); });
+    document.removeEventListener("keydown", tourKeys);
+  }
+  function tourKeys(e) {
+    const i = tourGet(); if (i === null) return;
+    if (e.key === "Escape") tourEnd();
+    else if (e.key === "ArrowRight") tourGo(i + 1);
+    else if (e.key === "ArrowLeft" && i > 0) tourGo(i - 1);
+  }
+  function tourShow(i) {
+    const en = document.documentElement.lang === "en";
+    const step = TOUR[i];
+    const [title, text] = en ? step.en : step.ro;
+    let shade = document.querySelector(".tour-shade"), spot = document.querySelector(".tour-spot"), bub = document.querySelector(".tour-bubble");
+    if (!shade) { shade = Object.assign(document.createElement("div"), { className: "tour-shade" }); document.body.appendChild(shade); }
+    if (!spot) { spot = Object.assign(document.createElement("div"), { className: "tour-spot" }); document.body.appendChild(spot); }
+    if (!bub) {
+      bub = Object.assign(document.createElement("div"), { className: "tour-bubble" });
+      bub.setAttribute("role", "dialog"); bub.setAttribute("aria-modal", "false"); bub.setAttribute("aria-labelledby", "tour-h");
+      document.body.appendChild(bub);
+      document.addEventListener("keydown", tourKeys);
+    }
+    const last = i === TOUR.length - 1;
+    bub.innerHTML = `<p class="tour-count">${i + 1} ${en ? "of" : "din"} ${TOUR.length}</p>
+      <h2 id="tour-h">${esc(title)}</h2><p class="tour-text">${esc(text)}</p>
+      <div class="tour-btns">${i > 0 ? `<button type="button" class="tour-back">${en ? "Back" : "Înapoi"}</button>` : ""}
+        <button type="button" class="tour-next">${last ? (en ? "Finish" : "Gata") : (en ? "Next" : "Înainte")}</button></div>
+      <button type="button" class="tour-close" aria-label="${en ? "Close the tour" : "Închide turul"}">✕</button>`;
+    bub.querySelector(".tour-next").addEventListener("click", () => (last ? tourEnd() : tourGo(i + 1)));
+    const back = bub.querySelector(".tour-back"); if (back) back.addEventListener("click", () => tourGo(i - 1));
+    bub.querySelector(".tour-close").addEventListener("click", tourEnd);
+    const target = step.sel ? step.sel.split(",").map((q) => document.querySelector(q.trim())).find((x) => x && x.getBoundingClientRect().width) : null;
+    const place = () => {
+      const vw = window.innerWidth, vh = window.innerHeight, pad = 10;
+      if (!target) {
+        spot.classList.remove("on"); shade.classList.add("on");
+        bub.style.left = Math.max(16, (vw - bub.offsetWidth) / 2) + "px"; bub.style.top = Math.max(16, (vh - bub.offsetHeight) / 2) + "px";
+      } else {
+        shade.classList.remove("on");
+        const r = target.getBoundingClientRect();
+        const box = { x: Math.max(6, r.left - pad), y: Math.max(6, r.top - pad), w: Math.min(vw - 12, r.width + pad * 2), h: Math.min(vh - 12, r.height + pad * 2) };
+        Object.assign(spot.style, { left: box.x + "px", top: box.y + "px", width: box.w + "px", height: box.h + "px" });
+        spot.classList.add("on");
+        const below = box.y + box.h + 14, above = box.y - bub.offsetHeight - 14;
+        const top = below + bub.offsetHeight < vh - 8 ? below : (above > 8 ? above : Math.max(8, vh - bub.offsetHeight - 16));
+        const left = Math.min(vw - bub.offsetWidth - 16, Math.max(16, box.x + box.w / 2 - bub.offsetWidth / 2));
+        bub.style.left = left + "px"; bub.style.top = top + "px";
+      }
+      bub.classList.add("on");
+    };
+    if (target) {
+      target.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+      setTimeout(place, reduce ? 0 : 420);
+    } else {
+      place();
+    }
+    window.onresize = () => { if (tourGet() !== null) place(); };
+    window.onscroll = () => { if (tourGet() !== null && target) place(); };
+    setTimeout(() => { const n = bub.querySelector(".tour-next"); if (n) n.focus({ preventScroll: true }); }, 450);
+  }
+  function tourBoot() {
+    const params = new URLSearchParams(location.search);
+    if (params.get("tour") === "1") {
+      tourSet(0);
+      params.delete("tour");
+      history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : "") + location.hash);
+    }
+    const i = tourGet();
+    if (i !== null && TOUR[i] && TOUR[i].path === location.pathname) setTimeout(() => tourShow(i), 600);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tourBoot); else tourBoot();
 
   /* montează filmele din pagină și pe cele care apar după o actualizare parțială (app.js înlocuiește #worst) */
   function scan() { navPill(); document.querySelectorAll(".film-slot:not([data-mounted])").forEach(mount); animateScores(); wireScore(); floatScore(); toastVerify(); centerDigits(); scrollToWizard(); }

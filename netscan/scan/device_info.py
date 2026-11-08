@@ -155,3 +155,17 @@ def display_host(host: Host, gateway_ip: Optional[str] = None) -> Host:
     """O copie a dispozitivului pentru UI, cu producătorul și tipul completate. Originalul rămâne neatins."""
     info = describe(host, gateway_ip)
     return replace(host, vendor=info.vendor, device_type=info.device_type)
+
+# Porturi pe care le are doar Windows (serviciul RPC, descoperirea în rețea, Hyper-V, partajarea fișierelor).
+WINDOWS_PORTS = frozenset({135, 139, 445, 2179, 5357})
+_RELABEL_AS_PC = frozenset({"iot", "unknown", "server", "phone_laptop", "", None})
+
+
+def windows_pc(host: Host) -> Optional[str]:
+    """„pc_windows” pentru afișare când aparatul are porturi pe care le are doar Windows (ex. 135 și 5357), chiar
+    dacă motorul a ghicit altceva (de ex. „IoT”, pentru că rulează și un program de casă inteligentă pe 1883).
+    Doar eticheta și animațiile din aplicație; tipul din motor și scorul rămân neschimbate."""
+    if host.device_type not in _RELABEL_AS_PC:
+        return None
+    hits = _open_ports(host) & WINDOWS_PORTS
+    return "pc_windows" if len(hits) >= 2 or 445 in hits or 135 in hits else None

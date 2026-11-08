@@ -140,9 +140,9 @@ def test_count_texts_need_no_plural_agreement(lang):
 
 def test_receipt_texts_are_plain_and_honest():
     assert i18n.t("ro", "verify_ok") % (554, "192.168.1.40") == (
-        "Dovadă: am bătut o singură dată la ușa 554 de pe 192.168.1.40 și nu a răspuns nimeni, deci pasul e "
-        "confirmat. (1 conexiune, nimic altceva trimis.)")
-    assert "1 connection, nothing else sent" in i18n.t("en", "receipt_ok")
+        "Dovadă: portul 554 de pe 192.168.1.40 nu mai răspunde din rețea, deci pasul e confirmat. "
+        "(Câteva conexiuni scurte, doar la acest aparat; nimic altceva trimis.)")
+    assert "only to this device; nothing else sent" in i18n.t("en", "receipt_ok")
     for lang in i18n.LANGS:                                # scurte și fără jargon
         assert len(i18n.t(lang, "verify_note")) <= 140 and "UDP" not in i18n.t(lang, "verify_note")
         assert len(i18n.t(lang, "steps_all_done_hint")) <= 80

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ T('wc_title') }} · SafeEel{% endblock %}
+{% block content %}
+{# Prima intrare în aplicație (și pentru demo, oricând, la /bun-venit): ce face SafeEel, într-o animație, apoi prima
+   scanare completă (aceeași pornire ca pe pagina Live: acordul bifat + fereastra de permisiune a Windows), apoi turul. #}
+{% set busy = sc.state in ('running', 'waiting_permission', 'waiting_next') %}
+<div class="wc">
+  <div class="page-head centered">
+    <div>
+      <h1 class="page-title">{{ T('wc_title') }}</h1>
+      <p class="lead">{{ T('wc_lead') }}</p>
+    </div>
+  </div>
+
+  <div class="page-film"><div class="film-slot" data-page="welcome" data-hide="no" data-lang="{{ lang }}"></div></div>
+
+  {# Ce înseamnă o scanare, pe înțeles, cu exemple din viața de zi cu zi #}
+  <section class="wc-explain" aria-labelledby="wc-ex-h">
+    <h2 id="wc-ex-h">{{ T('wc_ex_title') }}</h2>
+    <div class="wc-ex-grid">
+      <div class="wc-ex"><p class="wc-ex-k">{{ T('wc_ex1_k') }}</p><p>{{ T('wc_ex1') }}</p></div>
+      <div class="wc-ex"><p class="wc-ex-k">{{ T('wc_ex2_k') }}</p><p>{{ T('wc_ex2') }}</p></div>
+      <div class="wc-ex"><p class="wc-ex-k">{{ T('wc_ex3_k') }}</p><p>{{ T('wc_ex3') }}</p></div>
+    </div>
+  </section>
+
+  {% include "_welcome_scan.html" %}
+
+  <div class="wc-more">
+    {% if sc.state != 'done' %}
+    <form method="post" action="{{ url_for('welcome_finish') }}">
+      <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="next" value="tour">
+      <button type="submit" class="button-secondary">{{ T('wc_example') }}</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('welcome_finish') }}">
+      <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="next" value="home">
+      <button type="submit" class="wc-skip">{{ T('wc_skip') }}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

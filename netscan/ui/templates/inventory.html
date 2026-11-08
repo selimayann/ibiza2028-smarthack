@@ -8,7 +8,7 @@
   </div>
 </div>
 
-<div class="page-film"><div class="film-slot" data-page="devices" data-lang="{{ lang }}" data-cta="Vezi aparatele tale" data-cta-href="#inv-list"></div></div>
+<div class="page-film"><div class="film-slot" data-page="devices" data-lang="{{ lang }}" data-cta="Vezi" data-cta-href="#inv-list"></div></div>
 {% if scan is none %}
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
@@ -28,7 +28,7 @@
     </div>
     {% if scan.status != 'error' %}
       {% set with_p = devices|selectattr('findings')|list|length %}
-      <p class="inv-summary">{{ T('inv_summary')|format(devices|length, with_p, devices|length - with_p) }}</p>
+      <p class="inv-summary">{{ T('inv_summary')|format(devices|length + (live_extra|length), with_p, devices|length - with_p + (live_extra|length)) }}</p>
     {% endif %}
   </div>
 
@@ -58,6 +58,18 @@
       {% endfor %}
       </tbody>
     </table>
+  {% endif %}
+  {% if live_extra %}
+    {# văzute acum de protecția live, dar fără nimic deschis spre rețea: scanarea nu le trece printre dispozitive #}
+    <section class="live-extra" aria-labelledby="live-extra-h">
+      <h2 id="live-extra-h">{{ T('inv_not_checked') }}</h2>
+      <ul class="live-extra-list">
+        {% for d in live_extra %}
+          <li><strong>{{ d.name }}</strong> <span class="mono" translate="no">{{ d.ip }}</span>{% if d.mac_masked %} · <span class="mono" translate="no">{{ d.mac_masked }}</span>{% endif %}
+            <span class="live-extra-ok"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('inv_not_checked_why') }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
   {% endif %}
 {% endif %}
 {% endblock %}

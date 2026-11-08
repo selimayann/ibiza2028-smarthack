@@ -37,6 +37,9 @@ NMAP_IFACE_NOT_FOUND = "NMAP_IFACE_NOT_FOUND"
 NOT_ADMIN = "NOT_ADMIN"
 NMAP_FAILED = "NMAP_FAILED"
 NO_SERVICE_PROBES = "NO_SERVICE_PROBES"
+ALREADY_RUNNING = "ALREADY_RUNNING"
+LOCK_NAME = ".scan.lock"          # în scans/: o singură scanare odată (din terminal SAU din aplicație)
+PART_SUFFIX = ".part"             # nmap scrie aici; abia la final devine .xml (aplicația nu vede fișiere pe jumătate)
 
 MESSAGES: dict[str, tuple[str, str]] = {
     NO_TOP_PORTS: (
@@ -58,6 +61,12 @@ MESSAGES: dict[str, tuple[str, str]] = {
         "on Linux/macOS use sudo.",
     ),
     NMAP_FAILED: ("Scanarea nmap a eșuat.", "The nmap scan failed."),
+    ALREADY_RUNNING: (
+        "Rulează deja o scanare (din terminal sau din aplicație). Așteaptă să se termine: două scanări odată "
+        "dublează traficul și strică rezultatele.",
+        "A scan is already running (from the terminal or the app). Wait for it to finish: two scans at once "
+        "double the traffic and spoil the results.",
+    ),
     NO_SERVICE_PROBES: (
         "Nu găsesc fișierul nmap-service-probes al nmap. Reinstalează nmap.",
         "I can't find nmap's nmap-service-probes file. Reinstall nmap.",
@@ -296,19 +305,235 @@ def _ready(plan: ScanPlan, nmap_path: Optional[str]) -> tuple[Optional[str], Opt
     return nmap_path, None
 
 
+def _pid_alive(pid: int) -> bool:
+    """Procesul mai rulează? (Pe Windows NU folosim os.kill: acolo ar opri procesul.)"""
+    if pid <= 0:
+        return False
+    if sys.platform == "win32":
+        try:
+            k32 = ctypes.windll.kernel32
+            h = k32.OpenProcess(0x1000, False, pid)        # PROCESS_QUERY_LIMITED_INFORMATION
+            if not h:
+                return False
+            code = ctypes.c_ulong()
+            ok = k32.GetExitCodeProcess(h, ctypes.byref(code))
+            k32.CloseHandle(h)
+            return bool(ok) and code.value == 259          # STILL_ACTIVE
+        except (AttributeError, OSError):
+            return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def acquire_lock(scans_dir: Path) -> bool:
+    """Ia lacătul scanării (fișier creat exclusiv, cu PID-ul nostru). Un lacăt rămas de la un proces mort se
+    înlocuiește. False = altă scanare rulează acum."""
+    lock = Path(scans_dir) / LOCK_NAME
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    for _ in range(2):
+        try:
+            fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, "w", encoding="ascii") as f:
+                f.write(str(os.getpid()))
+            return True
+        except FileExistsError:
+            try:
+                pid = int((lock.read_text(encoding="ascii") or "0").strip() or 0)
+            except (OSError, ValueError):
+                pid = 0
+            if _pid_alive(pid):
+                return False
+            try:
+                lock.unlink()                               # rămas de la o scanare oprită brusc
+            except OSError:
+                return False
+    return False
+
+
+def release_lock(scans_dir: Path) -> None:
+    lock = Path(scans_dir) / LOCK_NAME
+    try:
+        if lock.read_text(encoding="ascii").strip() == str(os.getpid()):
+            lock.unlink()
+    except OSError:
+        pass
+
+
+def scan_running(scans_dir: Path) -> bool:
+    """Rulează o scanare acum (lacătul e al unui proces viu)?"""
+    lock = Path(scans_dir) / LOCK_NAME
+    try:
+        pid = int(lock.read_text(encoding="ascii").strip() or 0)
+    except (OSError, ValueError):
+        return False
+    return _pid_alive(pid)
+
+
+KNOWN_WAIT_S = 2.5   # cât lăsăm sistemul să facă ARP după datagramele goale (ca protecția live)
+
+
+def known_hosts(plan: ScanPlan, poke=None, read=None, sleep=time.sleep) -> list[str]:
+    """Adresele pe care Windows le vede ACUM conectate în hotspot (tabela ARP), doar din ținta aprobată de guardrail.
+    Așa scanarea nu mai pierde laptopurile cu Wi-Fi în economie de energie (răspund greu la ARP-ul lui nmap, dar
+    sistemul le ține minte). Orice eroare: [] (nmap își caută singur dispozitivele, ca înainte)."""
+    import ipaddress
+    info = plan.network
+    if info is None or not info.ip or not info.cidr or not plan.target:
+        return []
+    try:
+        from netscan.scan import neighbors
+        net = ipaddress.ip_network(plan.target, strict=False)
+        own = ipaddress.ip_address(info.ip)
+        hosts = [str(h) for h in net.hosts() if h != own]
+        if not hosts or len(hosts) > 254:
+            return []
+        (poke or neighbors.poke)(hosts, info.ip)
+        sleep(KNOWN_WAIT_S)
+        table = (read or neighbors.read_neighbors)(info) or {}
+        found = sorted((ip for ip in table if ipaddress.ip_address(ip) in net and ip != info.ip),
+                       key=lambda ip: tuple(int(x) for x in ip.split(".")))
+        _write_present(plan, {ip: table[ip] for ip in found})
+        return found
+    except Exception:
+        return []
+
+
+PRESENT_SUFFIX = ".present.json"   # lângă scan_<dată>.xml: cine era conectat când a pornit scanarea
+
+
+def present_path(xml_path: str | Path) -> Path:
+    p = str(xml_path)
+    for suf in (PART_SUFFIX, PART_SUFFIX):           # scan_x.xml.part(.part) -> scan_x.xml
+        if p.endswith(suf):
+            p = p[: -len(suf)]
+    return Path(p + PRESENT_SUFFIX)
+
+
+def _write_present(plan: ScanPlan, table: dict) -> None:
+    """Lista aparatelor conectate la pornirea scanării (fără MAC complet: doar ce arată și Live)."""
+    import json
+    try:
+        rows = [{"ip": ip, "mac_masked": getattr(n, "mac_masked", None), "vendor": getattr(n, "vendor", None),
+                 "private_mac": bool(getattr(n, "private_mac", False)), "device_id": getattr(n, "device_id", None)}
+                for ip, n in table.items()]
+        present_path(plan.out_path).write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _with_known(args: list[str], plan: ScanPlan, known: list[str]) -> list[str]:
+    """Ținta (ultimul argument, subnetul) înlocuită cu adresele prezente + -Pn. Nimic în afara țintei aprobate."""
+    if not known or not args or args[-1] != plan.target:
+        return args
+    # --disable-arp-ping: pe rețeaua locală nmap face oricum ARP-ul lui (și cu -Pn); pe hotspot, laptopurile nu-i
+    # răspund lui, deși sistemul le vede. Așa folosește tabela ARP a sistemului (tocmai împrospătată) și le verifică.
+    return [*args[:-1], "-Pn", "--disable-arp-ping", *known]
+
+
+def _passes(args: list[str], plan: ScanPlan, known: list[str]) -> list[list[str]]:
+    """Comenzile nmap de rulat, pe rând (toate scriu în același -oX; a doua primește alt fișier, apoi se unesc).
+    Gateway-ul (telefonul cu hotspotul) răspunde doar la ARP-ul lui nmap, iar laptopurile doar la cel al sistemului:
+    -> trecerea 1: gateway-ul, ca înainte; trecerea 2: restul, cu -Pn --disable-arp-ping. Fără listă: ca înainte."""
+    if not known or not args or args[-1] != plan.target:
+        return [args]
+    gw = plan.network.gateway if plan.network is not None else None
+    others = [ip for ip in known if ip != gw]
+    if not others:
+        return [[*args[:-1], gw]] if gw in known else [args]
+    rest = _with_known(args, plan, others)
+    if gw not in known:
+        return [rest]
+    first = list(args[:-1]) + [gw]
+    i = first.index("-oX") if "-oX" in first else -1
+    if i >= 0:
+        first[i + 1] = first[i + 1] + ".gw"          # fișierul trecerii gateway-ului (se unește cu cel principal)
+    return [first, rest]
+
+
+def _merge_hosts(main: Path, extra: Path) -> None:
+    """Gazdele din `extra` (XML nmap) puse în `main`, înainte de <runstats>. `extra` se șterge."""
+    import re
+    try:
+        hosts = re.findall(r"<host\b.*?</host>", extra.read_text(encoding="utf-8", errors="replace"), flags=re.S)
+        if hosts and main.is_file():
+            text = main.read_text(encoding="utf-8", errors="replace")
+            k = text.rfind("<runstats>")
+            if k > 0:
+                main.write_text(text[:k] + "\n".join(hosts) + "\n" + text[k:], encoding="utf-8")
+    finally:
+        try:
+            extra.unlink()
+        except OSError:
+            pass
+
+
+def _out_of(args: list[str]) -> Optional[Path]:
+    return Path(args[args.index("-oX") + 1]) if "-oX" in args else None
+
+
+def _with_part(args: list[str], out_path: str) -> tuple[list[str], Path]:
+    """Aceeași comandă, dar -oX scrie în <fișier>.xml.part; îl redenumim la final."""
+    if out_path.endswith(PART_SUFFIX):          # scanarea din aplicație are deja fișierul ei .part (scan_job.py)
+        return list(args), Path(out_path)
+    part = Path(out_path + PART_SUFFIX)
+    out = list(args)
+    for i in range(len(out) - 1):
+        if out[i] == "-oX" and out[i + 1] == out_path:
+            out[i + 1] = str(part)
+    return out, part
+
+
+def _finish_part(part: Path, out_path: str, ok: bool) -> bool:
+    """La succes: .part -> .xml (dintr-o mișcare). La eșec/oprire: .part se șterge. True = fișierul final există."""
+    final = Path(out_path)
+    if part == final:                            # fără .part al nostru: rămâne cum l-a scris nmap
+        return final.is_file()
+    if ok and part.is_file():
+        os.replace(part, final)
+    elif part.exists():
+        try:
+            part.unlink()
+        except OSError:
+            pass
+    return final.is_file()
+
+
 def execute(plan: ScanPlan, nmap_path: Optional[str] = None) -> ScanPlan:
     """Rulează nmap doar pentru un plan acceptat. Apelat doar cu --confirm."""
     nmap_path, refused = _ready(plan, nmap_path)
     if refused is not None:
         return refused
-    args = [nmap_path, *plan.args[1:]]
+    scans_dir = Path(plan.out_path).parent
+    if not acquire_lock(scans_dir):
+        return _refuse(ALREADY_RUNNING, plan.network, plan.target)
     try:
-        result = subprocess.run(args, shell=False, check=False)
-    except OSError:
-        return _refuse(NMAP_FAILED, plan.network, plan.target)
-    if result.returncode != 0 or not Path(plan.out_path).is_file():
-        return _refuse(NMAP_FAILED, plan.network, plan.target)
-    return plan
+        args, part = _with_part([nmap_path, *plan.args[1:]], plan.out_path)
+        passes = _passes(args, plan, known_hosts(plan))
+        rc = 0
+        for one in passes:
+            try:
+                rc = subprocess.run(one, shell=False, check=False).returncode
+            except OSError:
+                rc = -1
+            if rc != 0:
+                break
+        main = _out_of(passes[-1])
+        for one in passes[:-1]:                          # trecerea gateway-ului: în fișierul principal
+            extra = _out_of(one)
+            if extra and main and rc == 0:
+                _merge_hosts(main, extra)
+            elif extra and extra.exists():
+                extra.unlink()
+        if not _finish_part(part, plan.out_path, rc == 0) or rc != 0:
+            return _refuse(NMAP_FAILED, plan.network, plan.target)
+        return plan
+    finally:
+        release_lock(scans_dir)
 
 
 # --- execuția cu progres (scanarea pornită din aplicație, vezi scan_job.py) ---------------------
@@ -322,7 +547,9 @@ PROGRESS_ARGS = ["-v", "--stats-every", "5s"]
 # live.py) stau în pauză, deci totalul rămâne ≤100/s. Nu schimbă CE se verifică: aceleași porturi, aceeași
 # detecție de versiuni (-sV), același script.
 MIN_RATE = "80"
-SPEED_ARGS = ["--min-rate", MIN_RATE, "--max-retries", "2", "--max-rtt-timeout", "300ms"]
+# 1 s (nu 300 ms): un laptop cu Wi-Fi-ul în economie de energie răspunde abia după câteva sute de ms; cu 300 ms ieșea
+# „down” și lipsea din scanare. Plafonul de pachete rămâne același (--max-rate 100).
+SPEED_ARGS = ["--min-rate", MIN_RATE, "--max-retries", "2", "--max-rtt-timeout", "1000ms"]
 STOPPED = "STOPPED"
 
 
@@ -341,31 +568,53 @@ def execute_streaming(plan: ScanPlan, on_line: Callable[[str], None],
     nmap_path, refused = _ready(plan, nmap_path)
     if refused is not None:
         return refused
-    args = [nmap_path, *PROGRESS_ARGS, *speed_args(plan), *plan.args[1:]]
-    kwargs = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if sys.platform == "win32" else {}
+    scans_dir = Path(plan.out_path).parent
+    if not acquire_lock(scans_dir):
+        return _refuse(ALREADY_RUNNING, plan.network, plan.target)
     try:
-        proc = popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                     text=True, encoding="utf-8", errors="replace", shell=False, **kwargs)
-    except OSError:
-        return _refuse(NMAP_FAILED, plan.network, plan.target)
+        return _stream(plan, nmap_path, on_line, should_stop, popen, poll_s)
+    finally:
+        release_lock(scans_dir)
 
+
+def _stream(plan: ScanPlan, nmap_path: str, on_line, should_stop, popen, poll_s) -> ScanPlan:
+    args, part = _with_part([nmap_path, *PROGRESS_ARGS, *speed_args(plan), *plan.args[1:]], plan.out_path)
+    passes = _passes(args, plan, known_hosts(plan))
+    kwargs = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if sys.platform == "win32" else {}
     stopped = threading.Event()
+    rc = 0
+    for one in passes:
+        try:
+            proc = popen(one, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                         text=True, encoding="utf-8", errors="replace", shell=False, **kwargs)
+        except OSError:
+            return _refuse(NMAP_FAILED, plan.network, plan.target)
 
-    def watchdog() -> None:
-        while proc.poll() is None:
-            if should_stop():
-                stopped.set()
-                proc.terminate()
-                return
-            time.sleep(poll_s)
+        def watchdog(proc=proc) -> None:
+            while proc.poll() is None:
+                if should_stop():
+                    stopped.set()
+                    proc.terminate()
+                    return
+                time.sleep(poll_s)
 
-    threading.Thread(target=watchdog, daemon=True).start()
-    for line in proc.stdout:
-        on_line(line.rstrip("\r\n")[:MAX_LINE])
-    rc = proc.wait()
+        threading.Thread(target=watchdog, daemon=True).start()
+        for line in proc.stdout:
+            on_line(line.rstrip("\r\n")[:MAX_LINE])
+        rc = proc.wait()
+        if rc != 0 or stopped.is_set():
+            break
+    main = _out_of(passes[-1])
+    for one in passes[:-1]:                              # trecerea gateway-ului: în fișierul principal
+        extra = _out_of(one)
+        if extra and main and rc == 0 and not stopped.is_set():
+            _merge_hosts(main, extra)
+        elif extra and extra.exists():
+            extra.unlink()
+    done = _finish_part(part, plan.out_path, rc == 0 and not stopped.is_set())
     if stopped.is_set():
         return _refuse(STOPPED, plan.network, plan.target, "Scanarea a fost oprită.", "The scan was stopped.")
-    if rc != 0 or not Path(plan.out_path).is_file():
+    if rc != 0 or not done:
         return _refuse(NMAP_FAILED, plan.network, plan.target)
     return plan
 

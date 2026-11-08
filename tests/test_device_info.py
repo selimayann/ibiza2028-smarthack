@@ -199,3 +199,18 @@ def test_hotspot_label_does_not_change_findings_or_scores():
             di.display_host(h, gateway_ip=h.ip)
     after = [(s.file, s.score, [asdict(f) for f in s.findings]) for s in analyze_folder(VALIDATION)]
     assert before == after
+
+
+# ---------- un calculator Windows pe care motorul l-a ghicit „IoT” (rulează și un program pe 1883) ----------
+
+def test_windows_ports_relabel_an_iot_guess_as_a_windows_pc():
+    from netscan.model import Host, Port
+    from netscan.scan.device_info import windows_pc
+    ports = [Port(port=p, proto="tcp", state="open") for p in (135, 1883, 2179, 5357, 8080)]
+    laptop = Host(ip="172.20.10.2", device_id="d1", ports=ports, device_type="iot")
+    assert windows_pc(laptop) == "pc_windows"
+    camera = Host(ip="172.20.10.5", device_id="d2", ports=[Port(port=p, proto="tcp", state="open") for p in (554, 1883)],
+                  device_type="iot")
+    assert windows_pc(camera) is None                                  # o cameră adevărată rămâne IoT
+    router = Host(ip="172.20.10.1", device_id="d3", ports=ports, device_type="router")
+    assert windows_pc(router) is None                                  # routerul nu se reetichetează

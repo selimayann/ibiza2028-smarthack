@@ -12,6 +12,10 @@
   <link rel="preload" href="{{ url_for('static', filename='fonts/atkinson-hyperlegible-next-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='films.css') }}">
+  {# filmele și meniul: în <head>, „defer” (rulează după ce e citită pagina) și „blocking=render” (prima afișare
+     așteaptă după ele: pastila meniului apare direct la locul ei, fără să clipească) #}
+  <script src="{{ url_for('static', filename='films-en.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='films.js') }}" defer blocking="render"></script>
 </head>
 <body{% if assistant %} class="has-fab"{% endif %}>
   {# Iconițe: forma diferă per severitate, ca să nu depindem de culoare. #}
@@ -84,7 +88,5 @@
   </footer>
   {% if assistant %}{% include "_assistant.html" %}{% endif %}
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='films-en.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='films.js') }}" defer></script>
 </body>
 </html>

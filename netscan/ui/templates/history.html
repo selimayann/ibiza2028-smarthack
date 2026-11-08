@@ -21,7 +21,7 @@
 {% if deleted %}<p class="notice-msg" role="status" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('history_deleted') }}{% if deleted_raw %} {{ T('delete_raw_done') }}{% endif %}</p>{% endif %}
 
 {% if items %}
-<div class="page-film"><div class="film-slot" data-page="history" data-lang="{{ lang }}" data-cta="Vezi scanările tale" data-cta-href="#hist-list"></div></div>
+<div class="page-film"><div class="film-slot" data-page="history" data-lang="{{ lang }}" data-cta="Vezi" data-cta-href="#hist-list"></div></div>
   {# Rândurile: cea mai nouă scanare prima; data e textul linkului spre comparație (dovada).
      Pe telefon tabelul devine o listă de carduri (ca la „Dispozitive”), ca linkurile să nu iasă din ecran. #}
   <table class="rtable hist-table history-table" id="hist-list">

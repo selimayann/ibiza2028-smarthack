@@ -44,7 +44,9 @@ def test_the_other_two_cannot_be_checked_by_a_port():
     s = _scan()
     never = lambda ip, port: (_ for _ in ()).throw(AssertionError("nu trebuia atins"))
     unk = next(x for x in s.findings if x.code == "UNKNOWN_DEVICE")
-    assert verify.check_finding(s, unk, never, lambda ip: True).result == verify.NO_PORT
+    # pe un fișier făcut de mână nu se atinge rețeaua deloc; în afara hotspotului, la fel
+    assert verify.check_finding(s, unk, never, lambda ip: True, probe_allowed=False).result == verify.NO_PORT
+    assert verify.check_finding(s, unk, never, lambda ip: False).result in (verify.OTHER_NETWORK, verify.NO_PORT)
 
 
 def test_a_hand_made_file_is_never_probed_live():

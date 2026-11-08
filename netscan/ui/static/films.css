@@ -1269,3 +1269,228 @@ body:has(.verdict.home-card) main.wrap { padding-bottom: 1.5rem; }
 .page-film ~ .live .live-stats dd { text-align: right; }
 /* locul temporar al animației de la „Nu-l cunosc”: nu se vede (animația se deschide direct mărită) */
 .film-slot.film-ephemeral { position: fixed; left: -9999px; top: 0; width: 46rem; height: 1px; overflow: hidden; }
+/* butonul spre conținut („Vezi ↓”, „Începe acum ↓”) e acolo de la început, nu doar la finalul animației */
+.film .film-cta, .film .film-cta:not(.on) { display: flex; opacity: 1; transform: none; visibility: visible; pointer-events: auto; animation: none; }
+/* paginile cu film: antetul mai strâns, ca animația și „Vezi ↓” să încapă în primul ecran */
+.page-head.centered { padding-top: 1.5rem; margin-bottom: .75rem; }
+.page-film { margin-bottom: 1rem; }
+.page-film .film .film-cta { margin-top: .75rem; }
+/* „Bravo”: după ce a crescut, cutia nu mai are înălțime maximă (cu mulți pași, ultimul card nu se mai taie) */
+.celebrate { animation-fill-mode: backwards; }
+@keyframes cel-grow { from { opacity: 0; transform: scale(.94); max-height: 6rem; } to { opacity: 1; transform: none; max-height: 400rem; } }
+
+
+/* ================= Meniul: trecerea între pagini o face browserul (fără întârziere, fără sacadat) ================= */
+@view-transition { navigation: auto; }
+.nav-pill { display: none !important; }
+.top nav.has-pill a[aria-current="page"] { background: var(--brand, #3333FF) !important; color: var(--brand-ink, #fff);
+  box-shadow: 0 4px 12px -4px rgba(51,51,255,.55) !important; view-transition-name: nav-current; }
+::view-transition-group(nav-current) { animation-duration: .3s; animation-timing-function: cubic-bezier(.3,.7,.2,1); }
+::view-transition-old(nav-current) { animation: none; opacity: 0; }
+::view-transition-new(nav-current) { animation: none; height: 100%; }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(nav-current) { animation: none; } }
+
+/* ================= Importă un fișier XML (în meniul „Scanarea din…”) ================= */
+.hm-import { margin-top: .6rem; }
+.hm-import-btn { width: 100%; justify-content: flex-start; cursor: pointer; }
+.hm-import-btn.busy { opacity: .6; pointer-events: none; }
+.hm-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.hm-file:focus-visible + noscript, .hm-import:focus-within .hm-import-btn { outline: 3px solid var(--brand, #3333FF); outline-offset: 2px; }
+
+/* ================= Butoanele aplicației, în stilul nostru: albe, fără contur, cu lumină moale ================= */
+.button-secondary, a.button.button-secondary, button.button-secondary, .button:not(.button-primary):not(.button-danger) {
+  border: 0 !important; border-radius: 14px; background: #fff; color: var(--ink, #1F2328);
+  box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 4px 18px rgba(31,35,40,.12); transition: box-shadow .2s ease, transform .15s ease; }
+.button-secondary:hover, a.button.button-secondary:hover, .button:not(.button-primary):not(.button-danger):hover {
+  background: #fff; box-shadow: 0 0 0 1px rgba(52,58,64,.05), 0 6px 24px rgba(31,35,40,.18); transform: translateY(-1px); }
+.button-primary, button.button-primary { border: 0 !important; border-radius: 14px; box-shadow: 0 0 0 1px rgba(51,51,255,.15), 0 6px 22px rgba(51,51,255,.35); }
+.button-danger { border: 0 !important; border-radius: 14px; box-shadow: 0 0 0 1px rgba(179,38,30,.15), 0 6px 20px rgba(179,38,30,.28); }
+.button-secondary:disabled, .button-primary:disabled { box-shadow: none; transform: none; }
+/* și în meniul „Scanarea din…”: același stil (alb, fără contur, lumină moale) */
+.home-menu-pop .about-actions .button, .home-menu-pop .hm-import-btn { background: #fff !important; border: 0 !important; border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 4px 18px rgba(31,35,40,.12) !important; }
+.home-menu-pop .about-actions .button:hover, .home-menu-pop .hm-import-btn:hover { box-shadow: 0 0 0 1px rgba(52,58,64,.05), 0 6px 24px rgba(31,35,40,.18) !important; }
+@media (prefers-reduced-motion: reduce) { .button-secondary:hover, .button:hover { transform: none; } }
+
+/* pastila paginii curente are numele tranziției din prima clipă (fără să aștepte JavaScript-ul), ca browserul să o
+   „vadă” pe ambele pagini și să o alunece de la una la alta */
+.top nav a[aria-current="page"] { view-transition-name: nav-current; background: var(--brand, #3333FF) !important; color: var(--brand-ink, #fff) !important;
+  box-shadow: 0 4px 12px -4px rgba(51,51,255,.55) !important; }
+/* „Reîncearcă” în notificare */
+.verify-toast .vt-retry { align-self: center; margin-left: .25rem; padding: .45rem .9rem; border: 0; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer;
+  color: #fff; background: var(--brand, #3333FF); box-shadow: 0 4px 14px rgba(51,51,255,.3); white-space: nowrap; }
+.verify-toast .vt-retry:hover { background: var(--brand-dark, #2323C8); }
+
+
+/* ================= Live: două carduri diferite (protecția live / scanarea completă) ================= */
+.live-choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 1rem; text-align: left; }
+@media (min-width: 52rem) { .live-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.live-choice { padding: 1.25rem 1.35rem; border-radius: 18px; background: #fff; display: flex; flex-direction: column; gap: .6rem;
+  box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 8px 28px rgba(31,35,40,.10); }
+.live-choice-watch { background: linear-gradient(180deg, #F3F4FF 0, #fff 5rem); }
+.live-choice .lc-kind { margin: 0; display: inline-flex; align-items: center; gap: .4rem; align-self: flex-start; padding: .25rem .7rem; border-radius: 999px;
+  font-weight: 700; font-size: 1rem; color: var(--brand, #3333FF); background: #EEF0FF; }
+.live-choice-scan .lc-kind { color: #16663a; background: #E7F5EC; }
+.live-choice h3, .live-choice .live-sub { margin: .1rem 0 0; font-size: 1.25rem; text-align: left; }
+.live-choice .lc-what { margin: 0; color: var(--muted, #5B6470); }
+.live-choice form, .live-choice .consent-form { align-items: stretch !important; }
+.page-film ~ .live .live-choice form .consent { max-width: none; margin: 0; }
+.live-choice .scan-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.live-choice button { align-self: flex-start; }
+.live-choice .live-scan { text-align: left; }
+.live-choice .live-scan .muted { margin: 0; }
+/* un singur card (scanarea completă rulează deja, sus): centrat, nu înghesuit în stânga */
+.live-choices:has(> :only-child) { grid-template-columns: minmax(0, 1fr); max-width: 32rem; margin-left: auto; margin-right: auto; }
+/* scanarea completă în curs (sus): tot un card, ca să se vadă că e alt lucru decât protecția live */
+.page-film ~ .live > .live-scan, .page-film ~ .live .live-off-line + .live-scan { padding: 1.1rem 1.25rem; border-radius: 18px; background: #fff;
+  box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 8px 28px rgba(31,35,40,.10); margin: 1rem auto; max-width: 40rem; }
+
+
+/* ================= Meniul: pastila albastră e un singur element care alunecă de la pagina veche la cea nouă =================
+   (fără tranziția browserului între pagini, care nu mergea peste tot) */
+@view-transition { navigation: none; }
+.nav-pill { display: block !important; view-transition-name: none; }
+.top nav a[aria-current="page"] { view-transition-name: none; }
+.top nav.has-pill a[aria-current="page"] { background: transparent !important; box-shadow: none !important; color: var(--brand-ink, #fff) !important; }
+.nav-pill { transition: transform .34s cubic-bezier(.3,.7,.2,1), width .34s cubic-bezier(.3,.7,.2,1), opacity .2s ease; }
+/* meniul „Scanarea din…”: și „Salvează în istoric” aliniat la stânga, ca restul */
+.home-menu-pop .toolbar-save, .home-menu-pop .toolbar-save form { width: 100%; }
+.home-menu-pop .toolbar-save button { width: 100%; justify-content: flex-start; display: inline-flex; align-items: center; gap: .5rem; text-align: left;
+  background: #fff !important; border: 0 !important; border-radius: 14px; box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 4px 18px rgba(31,35,40,.12) !important; }
+
+
+/* ================= Bun venit ================= */
+.wc { max-width: 46rem; margin: 0 auto; }
+.wc-card { margin: 1rem auto 0; padding: 1.4rem 1.5rem; border-radius: 18px; background: #fff; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .6rem;
+  box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 10px 32px rgba(31,35,40,.10); }
+.wc-card h2 { margin: 0; font-size: 1.35rem; }
+.wc-card p { margin: 0; max-width: 34rem; }
+.wc-card form { display: flex; flex-direction: column; align-items: center; gap: .8rem; margin-top: .4rem; }
+.wc-card .consent { display: flex; gap: .6rem; align-items: flex-start; text-align: left; max-width: 32rem; }
+.wc-card .scan-bar { width: 100%; max-width: 28rem; }
+.wc-progress { font-size: 1.05rem; }
+.wc-warn { color: #7A4A00; background: #FFF6E5; padding: .6rem .9rem; border-radius: 12px; }
+.wc-more { display: flex; flex-direction: column; align-items: center; gap: .6rem; margin: 1.5rem 0 2rem; }
+.wc-skip { border: 0; background: none; font: inherit; color: var(--muted, #5B6470); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: .4rem .8rem; }
+.wc-skip:hover { color: var(--ink, #1F2328); }
+/* scenele din filmul de bun venit */
+.film .pbar { height: 8px; border-radius: 6px; background: #E9EDF3; overflow: hidden; margin: 6px 0 8px; }
+.film .pbar i { display: block; height: 100%; width: 0; background: var(--brand, #3333FF); border-radius: 6px; transition: width 2.6s ease-out; }
+.film .pbar i.act { width: 100%; }
+.film .wscore { display: flex; align-items: baseline; gap: 6px; margin: 8px 0 10px; color: #5B6470; font-size: 11px; }
+.film .wscore .wnum { font-size: 34px; font-weight: 800; color: #A34100; line-height: 1; }
+.film .wscore .wnum.good { color: #16663a; }
+
+/* ================= Turul aplicației ================= */
+.tour-shade { position: fixed; inset: 0; z-index: 1000; background: rgba(15,18,30,.5); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+.tour-shade.on { opacity: 1; pointer-events: auto; }
+.tour-spot { position: fixed; z-index: 1000; border-radius: 16px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 4px rgba(51,51,255,.55), 0 0 0 9999px rgba(15,18,30,.5);
+  transition: left .35s cubic-bezier(.3,.7,.2,1), top .35s cubic-bezier(.3,.7,.2,1), width .35s cubic-bezier(.3,.7,.2,1), height .35s cubic-bezier(.3,.7,.2,1), opacity .25s ease; }
+.tour-spot.on { opacity: 1; }
+.tour-bubble { position: fixed; z-index: 1001; width: min(24rem, calc(100vw - 32px)); padding: 1.1rem 1.2rem 1rem; border-radius: 18px; background: #fff;
+  box-shadow: 0 18px 50px rgba(15,18,30,.28); opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .25s ease, left .35s ease, top .35s ease; }
+.tour-bubble.on { opacity: 1; transform: none; }
+.tour-bubble h2 { margin: .1rem 2rem .35rem 0; font-size: 1.2rem; }
+.tour-bubble .tour-text { margin: 0 0 .9rem; color: var(--ink, #1F2328); line-height: 1.5; }
+.tour-bubble .tour-count { margin: 0; color: var(--muted, #5B6470); font-size: 1rem; font-weight: 600; }
+.tour-btns { display: flex; justify-content: flex-end; gap: .5rem; }
+.tour-btns button { min-height: 2.6rem; padding: .45rem 1rem; border: 0; border-radius: 14px; font: inherit; font-weight: 700; cursor: pointer; }
+.tour-next { color: #fff; background: var(--brand, #3333FF); box-shadow: 0 6px 18px rgba(51,51,255,.3); }
+.tour-next:hover { background: var(--brand-dark, #2323C8); }
+.tour-back { background: #fff; color: var(--ink, #1F2328); box-shadow: 0 0 0 1px rgba(52,58,64,.06), 0 4px 14px rgba(31,35,40,.12); }
+.tour-close { position: absolute; top: .7rem; right: .7rem; width: 2.2rem; height: 2.2rem; border: 0; border-radius: 10px; background: none; font-size: 1rem; cursor: pointer; color: var(--muted, #5B6470); }
+.tour-close:hover { background: #F2F4F7; }
+@media (prefers-reduced-motion: reduce) { .tour-spot, .tour-bubble, .tour-shade { transition: none; } }
+
+
+/* ================= Bun venit: „Ce înseamnă o scanare?” + cronometrul ================= */
+.wc-explain { margin: 1.25rem auto 0; text-align: center; }
+.wc-explain h2 { font-size: 1.35rem; margin: 0 0 .9rem; }
+.wc-ex-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: .9rem; text-align: left; }
+@media (min-width: 52rem) { .wc-ex-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.wc-ex { padding: 1rem 1.1rem; border-radius: 16px; background: #F7F8FB; }
+.wc-ex p { margin: 0; line-height: 1.5; }
+.wc-ex .wc-ex-k { font-weight: 700; color: var(--brand, #3333FF); margin-bottom: .35rem; }
+.wc-bar { height: 12px; border-radius: 999px; background: #E9EDF3; overflow: hidden; }
+.wc-bar .wc-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--brand, #3333FF); transition: width 1s linear; }
+.wc-progress { font-size: 1.1rem; }
+.wc-timer { font-weight: 800; font-size: 1.6rem; font-variant-numeric: tabular-nums; color: var(--ink, #1F2328); }
+@media (prefers-reduced-motion: reduce) { .wc-bar .wc-fill { transition: none; } }
+
+/* pastila: alunecare scurtă (se vede cât se încarcă pagina nouă); textele își schimbă culoarea odată cu ea */
+.nav-pill { transition: transform .26s cubic-bezier(.3,.7,.2,1), width .26s cubic-bezier(.3,.7,.2,1), opacity .2s ease; }
+.top nav.has-pill a { transition: color .2s ease; }
+/* până pornește JavaScript-ul (o clipă): linkul curent are fundalul lui, ca să nu fie niciodată „gol” */
+.top nav:not(.has-pill) a[aria-current="page"] { background: var(--brand, #3333FF) !important; color: var(--brand-ink, #fff) !important; border-radius: 999px; }
+
+.nav-pill { transition: transform .34s cubic-bezier(.3,.7,.2,1), width .34s cubic-bezier(.3,.7,.2,1), opacity .2s ease; }
+/* cât pastila e încă pe drum, textul paginii noi rămâne închis (nu alb pe alb) */
+.top nav.has-pill a.pill-wait { color: var(--ink, #1F2328) !important; }
+/* același cursor trece de la laptop (săgeată) la telefon (deget): pe telefon doar cercul, fără săgeată */
+.film .finger:not(.mouse) svg { display: none !important; }
+
+
+/* Dispozitive: aparatele văzute live, fără nimic deschis */
+.live-extra { margin-top: 2rem; }
+.live-extra h2 { font-size: 1.15rem; margin: 0 0 .6rem; }
+.live-extra-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.live-extra-list li { padding: .8rem 1rem; border-radius: 14px; background: #F7F8FB; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; }
+.live-extra-ok { margin-left: auto; color: #16663a; font-weight: 600; display: inline-flex; align-items: center; gap: .3rem; }
+
+.live-extra-ok { color: var(--muted, #5B6470); font-weight: 500; }
+
+
+/* ================= ecranul „Mac”: bara de sus cu simbolul din colț, fără bara de jos a Windows ================= */
+.film .monitor.mac .taskbar { display: none; }
+.film .monitor.mac .desk { background: linear-gradient(160deg, #7FA7D9 0%, #B9A6D9 55%, #E7B8C9 100%); }
+.film .monitor.mac .macbar { position: absolute; left: 0; right: 0; top: 0; height: 14px; display: flex; align-items: center; gap: 9px; padding: 0 8px;
+  background: rgba(255,255,255,.72); font-size: 8px; color: #1d1d1f; z-index: 2; }
+.film .monitor.mac .macbar b { font-weight: 700; }
+.film .monitor.mac .appleish { width: 9px; height: 10px; border-radius: 50% 50% 45% 45%; background: #1d1d1f; display: inline-block; }
+.film .monitor.mac .macmenu { position: absolute; left: 6px; top: 15px; z-index: 3; width: 120px; padding: 4px; border-radius: 6px; background: rgba(250,250,250,.97);
+  box-shadow: 0 6px 16px rgba(0,0,0,.25); display: flex; flex-direction: column; gap: 1px; font-size: 8.5px; }
+.film .monitor.mac .macmenu span { padding: 3px 6px; border-radius: 4px; }
+.film .monitor.mac .macmenu span.pick.act { background: #0A66D8; color: #fff; }
+.film .monitor.mac .win .wbar { background: #ECECEC; }
+.film .monitor.mac .win .wbar .wbtn { display: none; }
+.film .monitor.mac .win .wbar::before { content: ""; display: inline-block; width: 22px; height: 6px; margin-right: 6px; vertical-align: middle;
+  background: radial-gradient(circle at 3px 3px, #FF5F57 2.6px, transparent 3px), radial-gradient(circle at 11px 3px, #FEBC2E 2.6px, transparent 3px), radial-gradient(circle at 19px 3px, #28C840 2.6px, transparent 3px); }
+.film .monitor.mac .tg.act, .film .monitor.mac .tg { --tg-on: #0A66D8; }
+.film .monitor.mac .win { margin-top: 10px; }
+.film .monitor.mac .win .wbar { position: relative; justify-content: flex-start; }
+.film .monitor.mac .win .wbar > span:first-of-type { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; }
+
+/* WIN_APP, cadrul 1: fereastra SafeEel cu numele programului */
+.film .safe-hint { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.film .safe-hint .kv { font-size: 10px; color: #5B6470; }
+.step-dev .step-ip + .step-ip { margin-left: .4rem; }
+
+/* Ctrl + Shift + Esc, pe ecran, în cadrul 2 al filmului „program pe calculator” */
+.film .keys-hint { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 3; display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.95); box-shadow: 0 8px 22px rgba(0,0,0,.22); }
+.film .keys-hint kbd { min-width: 30px; padding: 5px 7px; border-radius: 6px; background: #F4F5F7; border: 1px solid #C9CED6; border-bottom-width: 3px;
+  font: 600 10px/1 system-ui, sans-serif; text-align: center; color: #1F2328; }
+.film .keys-hint i { font-style: normal; font-size: 11px; color: #5B6470; }
+
+/* Monitor de resurse (în filmul „program pe calculator”) */
+.film .win.rm .rm-body { padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; }
+.film .rm-tabs { display: flex; gap: 2px; font-size: 8.5px; margin-bottom: 4px; }
+.film .rm-tabs span { padding: 2px 6px; border-radius: 3px 3px 0 0; background: #EEF0F3; }
+.film .rm-tabs span.on, .film .rm-tabs span.pick.act { background: #fff; box-shadow: 0 -1px 0 #C9D2DE inset; font-weight: 700; }
+.film .rm-sec { font-size: 9.5px; margin-top: 2px; }
+.film .rm-head { display: flex; justify-content: space-between; font-size: 8px; color: #8A94A3; padding: 0 6px; }
+.film .rm-img { font-family: Consolas, monospace; font-size: 9px; }
+.film .rm-menu { position: absolute; right: 18px; top: 92px; z-index: 4; display: flex; flex-direction: column; background: #fff; border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.22); font-size: 8.5px; padding: 3px; }
+.film .rm-menu span { padding: 3px 8px; border-radius: 4px; }
+.film .rm-menu span:first-child { background: #E8F0FE; }
+
+/* Docker Desktop (cadrele 7-8 ale filmului „program pe calculator”) */
+.film .win.dk .row { gap: 6px; }
+.film .win.dk .row b { margin-left: auto; font-family: Consolas, monospace; font-size: 9px; }
+.film .win.dk .btn.danger { padding: 1px 6px; }
+
+/* Scanare din istoric (/scan/<id>): cardul de scor nu mai stă lipit sus (sticky) cât derulezi; altfel textul pasului
+   trecea pe sub „Detalii despre scor” și se suprapuneau. */
+.verdict.home-card > .score { position: static; }
