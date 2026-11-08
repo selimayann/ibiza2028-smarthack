@@ -88,10 +88,9 @@ def _home(tmp_path, lang="ro"):
 def test_home_answer_comes_before_live_protection(tmp_path):
     html = _home(tmp_path)
     text = re.sub(r"<[^>]+>", " ", html)
-    first_step = text.index("Fă asta întâi")
-    assert text.index("Cel mai periculos") < text.index("Pornește protecția live")
-    assert first_step < text.index("Pornește protecția live")
-    assert html.index('id="verdict-h"') < html.index('id="score"') < html.index('id="worst"') < html.index('id="live"')
+    assert text.index("Cel mai periculos") < text.index("Fă asta întâi")
+    assert html.index('id="verdict-h"') < html.index('id="score"') < html.index('id="worst"')
+    assert 'id="live"' not in html                      # protecția live e pe pagina „Live” din meniu
 
 
 def test_home_has_one_primary_button_and_no_codes_on_the_main_path(tmp_path):
@@ -120,7 +119,8 @@ def test_big_number_is_the_engine_score_and_severity_has_words(tmp_path):
 
 
 def test_live_panel_off_is_compact_with_required_consent(tmp_path):
-    html = _home(tmp_path)
+    c, app = _client(tmp_path, [analyze_file(str(V2))])
+    html = c.get("/protectie").get_data(as_text=True)
     live = _main(html)[_main(html).index('id="live"'):]
     assert live.count('name="confirm" value="1" required') == 2    # pornirea + formularul de scanare
     assert 'name="job" value="scan"' in live and 'name="job" value="auto"' in live

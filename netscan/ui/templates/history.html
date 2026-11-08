@@ -2,7 +2,7 @@
 {% from "_macros.html" import score_tag, empty_state with context %}
 {% block title %}{{ T('history_title') }} · SafeEel{% endblock %}
 {% block content %}
-<div class="page-head">
+<div class="page-head centered">
   <div>
     <h1 class="page-title">{{ T('history_title') }}</h1>
     {# Propoziția principală: cum s-a schimbat scorul standard (al motorului) de la prima scanare salvată #}
@@ -14,7 +14,6 @@
         {% else %}{{ T('trend_same')|format(trend.last.score, n) }}{% endif %}
       </p>
     {% endif %}
-    <p class="lead">{{ T('history_hint') }}</p>
     {# Al cui e istoricul: utilizatorul de sistem (text de la sistem, escapat) #}
     <p class="history-owner"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{% if owner %}{{ T('history_owner')|format(owner) }}{% else %}{{ T('history_owner_unknown') }}{% endif %}</p>
   </div>
@@ -22,9 +21,10 @@
 {% if deleted %}<p class="notice-msg" role="status" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('history_deleted') }}{% if deleted_raw %} {{ T('delete_raw_done') }}{% endif %}</p>{% endif %}
 
 {% if items %}
+<div class="page-film"><div class="film-slot" data-page="history" data-lang="{{ lang }}" data-cta="Vezi scanările tale" data-cta-href="#hist-list"></div></div>
   {# Rândurile: cea mai nouă scanare prima; data e textul linkului spre comparație (dovada).
      Pe telefon tabelul devine o listă de carduri (ca la „Dispozitive”), ca linkurile să nu iasă din ecran. #}
-  <table class="rtable hist-table history-table">
+  <table class="rtable hist-table history-table" id="hist-list">
     <caption class="sr-only">{{ T('history_title') }}</caption>
     <thead><tr>
       <th scope="col">{{ T('scan_date') }}</th>

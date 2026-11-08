@@ -2,17 +2,17 @@
 {% from "_macros.html" import sev, sev_counts, device_name, device_title, announced_sub with context %}
 {% block title %}{{ T('inv_title') }} · SafeEel{% endblock %}
 {% block content %}
-<div class="page-head">
+<div class="page-head centered">
   <div>
     <h1 class="page-title">{{ T('inv_title') }}</h1>
-    <p class="lead">{{ T('inv_hint') }}</p>
   </div>
 </div>
 
+<div class="page-film"><div class="film-slot" data-page="devices" data-lang="{{ lang }}" data-cta="Vezi aparatele tale" data-cta-href="#inv-list"></div></div>
 {% if scan is none %}
   <p class="notice">{{ T('no_data') }}</p>
 {% else %}
-  <div class="toolbar card">
+  <div class="toolbar card" id="inv-list">
     <div class="toolbar-left">
     {% if scan_list|length > 1 %}
       <form class="picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">

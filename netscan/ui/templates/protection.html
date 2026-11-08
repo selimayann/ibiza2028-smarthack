@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ T('nav_protection') }} · SafeEel{% endblock %}
+{% block content %}
+{# Pagina e construită în jurul animației: întâi vezi cum merge, sub ea pornești protecția (panoul „Rețeaua ta acum”). #}
+<div class="page-head centered">
+  <div>
+    <h1 class="page-title">{{ T('nav_protection') }}</h1>
+    <p class="lead">{{ T('protection_lead') }}</p>
+  </div>
+</div>
+<div class="page-film"><div class="film-slot" data-page="live" data-lang="{{ lang }}" data-cta="Începe acum" data-cta-href="#live"></div></div>
+{% if live %}
+  {% include "_live.html" %}
+  <p id="live-announce" class="sr-only" aria-live="polite"></p>
+{% endif %}
+{% endblock %}

@@ -2,14 +2,14 @@
 {% from "_macros.html" import alert_list, alert_groups, empty_state, monitor_event with context %}
 {% block title %}{{ T('journal_title') }} · SafeEel{% endblock %}
 {% block content %}
-<div class="page-head">
+<div class="page-head centered">
   <div>
     <h1 class="page-title">{{ T('journal_title') }}</h1>
-    <p class="lead">{{ T('journal_hint') }}</p>
   </div>
 </div>
 
-<section class="section section-first" aria-labelledby="mon-h">
+<div class="page-film"><div class="film-slot" data-page="journal" data-lang="{{ lang }}" data-cta="Vezi alertele tale" data-cta-href="#alerts"></div></div>
+<section class="section section-first" id="alerts" aria-labelledby="mon-h">
   <div class="section-head">
     <h2 id="mon-h">{{ T('monitor_title') }}</h2>
     <p>{{ T('monitor_hint') }}</p>
@@ -19,7 +19,7 @@
   {% elif monitor_ran %}
     <p class="notice">{{ T('monitor_none') }}</p>
   {% else %}
-    <p class="notice">{{ T('monitor_empty_live') }} <a href="{{ url_for('overview') }}#live-h">{{ T('go_live') }}</a></p>
+    <p class="notice">{{ T('monitor_empty_live') }} <a href="{{ url_for('protection') }}#live-h">{{ T('go_live') }}</a></p>
   {% endif %}
 </section>
 

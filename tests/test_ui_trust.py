@@ -108,7 +108,7 @@ def test_stored_counts_never_returns_a_full_mac(tmp_path):
 
 def test_trap_is_a_separate_unchecked_opt_in(tmp_path):
     c, app, live = make(tmp_path)
-    html = c.get("/").get_data(as_text=True)
+    html = c.get("/protectie").get_data(as_text=True)
     box = re.search(r'<input type="checkbox" name="trap" value="1"[^>]*>', html).group(0)
     assert "checked" not in box and "required" not in box
     assert "Pornește și ușa-capcană (alertă dacă cineva din rețea încearcă să intre)" in html
@@ -124,7 +124,7 @@ def test_trap_is_a_separate_unchecked_opt_in(tmp_path):
     live.calls.clear()
     c.post("/live/start", data={"token": token, "trap": "1"})
     assert live.calls == []
-    en = c.get("/?lang=en").get_data(as_text=True)
+    en = c.get("/protectie?lang=en").get_data(as_text=True)
     assert "Also turn on the trap door" in en
 
 
@@ -146,8 +146,8 @@ def test_router_label_only_for_our_newest_scan_on_the_team_hotspot(tmp_path):
     c, _, _ = make(tmp_path, [s], OWN_SCAN_CHECK=lambda x: True, NETWORK_DETECT=hotspot)
     page = c.get(f"/device/{router.host.device_id}").get_data(as_text=True)
     assert f"<h1>{ROUTER_LABEL}</h1>" in page
-    home = c.get("/").get_data(as_text=True)
-    assert f'<p class="dev-name">{ROUTER_LABEL}</p>' in home
+    devices = c.get("/devices").get_data(as_text=True)                  # lista e pe pagina „Dispozitive”
+    assert ROUTER_LABEL in devices
     assert router.host.device_type == "router" and [d.host.device_type for d in rank_devices(s)] == \
         [d.host.device_type for d in rank_devices(sample())]     # tipul din motor nu se schimbă
     # fișier analizat (nu scanarea noastră) sau altă rețea: fără etichetă

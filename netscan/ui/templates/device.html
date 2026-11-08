@@ -80,6 +80,8 @@
       <p class="problem-text">{{ ex.text }}</p>
       {{ harm_line(f.code) }}
       <h4>{{ T('how_to_fix') }}</h4>
+      {# Filmul „cum repari” (films.js) în locul primului pas scris; pașii următori rămân dedesubt #}
+      <div class="film-slot" data-code="{{ f.code }}" data-dtype="{{ hotspot_kind(d.host) or d.host.device_type or '' }}" data-router="{{ '1' if (router_ip and router_ip == d.host.ip) or d.host.device_type == 'router' else '0' }}" data-ip="{{ d.host.ip }}" data-lang="{{ lang }}"></div>
       {# Primul pas vizibil; restul la cerere #}
       <ol class="steps"><li>{{ ex.steps[0] }}</li></ol>
       {% if ex.steps|length > 1 %}
