@@ -1,4 +1,6 @@
-# Pagina tehnică · Secure Networks, Simply Explained
+# Pagina tehnică, varianta completă · Secure Networks, Simply Explained
+
+> Rezumatul de o pagină cerut de brief e în [technical.md](technical.md); aici sunt toate detaliile.
 
 > Echipa **Ibiza2028** · R Systems Hackathon 2026 · Detalii: [README](../README.md), [lab.md](lab.md), [rules.md](rules.md), [questions.md](questions.md).
 
