@@ -84,8 +84,9 @@
        doar o scanare în curs rămâne la vedere. #}
     <p class="live-off-line"><strong>{{ T('live_section_off') }}</strong> {{ T('live_off_short') }}</p>
     {% if scan_busy %}{{ scan_block() }}{% endif %}
-    <details class="live-more"{% if live.msg %} open{% endif %}>
-      <summary>{{ T('live_open_controls') }}</summary>
+    {# Butonul care deschide în jos pornirea protecției și scanarea (pastilă, nu link): clar pentru un om non-tehnic #}
+    <details class="live-more live-open"{% if live.msg %} open{% endif %}>
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('live_open_controls') }}</summary>
       <div class="fold-body">
         <form class="consent-form" method="post" action="{{ url_for('live_start') }}" data-swap="#live" data-focus="#live-said, #live-h">
           {{ token_field() }}

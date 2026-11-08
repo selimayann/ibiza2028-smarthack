@@ -1515,3 +1515,12 @@ details > summary *, details > summary:hover * { text-decoration: none !importan
 .more-options > summary { color: var(--muted); font-weight: 400; min-height: 2.75rem; margin-bottom: -.4rem; }
 .more-options > summary:hover { color: var(--ink); }
 .more-options[open] > summary { color: var(--ink); margin-bottom: 0; }
+/* „Rețeaua ta acum”: deschiderea controalelor ca buton-pastilă cu scut și săgeată în jos (rotită când e deschis) */
+details.live-open > summary { display: inline-flex; width: fit-content; gap: .5rem; padding: .5rem 1.1rem; min-height: 2.75rem;
+  border: 1px solid var(--brand); border-radius: 999px; background: var(--surface); color: var(--brand); font-weight: 700; }
+details.live-open > summary::before { display: none; }
+details.live-open > summary::after { content: ""; width: .5rem; height: .5rem; margin-left: .25rem; border: solid currentColor;
+  border-width: 0 2px 2px 0; transform: translateY(-.15rem) rotate(45deg); }
+details.live-open[open] > summary::after { transform: translateY(.1rem) rotate(-135deg); }
+details.live-open > summary:hover { background: var(--brand-tint); }
+details.live-open > summary .icon { width: 1.1em; height: 1.1em; }
