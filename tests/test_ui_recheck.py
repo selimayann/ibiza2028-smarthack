@@ -246,7 +246,7 @@ def test_upload_file_name_is_sanitised(tmp_path):
 
 
 @pytest.mark.parametrize("data, code, message", [
-    (b"", "NO_FILE", "Nu ai ales niciun fișier."),
+    (b"", "EMPTY", "Fișierul e gol."),
     (b"<nmaprun start=", "TRUNCATED", "pare incomplet"),
     (b"asta nu e xml", "INVALID_XML", "nu e un XML valid"),
     (b"<html><body>salut</body></html>", "NOT_NMAP", "nu pare a fi o scanare nmap"),
@@ -346,3 +346,24 @@ def test_names_given_by_the_user_show_in_the_proof(tmp_path):
     tick(client, app, scans[0])
     loc = client.post("/compare", data={"token": app.config["FORM_TOKEN"], **ref(scans[0]), "after": fref(scans[1])}).headers["Location"]
     assert "Routerul din hol" in client.get(loc).get_data(as_text=True)
+
+
+def test_upload_without_choosing_a_file_says_so(tmp_path):
+    scans = load(V6A)
+    client, app = make_client(tmp_path, scans)
+    resp = client.post("/scan/upload", data={"token": app.config["FORM_TOKEN"], **ref(scans[0])},
+                       content_type="multipart/form-data")
+    assert resp.status_code == 302 and "upload_error=NO_FILE" in resp.headers["Location"]
+
+
+def test_upload_over_the_request_limit_gets_the_friendly_message(tmp_path):
+    """Peste 20 MB + câmpuri, serverul oprește cererea înainte de formular (413): tot mesajul obișnuit, nu pagina brută."""
+    scans = load(V6A)
+    client, app = make_client(tmp_path, scans)
+    tick(client, app, scans[0])          # „Verifică din nou” apare după ce bifezi un pas
+    huge = V6B.read_bytes() + b"<!--" + b"x" * (22 * 1024 * 1024) + b"-->"
+    resp = upload(client, app, huge, "uriasa.xml")
+    assert resp.status_code == 302 and "upload_error=TOO_LARGE" in resp.headers["Location"]
+    page = client.get(resp.headers["Location"]).get_data(as_text=True)
+    assert "Nu am putut folosi fișierul ales." in page and "prea mare" in page
+    assert storage.list_scans(app.config["DB_PATH"]) == []

@@ -739,8 +739,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         upload = request.files.get("scanfile")
         data = upload.read(MAX_BYTES + 1) if upload is not None else b""
         back = lambda code: redirect(url_for("overview", **scan_ref(before), upload_error=code) + "#recheck-h")  # noqa: E731
-        if not data:
+        if upload is None or not upload.filename:
             return back("NO_FILE")
+        if not data:
+            return back("EMPTY")          # a ales un fișier, dar e gol: nu „n-ai ales niciun fișier”
         # Același motor ca pentru fișierele din folder (analyze_file): defusedxml, limită de mărime, erori ca valori.
         # Fișierul stă doar cât durează analiza, într-un folder temporar, sub un nume curățat.
         name = secure_filename(upload.filename or "") or "scan.xml"
@@ -1236,6 +1238,14 @@ def create_app(test_config: dict | None = None) -> Flask:
             return render_template("message.html", message_key="not_found"), err.code
         except Exception:  # ex. Host respins (DNS rebinding): fără linkuri, doar un mesaj simplu
             return "400 Bad Request", err.code, {"Content-Type": "text/plain; charset=utf-8"}
+
+    @app.errorhandler(413)
+    def too_large(err):
+        """Fișier peste limita cererii (20 MB + câmpurile formularului): înapoi la „Verifică din nou” cu mesajul
+        obișnuit, nu pagina brută a serverului. Formularul nu mai poate fi citit, deci se întoarce la scanarea curentă."""
+        if request.path == "/scan/upload":
+            return redirect(url_for("overview", upload_error="TOO_LARGE") + "#recheck-h")
+        return err                         # celelalte formulare au câmpuri mici: peste 1 MB e doar o cerere fabricată
 
     @app.errorhandler(500)
     def server_error(err):  # fără stack trace în pagină
