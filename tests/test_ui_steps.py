@@ -97,7 +97,7 @@ def test_open_port_keeps_step_and_score(tmp_path):
     resp = tick(client, app, first)
     assert "step=1" in resp.headers["Location"]
     html = client.get(resp.headers["Location"]).get_data(as_text=True)
-    assert "răspunde încă" in html and ">40<" in html and "Pasul 1 din 5" in html
+    assert "răspunde încă" in html and ">40<" in html and "Problema 1 din 5" in html
     assert storage.done_keys(s, app.config["DB_PATH"]) == set() == storage.verified_keys(s, app.config["DB_PATH"])
 
 
@@ -107,7 +107,7 @@ def test_unconfirmable_step_is_only_declared(tmp_path):
     client, app = client_for(tmp_path, [s], net=False, own=False)
     first = action_plan(s)[0]
     html = client.get(tick(client, app, first).headers["Location"]).get_data(as_text=True)
-    assert "nu verific nimic în rețea" in html and ">40<" in html and "Pasul 2 din 5" in html
+    assert "nu verific nimic în rețea" in html and ">40<" in html and "Problema 2 din 5" in html
     assert storage.done_keys(s, app.config["DB_PATH"]) == {first.key()}
     html = client.get("/?step=1").get_data(as_text=True)
     assert "Bifat, dar neconfirmat" in html and "Verifică din nou" in html
@@ -124,12 +124,12 @@ def test_prev_next_only_browse(tmp_path):
     s = sample()
     client, app = client_for(tmp_path, [s])
     html = client.get("/").get_data(as_text=True)
-    assert "Pasul 1 din 5" in html and 'rel="prev"' not in html and "step=2" in html and "Sar peste acum" in html
+    assert "Problema 1 din 5" in html and 'rel="prev"' not in html and "step=2" in html and "Sar peste acum" in html
     html = client.get("/?step=3").get_data(as_text=True)
-    assert "Pasul 3 din 5" in html and "step=2" in html and "step=4" in html and "Pasul anterior" in html
+    assert "Problema 3 din 5" in html and "step=2" in html and "step=4" in html and "Pasul anterior" in html
     html = client.get("/?step=5").get_data(as_text=True)
     assert 'rel="next"' not in html
-    assert "Pasul 1 din 5" in client.get("/?step=99").get_data(as_text=True)
+    assert "Problema 1 din 5" in client.get("/?step=99").get_data(as_text=True)
     assert storage.done_keys(s, app.config["DB_PATH"]) == set()       # navigarea nu bifează nimic
     html = client.get("/?check=<script>&checked=1").get_data(as_text=True)
     assert "role=\"status\">" not in html.split("id=\"worst\"", 1)[1].split("do-first", 1)[0]
@@ -198,7 +198,7 @@ def test_all_verified_shows_fixed_card_with_steps(tmp_path):
     assert 'title="Scanarea mai nouă a acestei rețele: after.xml (scor 100)"' in html
     # linkul spre scanarea mai nouă o numește după fișier (+ dată), nu după poziția în listă
     assert 'href="/?file=after.xml&amp;started_at=' in html
-    assert "Pasul 1 din 5" in _worst_card(client.get("/?scan=0&step=1").get_data(as_text=True))
+    assert "Problema 1 din 5" in _worst_card(client.get("/?scan=0&step=1").get_data(as_text=True))
     # o scanare care chiar nu a găsit nimic își păstrează textul obișnuit
     assert "Nicio problemă găsită" in _worst_card(client.get("/?scan=1").get_data(as_text=True))
 

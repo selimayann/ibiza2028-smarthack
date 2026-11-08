@@ -31,22 +31,6 @@
   window.addEventListener("scroll", compactFab, { passive: true });
   document.addEventListener("DOMContentLoaded", compactFab);
 
-  // Ghidul animat („Arată-mi cum, pas cu pas”) e un <dialog> în afara lui #worst (în #guide-slot), dar ține de
-  // pasul afișat în #worst. Când #worst se schimbă, schimbăm și ghidul: altfel ar rămâne cel al pasului vechi
-  // (iar „Am făcut asta, verifică” din el ar bifa alt pas, cu butonul blocat pe „Verific…”), ori ar lipsi de tot
-  // (și primul clic pe „Arată-mi cum” ar duce la pagina dispozitivului în loc să deschidă animația).
-  const syncGuide = (doc) => {
-    const now = document.getElementById("guide-slot");
-    const next = doc.getElementById("guide-slot");
-    if (!now || !next) return;
-    const open = now.querySelector("dialog.guide[open]");
-    const nextDlg = next.querySelector("dialog.guide");
-    // Ghidul deschis pentru același pas (de ex. o reîmprospătare automată a scorului): îl lăsăm în pace.
-    if (open && nextDlg && open.dataset.key === nextDlg.dataset.key) return;
-    if (open) open.close();
-    now.replaceWith(next);
-  };
-
   async function swap(url, init, selectors, focusSel, keepUrl) {
     if (selectors.includes("#live")) liveSeq += 1;
     let res;
@@ -58,13 +42,21 @@
     if (!res.ok) return false;
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
     const apply = () => {
+      /* pagina rămâne unde erai: partea nouă își păstrează o clipă înălțimea veche (până apare filmul), iar poziția
+         de derulare e pusă la loc; altfel pagina se scurta o fracțiune de secundă și browserul te urca singur mai sus */
+      const y = window.scrollY;
       for (const sel of selectors) {
         const now = document.querySelector(sel);
         const next = doc.querySelector(sel);
-        if (now && next) now.replaceWith(next);
+        if (now && next) {
+          next.style.minHeight = now.offsetHeight + "px";
+          now.replaceWith(next);
+          setTimeout(() => { next.style.minHeight = ""; }, 900);
+        }
         else if (now && !next) now.remove(); // de ex. o scanare ilizibilă nu are asistent
       }
-      if (selectors.includes("#worst") || selectors.includes("#main")) syncGuide(doc);
+      window.scrollTo(0, y);
+      requestAnimationFrame(() => window.scrollTo(0, y));
       if (doc.title) document.title = doc.title;
       compactFab();   // butonul asistentului poate fi unul nou, înlocuit mai sus
     };

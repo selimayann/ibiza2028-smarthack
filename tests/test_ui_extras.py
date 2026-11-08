@@ -55,7 +55,7 @@ def ev(kind, ts, ip="192.168.1.1", port=None, code=None, ro="", en=""):
 def test_monitor_not_run_links_to_live_protection(tmp_path):
     html = client_for(tmp_path).get("/journal").get_data(as_text=True)
     # fără comenzi de terminal: linkul duce la protecția live de pe pagina Acasă
-    assert "Protecția live nu a rulat încă" in html and 'href="/#live-h"' in html
+    assert "Protecția live nu a rulat încă" in html and 'href="/protectie#live-h"' in html
     assert "python -m netscan" not in html
 
 
@@ -141,7 +141,10 @@ def test_eavesdrop_on_do_first_card_when_step_is_one_of_three(tmp_path, monkeypa
     app_client.post("/action/done", data={"token": token, "file": s.file, "started_at": s.started_at,
                                           "device_id": f.device_id, "port": f.port, "code": f.code})
     html = app_client.get("/").get_data(as_text=True)                # pasul 2: HTTP_ADMIN_CLEARTEXT
-    assert "eaves-details" in html and "Ce vede cineva care ascultă" in html
+    # cardul de pe Acasă e doar filmul; „Ce vede cineva care ascultă” rămâne pe pagina dispozitivului
+    assert "eaves-details" not in html
+    dev = app_client.get(f"/device/{action_plan(s)[1].device_id}").get_data(as_text=True)
+    assert "Ce vede cineva care ascultă" in dev
 
 
 # ---------- 4. nume anunțate ----------

@@ -109,8 +109,6 @@ def test_save_from_the_device_page_and_show_everywhere(tmp_path):
     worst = re.search(r'class="worst-device">(.*?)</h2>', overview, re.S).group(1)
     meta = re.search(r'<p class="device-meta">(.*?)</p>', overview, re.S).group(1)
     assert NAME in worst and "Cameră" in meta and '<span class="worst-ip" translate="no">192.168.1.40' in meta  # cardul „cel mai periculos”: nume, dedesubt „Tip · IP:port”
-    rows = re.findall(r'<p class="dev-name">(.*?)</p>', overview, re.S)
-    assert any(NAME in r for r in rows)                                  # lista dispozitivelor
     assert "Cameră" in overview                                          # tipul rămâne ca sub-titlu
 
     assert NAME in page(client, "/devices")                              # inventarul
@@ -128,7 +126,8 @@ def test_name_is_in_the_summary_sentence(tmp_path):
 def test_other_devices_keep_their_type(tmp_path):
     client, app = make_client(tmp_path, [sample()])
     save(client, app, NAME)
-    rows = re.findall(r'<p class="dev-name">(.*?)</p>', page(client, "/"), re.S)
+    # lista dispozitivelor e pe pagina „Dispozitive” (nu mai e pe Acasă)
+    rows = re.findall(r'<span class="rt-name"><a [^>]*>(.*?)</a>', page(client, "/devices"), re.S)
     assert len(rows) == 3
     assert sum(NAME in r for r in rows) == 1 and any("Router" in r for r in rows)
 

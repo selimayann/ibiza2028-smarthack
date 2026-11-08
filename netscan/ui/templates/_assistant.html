@@ -5,7 +5,7 @@
 {% set a = assistant %}
 {# Scanarea se păstrează după fișier + dată (a.ref), nu după poziția în listă. #}
 {% macro ref_fields(ref) %}{% for k, v in ref.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}{% endmacro %}
-<a class="ai-fab" title="{{ T('ai_open') }}" href="{{ a.open_url }}" data-chat-open aria-haspopup="dialog" aria-controls="chat">
+<a class="ai-fab" href="{{ a.open_url }}" data-chat-open aria-haspopup="dialog" aria-controls="chat">
   {{ volt("asteapta", "fab-volt") }}<span class="fab-text">{{ T('ai_open') }}</span>
 </a>
 

@@ -69,7 +69,8 @@ def test_accept_route_needs_token_same_site_and_a_real_finding(tmp_path):
     assert c.post("/action/accept", data=form).status_code == 302
     assert storage.accepted_keys(BEFORE, tmp_path / "h.db") == {f.key()}
     html = c.get("/?step=1").get_data(as_text=True)
-    assert "Risc acceptat de tine" in html and "1 acceptat de tine" in html and "1 acceptate" not in html
+    # pe Acasă rămâne starea pasului; numărătorile („1 acceptat de tine”) nu mai sunt pe cardul simplificat
+    assert "Risc acceptat de tine" in html and "1 acceptate" not in html
     assert f'<span class="score-num">{BEFORE.score}</span>' in html
 
 
@@ -77,7 +78,8 @@ def test_step_card_has_skip_accept_and_where_to_do_it(tmp_path):
     c, _ = _client(tmp_path)
     html = c.get("/").get_data(as_text=True)
     assert "Sar peste acum" in html and "Accept riscul și trec mai departe" in html
-    assert "Unde:" in html or "Nu știm sigur ce dispozitiv e" in html
+    # „Unde se face” îl arată acum filmul (locul pentru el e pe card, cu problema și aparatul)
+    assert 'class="film-slot"' in html and 'data-code="' in html
 
 
 def test_gateway_gets_the_hotspot_explanation(tmp_path):
@@ -85,7 +87,8 @@ def test_gateway_gets_the_hotspot_explanation(tmp_path):
     snap = snapshot("active")
     snap["gateway"] = worst
     c, _ = _client(tmp_path, FakeLive(snap))
-    assert "telefonul cu hotspotul" in c.get("/").get_data(as_text=True)
+    # routerul rețelei (la noi, telefonul cu hotspotul) primește filmul de router/hotspot
+    assert 'data-router="1"' in c.get("/").get_data(as_text=True)
 
 
 # ---------- reparațiile confirmate live -> scorul (al motorului) ----------
@@ -196,7 +199,7 @@ def test_speed_args_keep_the_rate_rule_and_exclude_this_laptop():
 
 @pytest.mark.parametrize("port, check, text", [
     (2323, True, "Acces de la distanță necriptat (Telnet)"), (8080, True, "Pagină web fără criptare"),
-    (62078, False, "Sincronizare iPhone/iPad"), (53, False, "Nume de site-uri (DNS), normal la un router"),
+    (62078, False, "Sincronizare telefon/tabletă"), (53, False, "Nume de site-uri (DNS), normal la un router"),
     (7070, False, "Streaming audio/video"),
 ])
 def test_port_meaning_in_plain_words(port, check, text):

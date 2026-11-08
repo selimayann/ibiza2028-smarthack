@@ -30,7 +30,7 @@ from netscan.engine.parser import _DEFAULT_SALT as DEFAULT_SALT   # doar compara
 from netscan.scan.device_info import phone_hotspot
 from netscan.model import Scan
 from netscan.scan import live as live_mod
-from netscan.ui import extras, guide, i18n, storage, verify
+from netscan.ui import extras, i18n, storage, verify
 from netscan.ui.alerts import alerts_between, fold_port_alerts, journal
 from netscan.ui.explain_stub import get_explanation, get_harm, get_standards
 from netscan.ui.view import (action_plan, csv_view, evidence_text, ip_key, most_dangerous, order_devices, proof_of,
@@ -379,6 +379,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "lang_url": lang_url,
             "T": lambda key: i18n.t(lang, key),
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
+            "short_title": lambda code: i18n.short_title(lang, code),
             # hotspot de pe telefon vs. router adevărat, din datele scanării (doar etichete; CSV-urile și scorul nu se schimbă)
             "hotspot_kind": lambda h: phone_hotspot(h, h.vendor, g.get("router_ip")),
             "device_type_the": lambda dt: i18n.device_type_the(lang, dt),
@@ -387,8 +388,6 @@ def create_app(test_config: dict | None = None) -> Flask:
             "harm": lambda code: get_harm(code, lang),
             "eavesdrop": lambda code: extras.eavesdrop(code, lang),
             "announced": lambda ip: g.names.get(ip),
-            "guide_plan": guide.guide_for,
-            "guide_icon": guide.device_icon,
             "new_alerts": new_alerts,
             "alert_text": lambda a, short=False: i18n.alert_text(lang, a, custom_names(), short),
             "alert_device": lambda a: i18n.alert_device(lang, a, custom_names()),
@@ -526,9 +525,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         # Se poate verifica pasul de acum? Doar pe cea mai nouă scanare a noastră, pe un port TCP, și doar dacă laptopul
         # e chiar în hotspotul echipei. Altfel butonul „Verifică” e dezactivat, cu motivul lângă el (nu bate la nicio ușă).
         verify_block = None
-        if steps is not None and getattr(steps, "current", None) is not None and ok and not app.config["OWN_SCAN_CHECK"](scan):
-            verify_block = {"file": True}   # scanare veche / din fișier: adresele de atunci pot fi acum alte dispozitive
-        elif steps is not None and getattr(steps, "current", None) is not None and ok:
+        if steps is not None and getattr(steps, "current", None) is not None and ok:
             f_now = steps.current.finding
             h_now = next((h for h in scan.hosts if h.device_id == f_now.device_id), None)
             if f_now.port is not None and verify._tcp_port(h_now, f_now.port):
@@ -673,7 +670,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if finding is None:
             abort(400)
         db = app.config["DB_PATH"]
-        probe_allowed = bool(app.config["OWN_SCAN_CHECK"](scan))
+        probe_allowed = True   # orice scanare (și mai veche / din fișier): regula rețelei de mai jos decide
         same = getattr(app.config["LIVE"], "same_device", None)
         with _VERIFY_LOCK:
             net_check = app.config["NET_CHECK"]
@@ -681,6 +678,10 @@ def create_app(test_config: dict | None = None) -> Flask:
                 net_check = lambda ip: verify.target_in_my_network(ip, detect=lambda: current_network(VERIFY_NET_MAX_AGE_S))  # noqa: E731
             result = verify.check_finding(scan, finding, app.config["PORT_PROBE"], net_check,
                                           probe_allowed=probe_allowed, same_device=same)
+        # scanare veche / din fișier și adresa nu e în hotspotul echipei: nu atingem rețeaua, doar reținem pasul (ca înainte).
+        # scanarea noastră nouă în afara hotspotului rămâne nebifată (nu s-a verificat nimic).
+        if result.result == verify.OTHER_NETWORK and not app.config["OWN_SCAN_CHECK"](scan):
+            result = verify.Check(verify.FILE_ONLY, result.ip, result.port)
         if result.verified:   # portul e închis: toate problemele de pe acel port al dispozitivului au dispărut
             storage.mark_verified(scan, [f.key() for f in scan.findings
                                          if f.device_id == finding.device_id and f.port == finding.port], db)
@@ -846,7 +847,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "paused_for_scan": bool(snap.get("paused_for_scan")),
             "needs_approval": [{"device_id": d["device_id"], "ip": d["ip"], "name": d["name"]}
                                for d in devices if d["can_approve"]],
-            "has_urgent": urgent,
+            "has_urgent": urgent if status != "off" else 0,   # oprită: alertele rămân în Alerte, fără banner pe Acasă
             "trap_note": i18n.t(lang, "trap_note"),
             "trap_wanted": bool(getattr(mon, "trap_wanted", False)),
         }
@@ -867,11 +868,16 @@ def create_app(test_config: dict | None = None) -> Flask:
         args = {"live_msg": msg} if msg else {}
         if request.headers.get("X-Requested-With") == "fetch":
             return redirect(url_for("live_panel", **args))
-        return redirect(url_for("overview", **args) + "#live")
+        return redirect(url_for("protection", **args) + "#live")
 
     def _consent_given() -> bool:
         """Consimțământul explicit (echivalentul lui --confirm din linia de comandă): căsuța bifată în formular."""
         return request.form.get("confirm") == "1"
+
+    @app.get("/protectie")
+    def protection():
+        """Pagina „Protecție”: protecția live și scanarea rețelei (panoul „Rețeaua ta acum”)."""
+        return render_template("protection.html", live=live_ctx(), token=app.config["FORM_TOKEN"])
 
     @app.get("/live/panel")
     def live_panel():

@@ -372,11 +372,11 @@ TYPE_LABELS = {
     "ro": {"router": "Routerul", "camera": "Camera", "printer": "Imprimanta", "tv": "Televizorul",
            "pc_windows": "Calculatorul Windows", "server": "Serverul", "phone_laptop": "Telefonul sau laptopul",
            "iot": "Dispozitivul inteligent", "unknown": "Dispozitivul necunoscut",
-           "hotspot_iphone": "Hotspotul de pe telefon (iPhone)", "hotspot_phone": "Hotspotul de pe telefon"},
+           "hotspot_iphone": "Hotspotul de pe telefon", "hotspot_phone": "Hotspotul de pe telefon"},
     "en": {"router": "The router", "camera": "The camera", "printer": "The printer", "tv": "The TV",
            "pc_windows": "The Windows computer", "server": "The server", "phone_laptop": "The phone or laptop",
            "iot": "The smart device", "unknown": "The unknown device",
-           "hotspot_iphone": "The phone hotspot (iPhone)", "hotspot_phone": "The phone hotspot"},
+           "hotspot_iphone": "The phone hotspot", "hotspot_phone": "The phone hotspot"},
 }
 
 

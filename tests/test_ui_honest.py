@@ -142,8 +142,8 @@ def test_worst_card_equals_first_device_row_after_verified_fixes(tmp_path):
     assert ctx["fixed_keys"] == {f.key() for f in top.findings}
     html = client.get("/").get_data(as_text=True)
     worst_card = html.split('id="worst"', 1)[1].split("</section>", 1)[0]
-    first_row = html.split('class="device-row"', 1)[1].split("</li>", 1)[0]
-    assert "192.168.1.1" in worst_card and "192.168.1.1<" in first_row
+    # lista dispozitivelor nu mai e pe Acasă (e pagina „Dispozitive”); ordinea ei e verificată mai sus, pe date
+    assert "192.168.1.1" in worst_card
 
 
 def test_order_devices_puts_fixed_findings_last_and_keeps_contract_without_fixes():
@@ -212,16 +212,22 @@ def _tick(client, app, s, f):
                                              "port": f.port, "code": f.code})
 
 
-def test_analysed_file_is_never_probed(tmp_path):
+def test_analysed_file_is_probed_only_inside_the_team_hotspot(tmp_path):
     s = sample()                              # ca Validation / Test Set: nu e scris de scanerul nostru
-    client, app = make(tmp_path, [s], NET_CHECK=lambda ip: True, PORT_PROBE=never_probe)
+    # adresa nu e în hotspotul echipei: nu se atinge rețeaua, pasul e doar reținut
+    client, app = make(tmp_path, [s], NET_CHECK=lambda ip: False, PORT_PROBE=never_probe)
     f = rank_devices(s)[0].worst
     resp = _tick(client, app, s, f)
     assert "check=file_only" in resp.headers["Location"]
     db = app.config["DB_PATH"]
     assert storage.verified_keys(s, db) == set() and storage.done_keys(s, db) == {f.key()}
-    html = client.get(resp.headers["Location"]).get_data(as_text=True)
-    assert "nu verific nimic în rețea" in html
+    assert "nu verific nimic în rețea" in client.get(resp.headers["Location"]).get_data(as_text=True)
+    # adresa e în hotspotul echipei: și o scanare mai veche / din fișier se verifică pe loc (o singură conexiune)
+    calls = []
+    client2, app2 = make(tmp_path / "in", [s], NET_CHECK=lambda ip: True,
+                         PORT_PROBE=lambda ip, port: calls.append((ip, port)) or "closed")
+    resp = _tick(client2, app2, s, f)
+    assert "check=ok" in resp.headers["Location"] and calls == [(f.ip, f.port)]
 
 
 class SameDeviceLive(FakeLive):

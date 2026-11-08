@@ -374,17 +374,17 @@ def test_one_step_at_a_time(tmp_path):
     plan = action_plan(s)
     assert [f.code for f in plan][:2] == ["CAMERA_STREAM_EXPOSED", "HTTP_ADMIN_CLEARTEXT"]
     html = client.get("/").get_data(as_text=True)
-    assert "Fă asta întâi:" in html and "Pasul 1 din 5" in html and "Am făcut asta" in html
+    assert "Fă asta întâi:" in html and "Problema 1 din 5" in html and "Am făcut asta" in html
     assert _done(client, app, plan[0]).status_code == 302
     html = client.get("/").get_data(as_text=True)
-    assert "Următorul pas:" in html and "Pasul 2 din 5" in html
+    assert "Următorul pas:" in html and "Problema 2 din 5" in html
     assert ">40<" in html                     # bifa neconfirmată (testele nu ating rețeaua) nu schimbă scorul
     for f in plan[1:]:
         _done(client, app, f)
     html = client.get("/").get_data(as_text=True)
     assert "Ai trecut prin toți pașii" in html and "scanare nouă" in html
     client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], **ref(s)})
-    assert "Pasul 1 din 5" in client.get("/").get_data(as_text=True)
+    assert "Problema 1 din 5" in client.get("/").get_data(as_text=True)
 
 
 def test_step_tick_rejects_bad_token_and_unknown_problem(tmp_path):

@@ -3,13 +3,19 @@
    din setările calculatorului (fără pachete). Numele Wi-Fi e text nesigur: doar autoescape. #}
 {% block title %}{{ T('trust_title') }} · SafeEel{% endblock %}
 {% block content %}
-<div class="page-head">
+<div class="page-head centered">
   <div>
     <h1 class="page-title">{{ T('trust_title') }}</h1>
     <p class="lead">{{ T('trust_lead') }}</p>
   </div>
 </div>
 
+{# Pagina e construită în jurul animației: ce păstrăm, unde, ce scanăm și cum ștergi tot. Cifrele exacte sunt la un click. #}
+<div class="page-film"><div class="film-slot" data-page="trust" data-lang="{{ lang }}"></div></div>
+<div class="trust-actions"><a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a></div>
+
+<details class="tech-more">
+<summary>{{ T('trust_details') }}</summary>
 <div class="trust-grid">
   <section class="trust-card card" aria-labelledby="t-stored-h">
     <h2 id="t-stored-h"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg>{{ T('trust_stored_title') }}</h2>
@@ -74,11 +80,5 @@
   </section>
 </div>
 
-<div class="danger-zone">
-  <div>
-    <h2 class="trust-delete-h">{{ T('trust_delete_title') }}</h2>
-    <p>{{ T('trust_delete_body') }}</p>
-  </div>
-  <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
-</div>
+</details>
 {% endblock %}

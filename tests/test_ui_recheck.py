@@ -114,33 +114,15 @@ def test_proof_sentence(closed, before, after, new, ro, en):
 
 # ---------- după bifare: „Verifică din nou” ----------
 
-def test_recheck_panel_appears_only_after_a_step_is_ticked(tmp_path):
-    scans = load(V6A)
-    client, app = make_client(tmp_path, scans)
-    assert "Verifică din nou" not in client.get("/").get_data(as_text=True)
-    assert tick(client, app, scans[0]).status_code == 302
-    page = client.get("/").get_data(as_text=True)
-    assert "Ai reparat ceva? Verifică din nou." in page
-    assert 'type="file"' in page and 'action="/scan/upload"' in page
-    assert "python -m netscan scan --confirm" in page          # cum faci o scanare nouă
-    assert "Am găsit deja o scanare mai nouă" not in page      # nu există încă una
-
-
-def test_recheck_panel_in_english(tmp_path):
-    scans = load(V6A)
-    client, app = make_client(tmp_path, scans)
-    tick(client, app, scans[0])
-    page = client.get("/?lang=en").get_data(as_text=True)
-    assert "Fixed something? Check again." in page and "New scan file (.xml)" in page and "How do I run a new scan?" in page
-
-
-def test_recheck_offers_the_newer_scan_that_already_exists(tmp_path):
+def test_home_card_is_only_the_film_no_upload_panel(tmp_path):
+    """Cardul de pe Acasă e doar filmul și butoanele pasului: fără panoul cu încărcare de fișier."""
     scans = load(V6A, V6B)
     client, app = make_client(tmp_path, scans)
-    tick(client, app, scans[0])
-    page = client.get("/").get_data(as_text=True)
-    assert "Am găsit deja o scanare mai nouă: V6b_after.xml." in page
-    assert "Vezi înainte și după" in page
+    assert tick(client, app, scans[0]).status_code == 302
+    for lang in ("ro", "en"):
+        page = client.get(f"/?lang={lang}").get_data(as_text=True)
+        assert 'action="/scan/upload"' not in page and 'type="file"' not in page
+        assert "Ai reparat ceva? Verifică din nou." not in page and "Fixed something? Check again." not in page
 
 
 def test_compare_shows_proof_v6a_to_v6b(tmp_path):
@@ -259,8 +241,11 @@ def test_bad_upload_shows_a_friendly_message_and_saves_nothing(tmp_path, data, c
     resp = upload(client, app, data)
     assert resp.status_code == 302 and f"upload_error={code}" in resp.headers["Location"]
     page = client.get(resp.headers["Location"]).get_data(as_text=True)
-    assert "Nu am putut folosi fișierul ales." in page and message in page
     assert "Traceback" not in page
+    # panoul de încărcare nu mai e pe Acasă; mesajul prietenos rămâne în texte, pentru ruta /scan/upload
+    from netscan.ui import i18n
+    friendly = i18n.t("ro", "upload_err_empty") if code == "NO_FILE" else i18n.error_message("ro", code)
+    assert message in friendly
     assert storage.list_scans(app.config["DB_PATH"]) == []
 
 
@@ -273,16 +258,7 @@ def test_older_file_is_refused(tmp_path):
     assert b'start="1700000000"' in older
     resp = upload(client, app, older, "veche.xml")
     assert "upload_error=OLDER" in resp.headers["Location"]
-    assert "mai vechi decât scanarea" in client.get(resp.headers["Location"]).get_data(as_text=True)
     assert storage.list_scans(app.config["DB_PATH"]) == []
-
-
-def test_upload_error_in_english(tmp_path):
-    scans = load(V6A)
-    client, app = make_client(tmp_path, scans)
-    tick(client, app, scans[0])
-    page = client.get("/?upload_error=TRUNCATED&lang=en").get_data(as_text=True)
-    assert "I couldn&#39;t use the file you chose." in page and "incomplete" in page
 
 
 def test_unknown_upload_error_code_is_not_echoed(tmp_path):

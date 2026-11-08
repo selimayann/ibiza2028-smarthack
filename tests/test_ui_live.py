@@ -68,11 +68,11 @@ def client_for(tmp_path, live, scans=None):
 
 def test_dashboard_name_and_live_panel_off(tmp_path):
     c, _ = client_for(tmp_path, FakeLive())
-    html = c.get("/").get_data(as_text=True)
-    assert ">Acasă<" in html and "Rezumat" not in html
+    html = c.get("/protectie").get_data(as_text=True)
+    assert ">Acasă<" in html and "Rezumat" not in html and ">Live<" in html
     assert 'id="live"' in html and "Pornește protecția live" in html and 'data-poll="0"' in html
     assert "Nimic nu iese din hotspot" in html
-    en = c.get("/?lang=en").get_data(as_text=True)
+    en = c.get("/protectie?lang=en").get_data(as_text=True)
     assert ">Home<" in en and "Start live protection" in en
 
 
@@ -105,7 +105,7 @@ def test_start_stop_and_redirects(tmp_path):
     live = FakeLive()
     c, token = client_for(tmp_path, live)
     r = c.post("/live/start", data={"token": token, "confirm": "1"})
-    assert r.status_code == 302 and r.headers["Location"].endswith("/#live")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/protectie#live")
     r = c.post("/live/stop", data={"token": token}, headers={"X-Requested-With": "fetch"})
     assert r.headers["Location"].endswith("/live/panel")
     assert live.calls == ["start", "stop"]
@@ -140,7 +140,7 @@ def test_done_scan_links_to_its_result(tmp_path):
     scans = [analyze_file(str(LAB / "scan_01_before.xml")), analyze_file(str(LAB / "scan_03_after.xml"))]
     full = dict(IDLE, state="done", file="scan_03_after.xml", percent=100.0)
     c, _ = client_for(tmp_path, FakeLive(full=full), scans)
-    html = c.get("/").get_data(as_text=True)
+    html = c.get("/protectie").get_data(as_text=True)
     assert "/?file=scan_03_after.xml" in html
     page = c.get("/?file=scan_03_after.xml").get_data(as_text=True)
     assert re.search(r'<option value="scan_03_after.xml" title="scan_03_after.xml" selected>', page)
