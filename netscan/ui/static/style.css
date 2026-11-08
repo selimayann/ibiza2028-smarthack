@@ -1457,3 +1457,7 @@ details.live-open { border-top: 0; padding-top: 0; margin-top: var(--s-2, .5rem)
 /* Titlul ferestrei în albastrul „Eel” din logo; sugestiile se ascund după prima întrebare */
 .chat-title h2 { color: var(--brand); }
 .chat.asked .chat-suggest { display: none; }
+/* Antetul chatului: cercul cu mascota centrat pe înălțimea titlului + rândului de sub el (nu lipit sus);
+   bula are codița jos, deci o coborâm puțin ca să pară centrată în cerc */
+.chat-head { align-items: center; }
+.chat-avatar .fab-dots { transform: translateY(1px); }
