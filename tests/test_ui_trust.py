@@ -231,7 +231,7 @@ def test_fab_never_floats_over_content(tmp_path):
     css = (Path(__file__).parent.parent / "netscan" / "ui" / "static" / "style.css").read_text(encoding="utf-8")
     # ecrane late: coloană rezervată la dreapta pentru butonul rotund + loc sub subsol
     assert "body.has-fab main.wrap { padding-right: 5.75rem; }" in css
-    assert "body.has-fab .foot-inner { padding-bottom: 5.5rem; padding-right: 5.75rem; }" in css
+    assert "body.has-fab .foot-inner { padding-right: 5.75rem; }" in css   # aceeași înălțime ca pe celelalte pagini
     # telefon: butonul plutitor dispare, asistentul se deschide din antet
     assert "@media (max-width: 47.99rem) {\n  body.has-fab .ai-fab { display: none; }" in css
     c, _, _ = make(tmp_path)

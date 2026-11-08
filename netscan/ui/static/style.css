@@ -923,7 +923,7 @@ details > summary:hover { text-decoration: underline; text-underline-offset: .18
    dispare și asistentul se deschide din antet (.ai-top), deci nu plutește peste nimic. */
 .ai-top { display: none; }
 @media (min-width: 48rem) {
-  body.has-fab .foot-inner { padding-bottom: 5.5rem; padding-right: 5.75rem; }
+  body.has-fab .foot-inner { padding-right: 5.75rem; }   /* subsolul la fel de înalt ca pe celelalte pagini; bula stă în coloana din dreapta */
 }
 @media (max-width: 47.99rem) {
   body.has-fab .ai-fab { display: none; }
