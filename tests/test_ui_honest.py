@@ -86,7 +86,9 @@ def test_score_now_is_separate_and_only_from_the_engine(tmp_path):
     ctx = ctx_of(app, client, "/")
     assert ctx["score_std"] == s.score == 40
     assert ctx["score_now"] > 40 and ctx["score_now_differs"] is True
-    assert '<span class="score-num">40</span>' in client.get("/").get_data(as_text=True)
+    html = client.get("/").get_data(as_text=True)
+    # cifra mare = scorul de acum (din motor, fără problemele confirmate); cel oficial (40) rămâne scris dedesubt
+    assert f'<span class="score-num">{ctx["score_now"]}</span>' in html and "Scorul oficial al acestei scanări: 40." in html
 
 
 def test_verdict_counts_engine_severities_and_names_the_worst():

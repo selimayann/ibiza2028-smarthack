@@ -12,7 +12,7 @@
    app.router_ip(): doar pe hotspotul echipei și doar pentru cea mai nouă scanare a noastră. #}
 {# Tipul, fără numele dat de utilizator (pentru rândul de sub titlu). #}
 {% macro device_kind(host) -%}
-  {%- if router_ip and host.ip == router_ip -%}{{ T('live_gateway') }}{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
+  {%- set hk = host.device_type if host.device_type in ('hotspot_iphone', 'hotspot_phone') else hotspot_kind(host) -%}{%- if hk -%}{{ device_type_label(hk) }}{%- elif router_ip and host.ip == router_ip -%}{{ T('live_gateway') }}{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
 {%- endmacro %}
 {% macro device_name(host) -%}
   {%- set cn = custom_name(host.device_id) -%}

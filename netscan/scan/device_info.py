@@ -92,6 +92,34 @@ def _open_ports(host: Host) -> set[int]:
     return {p.port for p in host.ports if p.state == "open"}
 
 
+# Hotspot de pe telefon vs. router adevărat (doar pentru eticheta din UI; nimic nu ajunge în CSV sau în scor).
+# iPhone își pune hotspotul mereu în 172.20.10.0/28, cu telefonul la .1; 62078/tcp e serviciul de sincronizare iOS.
+# Un hotspot Android vechi stă la 192.168.43.1; altfel îl recunoaștem doar dacă e gateway-ul rețelei de acum.
+# Un router adevărat are producător (OUI) și, de obicei, o pagină de administrare pe 80/443.
+IPHONE_HOTSPOT_IP = "172.20.10.1"
+ANDROID_HOTSPOT_IP = "192.168.43.1"
+IOS_SYNC_PORT = 62078
+_ADMIN_PORTS = frozenset({80, 443, 8080, 8443})
+HOTSPOT_TYPES = frozenset({"hotspot_iphone", "hotspot_phone"})
+
+
+def phone_hotspot(host: Host, vendor: Optional[str] = None, gateway_ip: Optional[str] = None) -> Optional[str]:
+    """„hotspot_iphone” / „hotspot_phone” când routerul rețelei e de fapt un telefon; altfel None.
+    Cere cel puțin două semne, ca un router adevărat să nu fie etichetat greșit."""
+    ports = _open_ports(host)
+    private = is_private_mac(host.mac_masked)
+    has_admin = bool(ports & _ADMIN_PORTS)
+    is_gateway = bool(gateway_ip) and host.ip == gateway_ip
+    ios = IOS_SYNC_PORT in ports
+    if host.ip == IPHONE_HOTSPOT_IP and (ios or private):
+        return "hotspot_iphone"
+    if is_gateway and ios and not has_admin:
+        return "hotspot_iphone"
+    if (is_gateway or host.ip == ANDROID_HOTSPOT_IP) and private and not vendor and not has_admin:
+        return "hotspot_phone"
+    return None
+
+
 def describe(host: Host, gateway_ip: Optional[str] = None) -> DeviceInfo:
     private = is_private_mac(host.mac_masked)
     if host.vendor:
@@ -104,7 +132,10 @@ def describe(host: Host, gateway_ip: Optional[str] = None) -> DeviceInfo:
     if source == "ieee":  # nmap n-a știut producătorul: ghicim din nou, cu numele din lista IEEE
         dtype = guess_device_type(vendor, host.hostname, host.ports)
 
-    if gateway_ip and host.ip == gateway_ip:
+    hotspot = phone_hotspot(host, vendor, gateway_ip)
+    if hotspot:
+        dtype = hotspot
+    elif gateway_ip and host.ip == gateway_ip:
         dtype = "router"
     elif is_nas(vendor, host.hostname) and dtype in _WEAK_TYPES | {"pc_windows"}:
         dtype = "server"                               # NAS: stocare în rețea, nu un PC Windows

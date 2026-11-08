@@ -157,3 +157,45 @@ def test_names_that_only_contain_nas_are_not_a_nas(hostname):
 def test_nas_gateway_is_still_the_router():
     h = host(ip="172.20.10.1", ports=[445], vendor="Synology Incorporated")
     assert di.describe(h, gateway_ip="172.20.10.1").device_type == "router"
+
+
+# --- Hotspot de pe telefon vs. router adevărat (doar eticheta din UI) ----------------------------------
+
+def test_iphone_hotspot_from_our_real_scan_shape():
+    # ca în scanarea noastră: 172.20.10.1, MAC privat, FTP ghicit pe 21, DNS, 62078 (sincronizare iOS)
+    h = host(ports=[21, 53, 62078], mac="66:48:42:XX:XX:XX", ip="172.20.10.1", dtype="server")
+    assert di.describe(h).device_type == "hotspot_iphone"
+
+
+def test_iphone_hotspot_when_it_is_the_gateway_elsewhere():
+    h = host(ports=[53, 62078], mac="6A:00:00:XX:XX:XX", ip="10.0.0.1")
+    assert di.describe(h, gateway_ip="10.0.0.1").device_type == "hotspot_iphone"
+
+
+def test_iphone_as_a_client_is_not_a_hotspot():
+    h = host(ports=[62078], mac="6A:00:00:XX:XX:XX", ip="192.168.1.23")
+    assert di.describe(h, gateway_ip="192.168.1.1").device_type == "phone_laptop"
+
+
+def test_android_hotspot_gateway_with_private_mac_and_no_admin_page():
+    h = host(ports=[53], mac="DA:00:00:XX:XX:XX", ip="192.168.43.1")
+    assert di.describe(h).device_type == "hotspot_phone"
+    g = host(ports=[53], mac="DA:00:00:XX:XX:XX", ip="10.42.0.1")
+    assert di.describe(g, gateway_ip="10.42.0.1").device_type == "hotspot_phone"
+
+
+def test_real_router_stays_router():
+    r = host(ports=[53, 80, 443], vendor="TP-Link", mac="50:C7:BF:XX:XX:XX", ip="192.168.1.1", dtype="router")
+    assert di.describe(r, gateway_ip="192.168.1.1").device_type == "router"
+    # gateway fără producător, dar cu pagină de administrare: router, nu telefon
+    a = host(ports=[53, 80], mac="DA:00:00:XX:XX:XX", ip="192.168.0.1")
+    assert di.describe(a, gateway_ip="192.168.0.1").device_type == "router"
+
+
+def test_hotspot_label_does_not_change_findings_or_scores():
+    before = [(s.file, s.score, [asdict(f) for f in s.findings]) for s in analyze_folder(VALIDATION)]
+    for s in analyze_folder(VALIDATION):
+        for h in s.hosts:
+            di.display_host(h, gateway_ip=h.ip)
+    after = [(s.file, s.score, [asdict(f) for f in s.findings]) for s in analyze_folder(VALIDATION)]
+    assert before == after

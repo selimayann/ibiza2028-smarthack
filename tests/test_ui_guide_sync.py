@@ -50,7 +50,7 @@ def test_guide_lives_in_a_stable_slot_and_belongs_to_the_shown_step(tmp_path):
 
 def test_slot_exists_even_without_a_guide_so_a_partial_update_can_fill_it(tmp_path):
     s = sample()
-    client, app = client_for(tmp_path, [s], net=False)
+    client, app = client_for(tmp_path, [s], net=True, own=False)   # fișier analizat: bifat, neconfirmat
     for f in action_plan(s):
         tick(client, app, f)
     page = client.get("/").get_data(as_text=True)
@@ -62,7 +62,7 @@ def test_slot_exists_even_without_a_guide_so_a_partial_update_can_fill_it(tmp_pa
 
 def test_done_moves_forward_not_back_to_a_skipped_step(tmp_path):
     s = sample()
-    client, app = client_for(tmp_path, [s], net=False)     # altă rețea: doar bifat, nu confirmat
+    client, app = client_for(tmp_path, [s], net=True, own=False)   # fișier analizat: doar bifat, nu confirmat (pe altă rețea pasul rămâne, vezi PR #8)
     plan = action_plan(s)
     # pasul 1 sărit, pasul 2 bifat -> pasul 3 (nu înapoi la 1)
     loc = tick(client, app, plan[1]).headers["Location"]

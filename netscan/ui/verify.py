@@ -58,10 +58,37 @@ class Check:
         return self.result == VERIFIED
 
 
+_SIO_TCP_INITIAL_RTO = 0x98000011   # Windows: parametrii primului SYN (fără retrimiteri)
+
+
+def _no_syn_retries(sock: socket.socket) -> None:
+    """Pe Windows, un port închis (RST) e reîncercat de sistem încă ~2 s înainte de „refuzat”. Fără retrimiterea
+    SYN-ului, refuzul vine imediat și pleacă un singur pachet. Dacă nu merge, rămâne comportamentul obișnuit."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _Rto(ctypes.Structure):
+            _fields_ = [("Rtt", ctypes.c_ushort), ("MaxSynRetransmissions", ctypes.c_ubyte)]
+
+        params = _Rto(0xFFFF, 0xFE)   # RTT nespecificat, TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS
+        returned = wintypes.DWORD()
+        ctypes.WinDLL("ws2_32").WSAIoctl(ctypes.c_size_t(sock.fileno()), wintypes.DWORD(_SIO_TCP_INITIAL_RTO),
+                                         ctypes.byref(params), ctypes.sizeof(params), None, 0,
+                                         ctypes.byref(returned), None, None)
+    except Exception:
+        pass
+
+
 def tcp_probe(ip: str, port: int, timeout: float = PROBE_TIMEOUT) -> str:
     """O conexiune TCP: "closed" doar dacă dispozitivul a răspuns că portul e închis (refuz)."""
     try:
-        with socket.create_connection((ip, port), timeout=timeout):
+        with socket.socket(socket.AF_INET6 if ":" in ip else socket.AF_INET, socket.SOCK_STREAM) as sock:
+            _no_syn_retries(sock)
+            sock.settimeout(timeout)
+            sock.connect((ip, port))
             return "open"
     except ConnectionRefusedError:
         return "closed"
