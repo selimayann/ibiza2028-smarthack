@@ -129,14 +129,21 @@
 {%- endmacro %}
 
 {# Câte probleme de fiecare severitate (severitățile motorului, doar numărate). Cele confirmate ca rezolvate nu intră. #}
-{% macro sev_counts(findings, cls='sev-line', skip_keys=none) -%}
-  {%- set ns = namespace(c={'high': 0, 'medium': 0, 'low': 0, 'info': 0}) -%}
-  {%- for f in findings -%}{%- if not skip_keys or f.key() not in skip_keys -%}{%- set _ = ns.c.update({f.severity: ns.c.get(f.severity, 0) + 1}) -%}{%- endif -%}{%- endfor -%}
-  {%- if ns.c.values()|sum -%}
+{# Numărătoarea pe severități ca etichete (aceeași formă peste tot: Acasă, Dispozitive, Verificări, raport):
+   simbol + cuvânt + număr, nu doar culoare. `lead` = textul dinainte (ex. „3 dispozitive · 6 probleme:”). #}
+{% macro sev_chips(c, cls='sev-chips', lead=none) -%}
+  {%- if c.values()|sum or lead -%}
   <p class="{{ cls }}">
-    {%- for s in ('high', 'medium', 'low', 'info') %}{% if ns.c[s] %}<span class="sev sev-{{ s }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ s }}"/></svg>{{ T('sev_' ~ s) }}<span class="count">{{ ns.c[s] }}</span></span>{% endif %}{% endfor -%}
+    {%- if lead %}<span class="chips-lead">{{ lead }}</span>{% endif -%}
+    {%- for s in ('high', 'medium', 'low', 'info') %}{% if c[s] %}<span class="sev-chip sev-chip-{{ s }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ s }}"/></svg>{{ T('sev_' ~ s) }}<span class="count">{{ c[s] }}</span></span>{% endif %}{% endfor -%}
   </p>
   {%- endif -%}
+{%- endmacro %}
+
+{% macro sev_counts(findings, cls='sev-chips', skip_keys=none, lead=none) -%}
+  {%- set ns = namespace(c={'high': 0, 'medium': 0, 'low': 0, 'info': 0}) -%}
+  {%- for f in findings -%}{%- if not skip_keys or f.key() not in skip_keys -%}{%- set _ = ns.c.update({f.severity: ns.c.get(f.severity, 0) + 1}) -%}{%- endif -%}{%- endfor -%}
+  {{ sev_chips(ns.c, cls, lead) }}
 {%- endmacro %}
 
 {# Starea goală, cu țiparul SafeEel. `level` = nivelul titlului (3 când e sub un h2). #}

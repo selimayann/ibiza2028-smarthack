@@ -209,7 +209,9 @@ def test_verdict_sentence_lists_only_non_zero_categories(tmp_path):
     assert i18n.verdict_counts_text("ro", 0, 0, 0, 0) == ""
     c, _, _ = make(tmp_path)
     html = c.get("/").get_data(as_text=True)
-    assert "Probleme găsite: 1 cu risc ridicat și 4 cu risc mediu." in html and " 0 cu risc" not in html
+    chips = html.split('class="sev-chips verdict-chips"', 1)[1].split("</p>", 1)[0]   # sub verdict: etichete cu număr
+    assert 'sev-chip-high' in chips and 'sev-chip-medium' in chips
+    assert 'sev-chip-low' not in chips and 'sev-chip-info' not in chips              # doar categoriile care există
 
 
 def test_steps_plural_and_welcome_shows_the_date(tmp_path):

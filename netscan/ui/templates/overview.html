@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_guide.html" import guide_dialog with context %}
-{% from "_macros.html" import harm_line, sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, band_icon with context %}
+{% from "_macros.html" import harm_line, sev, sev_counts, sev_chips, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, band_icon with context %}
 {% block content %}
 {# Câmpurile ascunse ale formularelor pașilor: scanarea după fișier (+ data), niciodată după poziția în listă. #}
 {% macro hidden_fields() %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="file" value="{{ scan_ref.file }}">{% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}{% endmacro %}
@@ -230,6 +230,12 @@
     <h1 id="verdict-h" class="verdict-title proof-title">{{ T('proof_h1')|format(pa, pb) }}</h1>
   {% else %}
     <h1 id="verdict-h" class="verdict-title">{{ T(verdict.verdict_key) if verdict.verdict_key else (T('verdict_clean') if verdict.clean else T('verdict_' ~ band)) }}</h1>
+    {# Cifrele dintr-o privire, ca în antetul raportului: dispozitive · probleme: etichetele de risc #}
+    {% if verdict and verdict.n_devices is not none %}
+      {% set nd, nf = verdict.n_devices, verdict.n_findings %}
+      {{ sev_chips({'high': verdict.n_high, 'medium': verdict.n_medium, 'low': verdict.n_low, 'info': verdict.n_info}, 'sev-chips verdict-chips',
+                   (T('devices_one') if nd == 1 else T('devices_many')|format(nd)) ~ ' · ' ~ (T('report_problem_n_one') if nf == 1 else T('report_problem_n_many')|format(nf)) ~ (':' if nf else '')) }}
+    {% endif %}
   {% endif %}
   {% if history_id is none %}{{ summary_block() }}{% endif %}
 </section>
@@ -321,8 +327,6 @@
     <details class="how-score">
       <summary>{{ T('found_and_score') }}</summary>
       <div class="fold-body">
-        {% if verdict and not verdict.clean %}<p class="verdict-counts">{{ verdict.counts_text }}</p>{% endif %}
-        {{ sev_counts(scan.findings, 'score-facts') }}
         <ul class="scale" aria-label="{{ T('scale_title') }}">
           {% for b, rng in (('good', '80–100'), ('fair', '50–79'), ('poor', '0–49')) %}
             <li class="s-{{ b }}{% if b == band %} is-current{% endif %}"{% if b == band %} aria-current="true"{% endif %}>
@@ -394,7 +398,7 @@
           {{ announced_sub(d.host) }}
           <div class="dev-summary">
             {% if d.findings %}
-              {{ sev_counts(d.findings, 'sev-line', fixed_keys) }}
+              {{ sev_counts(d.findings, 'sev-chips', fixed_keys) }}
               {% if ns.fixed %}<span class="tag tag-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('fixed_tag') }} ({{ ns.fixed }})</span>{% endif %}
             {% else %}
               <span class="sev sev-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('device_ok') }}</span>

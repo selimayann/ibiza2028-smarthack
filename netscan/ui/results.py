@@ -69,7 +69,8 @@ def check_cards(scans: list, lang: str = "ro") -> list[dict]:
         v = verdict_view(s, lang=lang)
         key = v.get("verdict_key") or ("verdict_clean" if v["clean"] else f"verdict_{v['band']}")
         cards.append({"file": s.file, "started_at": s.started_at, "ok": True, "score": s.score, "band": v["band"],
-                      "verdict": i18n.t(lang, key), "counts": v["counts_text"], "worst_name": v["worst_name"],
+                      "verdict": i18n.t(lang, key), "counts": v["counts_text"],
+                      "sev": {k: v[f"n_{k}"] for k in ("high", "medium", "low", "info")}, "worst_name": v["worst_name"],
                       "worst_problem": i18n.code_name(lang, v["first_code"]) if v["first_code"] else None,
                       "first_step": v["first_step"]})
     return cards

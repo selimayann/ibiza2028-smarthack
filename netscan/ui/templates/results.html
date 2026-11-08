@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {# Toate verificările (netscan/ui/results.py): același răspuns ca pe Acasă, pentru fiecare verificare.
    Numele fișierelor și textele din scanare sunt text nesigur: doar autoescape. #}
+{% from "_macros.html" import sev_chips with context %}
 {% block title %}SafeEel · {{ R.title }}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='results.css') }}">
@@ -25,7 +26,7 @@
             <p class="check-when"><span>{{ when }}</span> <span class="mono muted" translate="no">{{ c.file }}</span></p>
             {% if c.ok %}
               <h2 class="check-verdict">{% if c.ok %}<span class="sr-only">{{ R.score }} {{ c.score }} {{ R.of }}, {{ T('band_' ~ c.band) }}. </span>{% endif %}{{ c.verdict }}</h2>
-              {% if c.counts %}<p class="check-counts">{{ c.counts }}</p>{% endif %}
+              {{ sev_chips(c.sev, 'sev-chips check-counts') }}
               {% if c.worst_name %}
                 <p class="check-worst"><strong>{{ R.worst }}</strong> {{ c.worst_name }}{% if c.worst_problem %} · {{ c.worst_problem }}{% endif %}</p>
                 {# „Fă asta întâi” apare în verificarea deschisă, nu pe fiecare card: lista rămâne scurtă (mai puțin text) #}

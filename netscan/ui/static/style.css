@@ -1009,8 +1009,9 @@ details > summary:hover { text-decoration: underline; text-underline-offset: .18
 /* Pe ecran lat, coloanele tabelelor au lățimi fixe: nu mai sar dintr-o parte în alta la schimbarea limbii */
 @media (min-width: 48rem) {
   .inv-table, .hist-table { table-layout: fixed; }
-  .inv-table th:nth-child(1) { width: 17%; } .inv-table th:nth-child(2) { width: 11%; } .inv-table th:nth-child(3) { width: 22%; }
-  .inv-table th:nth-child(4) { width: 15%; } .inv-table th:nth-child(5) { width: 20%; } .inv-table th:nth-child(6) { width: 15%; }
+  .inv-table th:nth-child(1) { width: 16%; } .inv-table th:nth-child(2) { width: 12%; } .inv-table th:nth-child(3) { width: 17%; }
+  .inv-table th:nth-child(4) { width: 16%; } .inv-table th:nth-child(5) { width: 18%; } .inv-table th:nth-child(6) { width: 21%; }
+  .inv-table td:nth-child(2) .mono, .inv-table td:nth-child(4) .mono { white-space: nowrap; overflow-wrap: normal; }
   .hist-table th:nth-child(1) { width: 30%; } .hist-table th:nth-child(2) { width: 22%; } .hist-table th:nth-child(3) { width: 30%; }
   .hist-table th:nth-child(4) { width: 18%; }
 }
@@ -1351,3 +1352,13 @@ body { background: radial-gradient(70rem 26rem at 15% -8rem, #E2E5FF 0, rgba(226
 .back a, .foot a, .section-head p > a, .checks > p:last-child > a, .notice > a, .worst-links a {
   display: inline-block; padding-block: .6rem; margin-block: -.6rem;
 }
+/* Etichetele de risc cu număr (aceeași formă peste tot: Acasă, Dispozitive, Verificări și raport). */
+.sev-chips { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .45rem; margin: 0; }
+.chips-lead { color: var(--ink); margin-right: .15rem; }
+.sev-chip { --c: var(--info); display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .7rem; border-radius: 999px; border: 1px solid var(--c); color: var(--c);
+  background: color-mix(in srgb, var(--c) 9%, var(--surface)); font-weight: 700; white-space: nowrap; }
+.sev-chip .icon { width: 1em; height: 1em; }
+.sev-chip .count { margin-left: .1rem; font-variant-numeric: tabular-nums; }
+.sev-chip-high { --c: var(--high); } .sev-chip-medium { --c: var(--medium); } .sev-chip-low { --c: var(--low); } .sev-chip-info { --c: var(--info); }
+.verdict-chips { margin-top: var(--s-2, .5rem); }
+.check-counts.sev-chips { color: inherit; }

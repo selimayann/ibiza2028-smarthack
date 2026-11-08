@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, device_name, device_title, announced_sub with context %}
+{% from "_macros.html" import sev, sev_counts, device_name, device_title, announced_sub with context %}
 {% block title %}{{ T('inv_title') }} · SafeEel{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -53,7 +53,7 @@
           <td data-label="{{ T('vendor') }}"><div>{% if d.host.vendor %}{{ d.host.vendor }}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}<span class="muted">{{ T('unknown') }}</span>{% endif %}</div></td>
           <td data-label="{{ T('mac') }}"><div><span class="mono" translate="no">{{ d.host.mac_masked or T('unknown') }}</span></div></td>
           <td data-label="{{ T('inv_open_ports') }}"><div>{% for p in open_ports %}<span class="mono" translate="no">{{ p.port }}/{{ p.proto }}</span>{% if p.service %} <span class="muted">{{ p.service }}</span>{% endif %}{% if not loop.last %}<br>{% endif %}{% else %}<span class="muted">{{ T('inv_no_ports') }}</span>{% endfor %}</div></td>
-          <td data-label="{{ T('inv_problems') }}"><div>{% if d.findings %}{{ sev(d.max_severity) }}<br><span class="muted">{{ d.findings|length }} {{ T('device_problem') if d.findings|length == 1 else T('device_problems') }}</span>{% else %}<span class="sev sev-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('inv_ok') }}</span>{% endif %}</div></td>
+          <td data-label="{{ T('inv_problems') }}"><div>{% if d.findings %}{{ sev_counts(d.findings) }}{% else %}<span class="sev sev-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('inv_ok') }}</span>{% endif %}</div></td>
         </tr>
       {% endfor %}
       </tbody>
