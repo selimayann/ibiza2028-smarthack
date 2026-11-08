@@ -273,7 +273,7 @@ def test_ask_box_answers_from_scan(tmp_path):
     html = client.get("/?q=" + quote("Ce fac întâi?")).get_data(as_text=True)
     assert "Ai întrebat:" in html and "Fă asta întâi" in html
     assert "Răspuns construit direct din scanare" in html
-    assert '<dialog class="chat" id="chat"' in html and " open data-api=" in html   # fără JS: fereastra vine deschisă
+    assert re.search(r'<dialog class="chat( asked)?" id="chat"', html) and " open data-api=" in html   # fără JS: fereastra vine deschisă
 
 
 def test_ask_question_is_escaped_and_not_obeyed(tmp_path):

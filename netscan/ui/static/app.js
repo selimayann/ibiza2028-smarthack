@@ -273,6 +273,7 @@
     const input = chat.querySelector("#q");
     const q = ((e.submitter && e.submitter.name === "q" ? e.submitter.value : input && input.value) || "").trim().slice(0, 500);
     if (!q) { if (input) input.focus(); return; }
+    chat.classList.add("asked");   // după prima întrebare, sugestiile se ascund: conversația are loc
     const you = bubble(log, "msg-user", q).el;
     you.setAttribute("aria-label", (chat.dataset.you || "") + " " + q);
     if (input) input.value = "";

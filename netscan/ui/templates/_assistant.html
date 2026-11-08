@@ -9,7 +9,7 @@
   <svg class="fab-dots" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path class="b" d="M18 8 H46 A14 14 0 0 1 60 22 V38 A14 14 0 0 1 46 52 H24 L12 60 V50.6 A14 14 0 0 1 4 38 V22 A14 14 0 0 1 18 8 Z"/><circle class="d d1" cx="20" cy="30" r="4.5"/><circle class="d d2" cx="32" cy="30" r="4.5"/><circle class="d d3" cx="44" cy="30" r="4.5"/></svg><span class="fab-text">{{ T('ai_open') }}</span>
 </a>
 
-<dialog class="chat" id="chat" aria-labelledby="chat-h"{% if a.open %} open{% endif %} data-api="{{ a.api }}" data-thinking="{{ T('ai_thinking') }}" data-error="{{ T('ai_error') }}" data-you="{{ T('ask_you') }}">
+<dialog class="chat{% if a.question %} asked{% endif %}" id="chat" aria-labelledby="chat-h"{% if a.open %} open{% endif %} data-api="{{ a.api }}" data-thinking="{{ T('ai_thinking') }}" data-error="{{ T('ai_error') }}" data-you="{{ T('ask_you') }}">
   <div class="chat-head">
     <div class="chat-avatar" aria-hidden="true"><svg class="fab-dots" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path class="b" d="M18 8 H46 A14 14 0 0 1 60 22 V38 A14 14 0 0 1 46 52 H24 L12 60 V50.6 A14 14 0 0 1 4 38 V22 A14 14 0 0 1 18 8 Z"/><circle class="d d1" cx="20" cy="30" r="4.5"/><circle class="d d2" cx="32" cy="30" r="4.5"/><circle class="d d3" cx="44" cy="30" r="4.5"/></svg></div>
     <div class="chat-title">
@@ -37,7 +37,8 @@
   <form class="chat-suggest" method="get" action="{{ a.action }}#chat" data-chat-form aria-label="{{ T('ask_examples') }}">
     {{ ref_fields(a.ref) }}
     <input type="hidden" name="ask" value="1">
-    {% for k in ('ask_ex1', 'ask_ex2', 'ask_ex5') + (('ask_ex4',) if a.show_changes else ()) + ('ask_ex3', 'ask_ex6') %}
+    {# Doar 3 sugestii, ca să nu acopere conversația; după prima întrebare se ascund (rămâne câmpul de scris) #}
+    {% for k in ('ask_ex2', 'ask_ex1') + (('ask_ex4',) if a.show_changes else ('ask_ex3',)) %}
       <button type="submit" name="q" value="{{ T(k) }}">{{ T(k) }}</button>
     {% endfor %}
   </form>
