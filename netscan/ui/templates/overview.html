@@ -192,7 +192,7 @@
       <div class="picker-row">
         <select id="scan" name="file" data-autosubmit>
           {% for s in scan_list %}
-            <option value="{{ s.file }}" title="{{ s.file }}"{% if loop.index0 == selected %} selected{% endif %}>{{ T('scan_option')|format(s.file, s.score) if s.status == 'ok' else T('scan_option_error')|format(s.file) }}</option>
+            <option value="{{ s.file }}" title="{{ s.file }}"{% if loop.index0 == selected %} selected{% endif %}>{{ (T('scan_option_nodev')|format(s.file) if not s.hosts else T('scan_option')|format(s.file, s.score)) if s.status == 'ok' else T('scan_option_error')|format(s.file) }}</option>
           {% endfor %}
         </select>
         <button type="submit" class="button-secondary">{{ T('show') }}</button>
@@ -315,13 +315,15 @@
   {% else %}
     <h1 id="verdict-h" class="verdict-title">{{ T(verdict.verdict_key) if verdict.verdict_key else (T('verdict_clean') if verdict.clean else T('verdict_' ~ band)) }}</h1>
     {# Cifrele dintr-o privire, ca în antetul raportului: dispozitive · probleme: etichetele de risc #}
-    {% if verdict and verdict.n_devices is not none %}
+    {% if verdict and verdict.no_devices %}
+      <p class="verdict-note">{{ T('no_devices_body') }}</p>
+    {% elif verdict and verdict.n_devices is not none %}
       {% set nd, nf = verdict.n_devices, verdict.n_findings %}
       {{ sev_chips({'high': verdict.n_high, 'medium': verdict.n_medium, 'low': verdict.n_low, 'info': verdict.n_info}, 'sev-chips verdict-chips',
                    (T('devices_one') if nd == 1 else T('devices_many')|format(nd)) ~ ' · ' ~ (T('report_problem_n_one') if nf == 1 else T('report_problem_n_many')|format(nf)) ~ (':' if nf else '')) }}
     {% endif %}
   {% endif %}
-  {% if history_id is none %}{{ summary_block() }}{% endif %}
+  {% if history_id is none and not (verdict and verdict.no_devices) %}{{ summary_block() }}{% endif %}
 </section>
 </div>{% endif %}
 
@@ -384,6 +386,13 @@
   {% if scan_file_ref %}<p class="open-check"><a class="button button-secondary" href="{{ url_for('overview', **scan_file_ref) }}">{{ T('open_this_check') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a></p>{% endif %}
 {% else %}
 <div class="verdict home-card card">
+  {# Încărcarea unui fișier nou n-a mers (fișier gol, prea mare, mai vechi): mesajul obișnuit, sus pe Acasă #}
+  {% if upload_error %}
+    <p class="verify-msg verify-warn" id="recheck-h" role="alert" tabindex="-1">
+      <svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>
+      <span>{{ T('upload_failed') }} {{ T('upload_err_empty') if upload_error == 'NO_FILE' else T('upload_err_older') if upload_error == 'OLDER' else error_message(upload_error) }}</span>
+    </p>
+  {% endif %}
   {# Scorul, în stânga, lipit sus (sticky) cât utilizatorul trece prin pași #}
   {# Un singur card: sus inelul mic cu scorul și o singură propoziție (verdictul); dedesubt aparatul și filmul #}
   {% if history_id is none %}<div class="home-head">
@@ -396,21 +405,23 @@
     {% else %}
       <h1 id="verdict-h" class="verdict-title">{{ T(verdict.verdict_key) if verdict.verdict_key else (T('verdict_clean') if verdict.clean else T('verdict_' ~ band)) }}</h1>
       {# Cifrele dintr-o privire, ca în antetul raportului: dispozitive · probleme: etichetele de risc #}
-      {% if verdict and verdict.n_devices is not none %}
+      {% if verdict and verdict.no_devices %}
+        <p class="verdict-note">{{ T('no_devices_body') }}</p>
+      {% elif verdict and verdict.n_devices is not none %}
         {% set nd, nf = verdict.n_devices, verdict.n_findings %}
         {{ sev_chips({'high': verdict.n_high, 'medium': verdict.n_medium, 'low': verdict.n_low, 'info': verdict.n_info}, 'sev-chips verdict-chips',
                      (T('devices_one') if nd == 1 else T('devices_many')|format(nd)) ~ ' · ' ~ (T('report_problem_n_one') if nf == 1 else T('report_problem_n_many')|format(nf)) ~ (':' if nf else '')) }}
       {% endif %}
     {% endif %}
-    {% if history_id is none %}{{ summary_block() }}{% endif %}
+    {% if history_id is none and not (verdict and verdict.no_devices) %}{{ summary_block() }}{% endif %}
   </section>
-  {% if show_score %}{{ score_card(band) }}{% endif %}
+  {% if show_score and not (verdict and verdict.no_devices) %}{{ score_card(band) }}{% endif %}
   {# Ce scanare e și raportul: ascunse sub data scanării, ca sus să rămână doar scorul și verdictul #}
   <details class="home-menu">
     <summary title="{{ T('home_scan_hint') }}"><svg class="hm-ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 3h6l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M14 3v5h5 M9.5 13h5 M9.5 17h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>{{ T('home_scan_btn')|format(fmt_time(scan.started_at) if scan.started_at else scan.file) }}</span><svg class="hm-chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
     <div class="home-menu-pop"><p class="hm-hint">{{ T('home_scan_hint') }}</p>{{ about_bar(inline=True) }}</div>
   </details>
-  </div>{% elif show_score %}{{ score_card(band) }}{% endif %}
+  </div>{% elif show_score and not (verdict and verdict.no_devices) %}{{ score_card(band) }}{% endif %}
   {# 4. Cel mai periculos dispozitiv — fă asta întâi (un singur buton principal) #}
   {% if worst %}
     {% set w = worst.worst %}
@@ -438,7 +449,7 @@
         </div>
       {% endif %}
     </section>
-  {% else %}
+  {% elif not (verdict and verdict.no_devices) %}
     {# Fără probleme rămase: fie scanarea nu a găsit nimic, fie toate au fost verificate ca rezolvate #}
     {% set all_fixed = history_id is none and steps and steps.verified_count %}
     <section class="worst worst-ok card" id="worst" aria-labelledby="worst-h">

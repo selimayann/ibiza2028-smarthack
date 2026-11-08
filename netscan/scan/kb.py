@@ -5,9 +5,13 @@
   textul. Locală, deterministă, fără internet și fără model de embeddings.
 - Folosirea: (1) fără AI, asistentul răspunde direct cu intrarea găsită când scanarea nu e întrebată;
   (2) cu modelul local, intrările găsite sunt contextul (RAG), iar textul modelului trece prin validator.
+- Căutarea după sens (doar cu AI-ul local pornit): vectorii intrărilor (bge-m3, calculați o dată de
+  build_kb_embeddings.py) stau în data/kb_embeddings.json; întrebarea primește vectorul ei de la Ollama local.
+  Rezultatul combină sensul (de SEM_WEIGHT ori mai important) cu BM25. Fără Ollama sau fără fișier: doar BM25.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -18,6 +22,10 @@ from pathlib import Path
 from typing import Optional
 
 KB_FILE = Path(__file__).with_name("data") / "knowledge_base.json"
+EMBED_FILE = Path(__file__).with_name("data") / "kb_embeddings.json"
+EMBED_MODEL = "bge-m3"
+SEM_WEIGHT = 3.0         # măsurat pe 98 de întrebări realiste: sensul de 3 ori mai important decât BM25
+RRF_K = 30
 
 # cuvinte foarte comune, care nu ajută la căutare
 STOPWORDS = frozenset("""
@@ -30,6 +38,45 @@ with this that there from at by as not no
 
 W_QUESTION, W_TAGS, W_TEXT = 3.0, 3.0, 1.0
 K1, B = 1.4, 0.75
+W_SYNONYM = 0.6          # cuvintele adăugate prin sinonime contează mai puțin decât cele scrise de utilizator
+
+# Cuvinte în plus pentru intrările din catalog (D1-D15): numele pe înțeles din aplicație (RO/EN), serviciile și
+# porturile obișnuite. Oamenii nu scriu „OUTDATED_SERVICE”, ci „software vechi” sau „portul 9100”.
+CATALOG_TERMS: dict[str, str] = {
+    "TELNET_OPEN": "telnet port 23 intrare veche fara lacat old door without lock remote login",
+    "RDP_EXPOSED": "rdp remote desktop desktop la distanta 3389 windows",
+    "VNC_EXPOSED": "vnc 5900 ecran la distanta remote screen",
+    "DB_EXPOSED": "baza de date database mysql postgresql postgres redis mongodb 3306 5432 6379 27017",
+    "CAMERA_STREAM_EXPOSED": "camera rtsp 554 imagine video supraveghere stream webcam",
+    "OUTDATED_SERVICE": "program vechi software vechi versiune veche outdated old software old version firmware vechi defecte cunoscute",
+    "FTP_CLEARTEXT": "ftp 21 transfer fisiere necriptat file transfer unencrypted",
+    "HTTP_ADMIN_CLEARTEXT": "admin http fara https necriptata unencrypted",
+    "SMB_EXPOSED": "smb 445 139 partajare fisiere file sharing windows share samba",
+    "MQTT_EXPOSED": "mqtt 1883 mosquitto mesagerie iot smart home casa inteligenta",
+    "UPNP_EXPOSED": "upnp 1900 deschide porturi singur opens ports automatically",
+    "SNMP_EXPOSED": "snmp 161 public community",
+    "PRINTER_RAW_EXPOSED": "imprimanta printer 9100 jetdirect tiparire print",
+    "UNKNOWN_DEVICE": "necunoscut nerecunoscut unknown unrecognized strain intrus",
+    "SSH_OPEN": "ssh 22 acces la distanta securizat secure shell",
+}
+
+# Sinonime pentru întrebare (fără diacritice, litere mici): cuvintele obișnuite ale oamenilor, legate de cele din
+# baza de cunoștințe. Fiecare grup: orice cuvânt din grup aduce și celelalte (cu greutatea W_SYNONYM).
+SYNONYM_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("wifi", "retea", "network", "hotspot"),
+    ("producator", "manufacturer", "vendor", "brand", "marca"),
+    ("software", "program", "programul", "firmware", "versiune", "version"),
+    ("vechi", "veche", "old", "outdated", "invechit"),
+    ("imprimanta", "printer"),
+    ("televizor", "tv", "dispozitiv", "device", "aparat"),
+    ("recunosc", "recognize", "recognise", "necunoscut", "unknown", "strain"),
+    ("vreme", "vremea", "meteo", "weather"),
+    ("parola", "password", "parole", "passwords"),
+    ("birou", "office", "serviciu", "scoala", "hotel", "cafenea", "vecin", "altcuiva", "alta"),
+    ("spart", "sparge", "hackuit", "hacked", "atacat", "compromis", "hack"),
+    ("sigur", "siguranta", "safe", "secure", "protejat"),
+    ("intru", "login", "logare", "setari", "settings"),
+)
 
 
 @dataclass(frozen=True)
@@ -95,7 +142,8 @@ def _index():
     docs = []
     for e in load()["entries"]:
         bag: dict[str, float] = {}
-        fields = ((e["q_ro"] + " " + e["q_en"], W_QUESTION), (" ".join(e["tags"]) + " " + e["id"], W_TAGS),
+        extra = " ".join(CATALOG_TERMS.get(t, "") for t in e["tags"])
+        fields = ((e["q_ro"] + " " + e["q_en"], W_QUESTION), (" ".join(e["tags"]) + " " + e["id"] + " " + extra, W_TAGS),
                   (e["a_ro"] + " " + e["a_en"], W_TEXT))
         length = 0.0
         for text, w in fields:
@@ -113,21 +161,115 @@ def _index():
     return docs, idf, avg
 
 
+@lru_cache(maxsize=1)
+def _synonyms() -> dict[str, tuple[str, ...]]:
+    out: dict[str, tuple[str, ...]] = {}
+    for group in SYNONYM_GROUPS:
+        for w in group:
+            out[w] = tuple(x for x in group if x != w)
+    return out
+
+
+def _query_terms(question: str) -> dict[str, float]:
+    """Cuvintele întrebării (greutate 1) plus sinonimele lor (greutate W_SYNONYM), fără dubluri."""
+    terms: dict[str, float] = {}
+    syn = _synonyms()
+    words = re.findall(r"[a-z0-9_]+", _norm(question))
+    for t in tokens(question):
+        terms[t] = 1.0
+    for w in words:
+        for other in syn.get(w, ()):
+            for t in tokens(other):
+                terms.setdefault(t, W_SYNONYM)
+    return terms
+
+
 def search(question: str, k: int = 3) -> list[Hit]:
     """Cele mai potrivite intrări, cu scor BM25 (0 = nicio potrivire)."""
     docs, idf, avg = _index()
-    q = list(dict.fromkeys(tokens(question)))
+    q = _query_terms(question)
     hits = []
     for e, bag, length in docs:
         s = 0.0
-        for t in q:
+        for t, qw in q.items():
             tf = bag.get(t)
             if tf:
-                s += idf.get(t, 0.0) * tf * (K1 + 1) / (tf + K1 * (1 - B + B * length / avg))
+                s += qw * idf.get(t, 0.0) * tf * (K1 + 1) / (tf + K1 * (1 - B + B * length / avg))
         if s > 0:
             hits.append(Hit(e["id"], round(s, 3), e))
     hits.sort(key=lambda h: (-h.score, h.id))
     return hits[:k]
+
+
+# --- căutarea după sens (embeddings) ------------------------------------------------------------------------
+
+def doc_text(e: dict) -> str:
+    """Textul din care se face vectorul unei intrări: întrebările, etichetele, termenii din catalog, începutul
+    răspunsurilor (RO și EN)."""
+    extra = " ".join(CATALOG_TERMS.get(t, "") for t in e["tags"])
+    return " | ".join([e["q_ro"], e["q_en"], ", ".join(e["tags"]), extra, e["a_ro"][:300], e["a_en"][:300]])
+
+
+def fingerprint(model: str = EMBED_MODEL) -> str:
+    """Amprenta textelor indexate: dacă baza de cunoștințe sau termenii se schimbă, vectorii trebuie refăcuți."""
+    h = hashlib.sha256(model.encode())
+    for e in load()["entries"]:
+        h.update(b"\0" + e["id"].encode() + b"\0" + doc_text(e).encode())
+    return h.hexdigest()
+
+
+def _unit(v: list[float]) -> list[float]:
+    n = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / n for x in v]
+
+
+@lru_cache(maxsize=1)
+def vectors() -> Optional[dict[str, list[float]]]:
+    """Vectorii intrărilor, doar dacă fișierul se potrivește cu baza de cunoștințe de acum; altfel None (BM25)."""
+    try:
+        data = json.loads(EMBED_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if data.get("fingerprint") != fingerprint(data.get("model", "")) or data.get("model") != EMBED_MODEL:
+        return None
+    vecs = data.get("vectors") or {}
+    if {e["id"] for e in load()["entries"]} != set(vecs):
+        return None
+    return {i: _unit(v) for i, v in vecs.items()}
+
+
+SIM_MIN = 0.50   # asemănarea minimă (cosinus, bge-m3) ca o întrebare neînțeleasă să primească o intrare: măsurat,
+                 # întrebările fără legătură (rețete, mașini, teme) ajung la cel mult ~0.47, cele bune au mediana ~0.60
+
+
+def semantic_scores(question: str, embed) -> Optional[dict[str, float]]:
+    """Asemănarea (cosinus) întrebării cu fiecare intrare, sau None fără vectori / fără Ollama."""
+    vecs = vectors() if embed is not None else None
+    if vecs is None:
+        return None
+    try:
+        qv = _unit(embed([question])[0])
+    except Exception:  # Ollama oprit / model lipsă
+        return None
+    return {i: sum(a * b for a, b in zip(qv, v)) for i, v in vecs.items()}
+
+
+def hybrid_search(question: str, k: int = 3, embed=None, sims: Optional[dict[str, float]] = None) -> list[Hit]:
+    """Căutarea pentru RAG: după sens (vectorul întrebării de la `embed`) combinat cu BM25, prin RRF ponderat.
+    `embed(texts) -> list[vector]` vine de la Ollama local; dacă lipsește, cade sau nu are fișierul: doar BM25."""
+    sims = sims if sims is not None else semantic_scores(question, embed)
+    if sims is None:   # fără vectori sau Ollama oprit: căutarea obișnuită
+        return search(question, k)
+    entries = {e["id"]: e for e in load()["entries"]}
+    sem = sorted(sims, key=lambda i: -sims[i])
+    bm = [h.id for h in search(question, len(entries))]
+    score: dict[str, float] = {}
+    for pos, i in enumerate(bm):
+        score[i] = score.get(i, 0.0) + 1.0 / (RRF_K + pos + 1)
+    for pos, i in enumerate(sem):
+        score[i] = score.get(i, 0.0) + SEM_WEIGHT / (RRF_K + pos + 1)
+    ranked = sorted(score, key=lambda i: (-score[i], i))[:k]
+    return [Hit(i, round(score[i], 4), entries[i]) for i in ranked]
 
 
 def get(entry_id: str) -> Optional[dict]:
@@ -144,10 +286,15 @@ def answer_text(entry: dict, lang: str = "ro") -> str:
     return text
 
 
-def context(question: str, lang: str = "ro", k: int = 2, max_chars: int = 1600) -> list[dict]:
-    """Fragmentele pentru modelul local (RAG): [{"id", "question", "text", "note"}], tăiate la max_chars în total."""
+def context(question: str, lang: str = "ro", k: int = 2, max_chars: int = 1600, embed=None) -> list[dict]:
+    """Fragmentele pentru modelul local (RAG): [{"id", "question", "text", "note"}], tăiate la max_chars în total.
+    Cu `embed` (Ollama local), căutarea e după sens + BM25; fără, doar BM25."""
     out, used = [], 0
-    for h in search(question, k):
+    hits = hybrid_search(question, k + 2, embed)
+    # Textele de refuz („Nu te pot ajuta cu asta…”, categoria Etică) intră doar dacă sunt primul rezultat: ca al
+    # doilea fragment, modelul le lipea la un răspuns bun.
+    hits = [h for n, h in enumerate(hits) if n == 0 or h.entry.get("category") != "Etică"][:k]
+    for h in hits:
         text = answer_text(h.entry, lang)
         if used + len(text) > max_chars:
             text = text[: max(0, max_chars - used)]

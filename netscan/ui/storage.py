@@ -167,6 +167,15 @@ def list_scans(path: str | Path | None = None) -> list[ScanSummary]:
     return [ScanSummary(**dict(r)) for r in rows]
 
 
+def scan_ids_without_devices(path: str | Path | None = None) -> set[int]:
+    """Scanările citibile care n-au găsit niciun dispozitiv: UI-ul nu le arată scorul (100 ar părea „sigur”)."""
+    with closing(connect(path)) as conn:
+        rows = conn.execute(
+            "SELECT id FROM scans WHERE status = 'ok' AND id NOT IN (SELECT DISTINCT scan_id FROM hosts)"
+        ).fetchall()
+    return {r["id"] for r in rows}
+
+
 def get_scan(scan_id: int, path: str | Path | None = None) -> Scan | None:
     with closing(connect(path)) as conn:
         row = conn.execute(

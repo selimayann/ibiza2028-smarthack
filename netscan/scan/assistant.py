@@ -148,7 +148,8 @@ LIST_WORDS = ("toate problemele", "lista problemelor", "ce probleme am", "ce pro
 PORTS_WORDS = ("porturi deschise", "porturile deschise", "ce porturi", "open ports", "which ports", "what ports")
 SCORE_HOW_WORDS = ("cum se calculeaza", "cum e calculat", "cum calculezi", "formula", "de ce am scorul",
                    "de ce e scorul", "how is the score", "how do you calculate", "why is my score", "why is the score")
-WHY_WORDS = ("de ce", "din ce cauza", "why", "how come")   # „de ce” + „scor” = cum se calculează scorul
+WHY_WORDS = ("de ce", "din ce cauza", "why", "how come")
+POINTS_WORDS = ("puncte", "punctele", "points")   # „de ce am pierdut puncte” = tot cum se calculează scorul   # „de ce” + „scor” = cum se calculează scorul
 SEVERITY_WORDS = ("grav", "grave", "gravitate", "severitate", "severitati", "severity", "high", "medium", "low",
                   "cat de grav", "how serious", "how bad", "critic", "critice")
 IS_SAFE_WORDS = ("e sigura", "e sigur", "sunt in siguranta", "sunt protejat", "virus", "virusi", "hackuit",
@@ -169,7 +170,7 @@ GLOSSARY_KEYS: dict[str, tuple[str, ...]] = {
     "Criptare": ("criptare", "criptat", "criptata", "encryption", "encrypted"),
     "Firewall": ("firewall", "paravan"),
     "Firmware": ("firmware",),
-    "HTTP / HTTPS": ("https",),
+    "HTTP / HTTPS": ("https", "http"),
     "Necriptat": ("necriptat", "necriptata", "unencrypted", "in clar", "cleartext"),
     "Parolă din fabrică": ("parola din fabrica", "parola implicita", "default password", "factory password"),
     "Port": ("port", "porturi", "ports"),
@@ -293,6 +294,7 @@ T["ro"].update({
     "ports_item": "- {dev} {ip}: {ports}",
     "ports_none": "Scanarea nu a găsit niciun port deschis.",
     "glossary": "{term}: {definition}",
+    "glossary_in_scan": "În rețeaua ta: {where}.",
     "score_how": ("Scorul pornește de la 100 și scade cu punctele fiecărei probleme: risc ridicat 20, risc mediu 10, "
                   "risc scăzut 5, doar de știut 0. Nu coboară sub 0."),
     "score_how_scan": "Aici: 100 − {pts} (punctele problemelor găsite) = {score}.",
@@ -347,6 +349,7 @@ T["en"].update({
     "ports_item": "- {dev} {ip}: {ports}",
     "ports_none": "The scan found no open ports.",
     "glossary": "{term}: {definition}",
+    "glossary_in_scan": "In your network: {where}.",
     "score_how": ("The score starts at 100 and goes down by the points of each problem: high risk 20, medium risk 10, "
                   "low risk 5, just so you know 0. It never goes below 0."),
     "score_how_scan": "Here: 100 − {pts} (the points of the problems found) = {score}.",
@@ -488,10 +491,13 @@ def detect_intent(question: str) -> tuple[str, Optional[str]]:
         return INTENT_FIX_ALL, None
     if _has_any(q, FIRST_WORDS):
         return INTENT_FIRST, None
-    if _has_any(q, SCORE_HOW_WORDS) or (_has_any(q, WHY_WORDS) and _has_any(q, SCORE_WORDS)):
+    if _has_any(q, SCORE_HOW_WORDS) or (_has_any(q, WHY_WORDS) and _has_any(q, SCORE_WORDS + POINTS_WORDS)):
         return INTENT_SCORE_HOW, None
     term = _glossary_term(q)
-    if term and not any(_has_any(q, w) for w in CODE_WORDS.values()):
+    # „ce înseamnă http/router/port”: definiția câștigă dacă singurele cuvinte de problemă din întrebare sunt chiar
+    # termenul din glosar (altfel „ce e http” ducea la problema de pe router, iar „ce e https” la definiție).
+    own = set(GLOSSARY_KEYS.get(term, ())) if term else set()
+    if term and not any(_has_any(q, tuple(x for x in w if x not in own)) for w in CODE_WORDS.values()):
         return INTENT_GLOSSARY, term
     for code, words in CODE_WORDS.items():
         if _has_any(q, words):
@@ -704,13 +710,25 @@ def _answer_ports(scan: Scan, lang: str) -> str:
     return "\n".join([t["ports_head"], *lines]) if lines else t["ports_none"]
 
 
-def _answer_glossary(lang: str, term: str) -> str:
-    """Termenul din glosarul lui Oneata, căutat după numele în română (perechile RO/EN sunt pe același rând)."""
+def _answer_glossary(lang: str, term: str, scan: Optional[Scan] = None) -> str:
+    """Termenul din glosarul lui Oneata, căutat după numele în română (perechile RO/EN sunt pe același rând).
+    Dacă scanarea are o problemă legată chiar de acest termen (ex. HTTP -> pagina de setări necriptată), o spune
+    pe un rând dedesubt."""
     from netscan.explain.glossary import _ENTRIES
     for ro_term, ro_def, en_term, en_def in _ENTRIES:
         if ro_term == term:
             name, definition = (en_term, en_def) if lang == "en" else (ro_term, ro_def)
-            return T[lang]["glossary"].format(term=name, definition=definition)
+            text = T[lang]["glossary"].format(term=name, definition=definition)
+            own = set(GLOSSARY_KEYS.get(term, ()))
+            codes = [c for c, words in CODE_WORDS.items() if own & set(words)]
+            found = sorted((f for f in (scan.findings if scan is not None and scan.status == "ok" else [])
+                            if f.code in codes), key=lambda f: (_ip_key(f.ip), f.port or 0))
+            if found:
+                q1, q2, on = ("“", "”", "on") if lang == "en" else ("„", "”", "pe")
+                where = "; ".join(f"{q1}{_name(lang, f.code)}{q2} {on} {_mid(_dev_name(scan, f.ip, lang))} {f.ip}{_port(f)}"
+                                  for f in found[:3])
+                text += "\n" + T[lang]["glossary_in_scan"].format(where=where)
+            return text
     return T[lang]["out_of_scope"]
 
 
@@ -755,15 +773,26 @@ def kb_answer(question: str, intent: str, lang: str) -> Optional[tuple[str, str]
     """(text, id) din baza de cunoștințe, dacă e cazul. Refuzurile rămân refuzuri; scanarea are întâietate."""
     from netscan.scan import kb
     hits = kb.search(question[:MAX_QUESTION_LEN], k=1)
-    if not hits:
+    top = hits[0] if hits else kb.Hit("", 0.0, {})
+    if not hits and intent != INTENT_UNKNOWN:
         return None
-    top = hits[0]
     if intent == INTENT_SCOPE:
         ok = top.id in KB_REFUSALS and top.score >= KB_WEAK
     elif top.id in KB_PREFERRED and top.score >= KB_STRONG:
         ok = True
     else:
         ok = intent == INTENT_UNKNOWN and top.score >= KB_WEAK
+    if intent == INTENT_UNKNOWN and not (top.id in KB_PREFERRED and top.score >= KB_STRONG):
+        # Cu AI-ul local pornit: o întrebare neînțeleasă primește intrarea găsită după sens (+ cuvinte), dacă e
+        # destul de asemănătoare (SIM_MIN); întrebările fără legătură rămân sub prag și primesc „nu știu”.
+        from netscan.scan import local_llm
+        q = question[:MAX_QUESTION_LEN]
+        sims = kb.semantic_scores(q, local_llm.default_embedder())
+        if sims is not None:
+            best = kb.hybrid_search(q, 1, embed=True, sims=sims)[0]
+            if sims.get(best.id, 0.0) >= kb.SIM_MIN:
+                return kb.answer_text(best.entry, lang), best.id
+            return None
     return (kb.answer_text(top.entry, lang), top.id) if ok else None
 
 
@@ -813,7 +842,7 @@ def fallback_answer(question: str, scan: Scan, lang: str = "ro", previous: Optio
     if intent == INTENT_PORTS:
         return _answer_ports(scan, lang), intent
     if intent == INTENT_GLOSSARY:
-        return _answer_glossary(lang, detail), intent
+        return _answer_glossary(lang, detail, scan), intent
     if intent == INTENT_SCORE_HOW:
         return (_answer_score_how(scan, lang) if scan.score is not None else t["score_error"]), intent
     if intent == INTENT_SEVERITY:
@@ -833,8 +862,9 @@ def fallback_answer(question: str, scan: Scan, lang: str = "ro", previous: Optio
 
 def _kb_context(question: str, lang: str) -> list[dict]:
     """Fragmentele din baza de cunoștințe pentru modelul local (RAG)."""
-    from netscan.scan import kb
-    return kb.context(question[:MAX_QUESTION_LEN], lang if lang in LANGS else "ro")
+    from netscan.scan import kb, local_llm
+    return kb.context(question[:MAX_QUESTION_LEN], lang if lang in LANGS else "ro",
+                      embed=local_llm.default_embedder())   # după sens, cu Ollama local; altfel BM25
 
 
 LLMFunc = Callable[[dict], Optional[str]]

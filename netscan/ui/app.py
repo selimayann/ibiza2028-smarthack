@@ -220,10 +220,22 @@ REPLY_STATES = {
 }
 
 
+def _llm_timed_out(reply) -> bool:
+    """Modelul local n-a răspuns (prea lent sau oprit): nu e o informație inventată prinsă de validator."""
+    return list(getattr(reply, "problems", None) or []) == ["LLM_ERROR"]
+
+
 def reply_state(reply) -> str:
     if getattr(reply, "source", None) == "llm":
         return "verificat"
-    return "prins" if getattr(reply, "problems", None) else "fara-ai"
+    return "prins" if getattr(reply, "problems", None) and not _llm_timed_out(reply) else "fara-ai"
+
+
+def reply_label(reply) -> tuple[str, str]:
+    """(cheia textului, iconița) pentru sursa răspunsului."""
+    if _llm_timed_out(reply):
+        return "ask_src_slow", "info"
+    return REPLY_STATES[reply_state(reply)]
 
 
 def assistant_ctx(action: str, api: str, scan: Scan | None, ref: dict | None, question: str, reply,
@@ -240,7 +252,8 @@ def assistant_ctx(action: str, api: str, scan: Scan | None, ref: dict | None, qu
             "open_url": f"{action}?{urlencode({**ref, 'ask': 1})}#chat",
             "open": bool(request.args.get("ask")) or bool(question), "llm_on": local_ai_enabled(),
             "file": scan.file, "started_at": scan.started_at, "show_changes": show_changes,
-            "state": reply_state(reply) if reply is not None else None}
+            "state": reply_state(reply) if reply is not None else None,
+            "src": reply_label(reply) if reply is not None else None}
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -727,8 +740,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         upload = request.files.get("scanfile")
         data = upload.read(MAX_BYTES + 1) if upload is not None else b""
         back = lambda code: redirect(url_for("overview", **scan_ref(before), upload_error=code) + "#recheck-h")  # noqa: E731
-        if not data:
+        if upload is None or not upload.filename:
             return back("NO_FILE")
+        if not data:
+            return back("EMPTY")          # a ales un fișier, dar e gol: nu „n-ai ales niciun fișier”
         # Același motor ca pentru fișierele din folder (analyze_file): defusedxml, limită de mărime, erori ca valori.
         # Fișierul stă doar cât durează analiza, într-un folder temporar, sub un nume curățat.
         name = secure_filename(upload.filename or "") or "scan.xml"
@@ -1048,14 +1063,16 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.get("/history")
     def history():
         items = storage.list_scans(app.config["DB_PATH"])
+        nodev = storage.scan_ids_without_devices(app.config["DB_PATH"])
         # Pentru coloana „față de anterioara”: scorul ultimei scanări citibile de dinainte (doar afișare, din motor).
+        # O scanare fără dispozitive nu are scor afișat, deci nu intră nici în comparație, nici în grafic.
         rows, prev = [], None
         for it in items:
-            rows.append({"item": it, "prev": prev})
-            if it.status == "ok":
+            rows.append({"item": it, "prev": prev, "nodev": it.id in nodev})
+            if it.status == "ok" and it.id not in nodev:
                 prev = it.score
         return render_template(
-            "history.html", items=items, rows=rows, trend=score_trend(items),
+            "history.html", items=items, rows=rows, trend=score_trend([i for i in items if i.id not in nodev]), nodev=nodev,
             deleted=request.args.get("deleted") == "1",
             # None = nu s-a cerut ștergerea scanărilor brute; True = șterse; False = nu s-au putut șterge
             deleted_raw={"1": True, "0": False}.get(request.args.get("raw", "")),
@@ -1216,7 +1233,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if reply is None:
             return {"ok": False, "text": i18n.t(g.lang, "ai_error")}, 200
         state = reply_state(reply)
-        key, icon = REPLY_STATES[state]
+        key, icon = reply_label(reply)
         return {
             "ok": True, "text": reply.text, "source": reply.source, "state": state,
             "source_label": i18n.t(g.lang, key), "source_icon": icon,
@@ -1229,6 +1246,14 @@ def create_app(test_config: dict | None = None) -> Flask:
             return render_template("message.html", message_key="not_found"), err.code
         except Exception:  # ex. Host respins (DNS rebinding): fără linkuri, doar un mesaj simplu
             return "400 Bad Request", err.code, {"Content-Type": "text/plain; charset=utf-8"}
+
+    @app.errorhandler(413)
+    def too_large(err):
+        """Fișier peste limita cererii (20 MB + câmpurile formularului): înapoi la „Verifică din nou” cu mesajul
+        obișnuit, nu pagina brută a serverului. Formularul nu mai poate fi citit, deci se întoarce la scanarea curentă."""
+        if request.path == "/scan/upload":
+            return redirect(url_for("overview", upload_error="TOO_LARGE") + "#recheck-h")
+        return err                         # celelalte formulare au câmpuri mici: peste 1 MB e doar o cerere fabricată
 
     @app.errorhandler(500)
     def server_error(err):  # fără stack trace în pagină

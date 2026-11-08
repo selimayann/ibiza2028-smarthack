@@ -42,3 +42,7 @@
 /* Cardul unui fișier stricat: semnul de eroare centrat în coloana scorului (pe orizontală și pe verticală) */
 .check-error .check-score { align-self: stretch; justify-content: center; }
 .check-error-icon { display: block; }
+
+/* Verificare fără niciun dispozitiv: semn neutru centrat, fără inel de scor */
+.check-nodev .check-score { align-self: stretch; justify-content: center; }
+.check-nodev-icon { display: block; color: var(--muted, #5b6470); }
