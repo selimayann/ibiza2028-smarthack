@@ -1531,3 +1531,6 @@ details.live-open { border-top: 0; padding-top: 0; margin-top: var(--s-2, .5rem)
    pentru că butonul are deja 44px înălțime) */
 .verdict > .score { padding-bottom: .15rem; }
 .verdict > .score .how-score > summary { margin-top: .1rem; }
+
+/* Scanare fără niciun dispozitiv: fără scor, doar explicația sub titlu */
+.verdict-note { margin-top: var(--s-2, .5rem); max-width: 62ch; font-size: 1.0625rem; line-height: 1.5; color: var(--muted, inherit); }

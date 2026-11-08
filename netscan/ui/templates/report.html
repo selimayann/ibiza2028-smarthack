@@ -43,15 +43,22 @@
     {% set nd, nf = devices|length, scan.findings|length %}
     {# Sus: un singur card de verdict (scorul + o frază + cifrele pe un rând), apoi „Fă asta întâi” pe toată lățimea #}
     <section class="r-verdict r-{{ band }}" aria-label="{{ T('report_summary') }}">
+      {% if not (verdict and verdict.no_devices) %}
       <div class="r-score">
         <p class="r-label">{{ T('report_score_short') }}</p>
         <p class="r-score-line"><span class="r-num">{{ scan.score }}</span> <span class="r-of">{{ T('score_of') }}</span></p>
         <p class="r-band"><span class="r-band-chip">{{ ico(band) }} {{ T('band_' ~ band) }}</span></p>
       </div>
+      {% endif %}
       <div class="r-verdict-text">
+        {% if verdict and verdict.no_devices %}
+        <p class="r-verdict-title">{{ T('verdict_no_devices') }}</p>
+        <p>{{ T('no_devices_body') }}</p>
+        {% else %}
         <p class="r-verdict-title">{{ T('verdict_clean') if verdict and verdict.clean else T('verdict_' ~ band) }}</p>
         <p class="r-facts"><strong>{{ nd }}</strong> {{ T('report_device')|lower if nd == 1 else T('report_devices')|lower }} · <strong>{{ nf }}</strong> {{ T('report_problem_one') if nf == 1 else T('report_problems')|lower }}{% if nf %}:{% endif %}
           {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<span class="r-chip r-{{ sev }}">{{ ico(sev) }} {{ T('sev_' ~ sev) }} <strong>{{ counts[sev] }}</strong></span>{% endif %}{% endfor %}</p>
+        {% endif %}
         {% if compare and proof %}<p class="r-before-after">{{ T('report_before_after')|format(compare.score_before, compare.score_after, proof.n_fixed, proof.n_new) }}</p>{% endif %}
       </div>
     </section>

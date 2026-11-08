@@ -24,7 +24,7 @@ TEXTS = {
         "lead": "Pentru fiecare verificare a rețelei: scorul, ce a găsit și cel mai periculos dispozitiv. Deschide una ca să vezi ce faci întâi.",
         "summary": "Ai %s verificări: %s.",
         "s_poor": "%s au nevoie de atenție", "s_fair": "%s se pot îmbunătăți", "s_good": "%s au scor bun",
-        "s_error": "%s nu s-au putut citi",
+        "s_error": "%s nu s-au putut citi", "s_nodev": "%s n-au găsit niciun dispozitiv",
         "and": " și ",
         "error_title": "Fișierul nu a putut fi citit.",
         "error_body": "Nu am ghicit nimic din el. Restul verificărilor au fost analizate normal.",
@@ -40,7 +40,7 @@ TEXTS = {
         "lead": "For every check of your network: the score, what it found and the most dangerous device. Open one to see what to do first.",
         "summary": "You have %s checks: %s.",
         "s_poor": "%s need attention", "s_fair": "%s could be better", "s_good": "%s have a good score",
-        "s_error": "%s could not be read",
+        "s_error": "%s could not be read", "s_nodev": "%s found no devices",
         "and": " and ",
         "error_title": "The file could not be read.",
         "error_body": "I didn't guess anything from it. The other checks were analysed normally.",
@@ -68,7 +68,8 @@ def check_cards(scans: list, lang: str = "ro") -> list[dict]:
             continue
         v = verdict_view(s, lang=lang)
         key = v.get("verdict_key") or ("verdict_clean" if v["clean"] else f"verdict_{v['band']}")
-        cards.append({"file": s.file, "started_at": s.started_at, "ok": True, "score": s.score, "band": v["band"],
+        cards.append({"file": s.file, "started_at": s.started_at, "ok": True, "score": s.score,
+                      "band": "nodev" if v["no_devices"] else v["band"], "no_devices": v["no_devices"],
                       "verdict": i18n.t(lang, key), "counts": v["counts_text"],
                       "sev": {k: v[f"n_{k}"] for k in ("high", "medium", "low", "info")}, "worst_name": v["worst_name"],
                       "worst_problem": i18n.code_name(lang, v["first_code"]) if v["first_code"] else None,
@@ -78,7 +79,7 @@ def check_cards(scans: list, lang: str = "ro") -> list[dict]:
 
 def summary_text(cards: list[dict], lang: str = "ro") -> str:
     t = TEXTS[lang]
-    n = {"poor": 0, "fair": 0, "good": 0, "error": 0}
+    n = {"poor": 0, "fair": 0, "good": 0, "nodev": 0, "error": 0}
     for c in cards:
         n[c["band"] if c["ok"] else "error"] += 1
     parts = [t[f"s_{k}"] % v for k, v in n.items() if v]

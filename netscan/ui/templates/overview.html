@@ -295,13 +295,15 @@
   {% else %}
     <h1 id="verdict-h" class="verdict-title">{{ T(verdict.verdict_key) if verdict.verdict_key else (T('verdict_clean') if verdict.clean else T('verdict_' ~ band)) }}</h1>
     {# Cifrele dintr-o privire, ca în antetul raportului: dispozitive · probleme: etichetele de risc #}
-    {% if verdict and verdict.n_devices is not none %}
+    {% if verdict and verdict.no_devices %}
+      <p class="verdict-note">{{ T('no_devices_body') }}</p>
+    {% elif verdict and verdict.n_devices is not none %}
       {% set nd, nf = verdict.n_devices, verdict.n_findings %}
       {{ sev_chips({'high': verdict.n_high, 'medium': verdict.n_medium, 'low': verdict.n_low, 'info': verdict.n_info}, 'sev-chips verdict-chips',
                    (T('devices_one') if nd == 1 else T('devices_many')|format(nd)) ~ ' · ' ~ (T('report_problem_n_one') if nf == 1 else T('report_problem_n_many')|format(nf)) ~ (':' if nf else '')) }}
     {% endif %}
   {% endif %}
-  {% if history_id is none %}{{ summary_block() }}{% endif %}
+  {% if history_id is none and not (verdict and verdict.no_devices) %}{{ summary_block() }}{% endif %}
 </section>
 </div>
 
@@ -365,7 +367,7 @@
 {% else %}
 <div class="verdict">
   {# Scorul, în stânga, lipit sus (sticky) cât utilizatorul trece prin pași #}
-  {% if show_score %}{{ score_card(band) }}{% endif %}
+  {% if show_score and not (verdict and verdict.no_devices) %}{{ score_card(band) }}{% endif %}
   {# 4. Cel mai periculos dispozitiv — fă asta întâi (un singur buton principal) #}
   {% if worst %}
     {% set w = worst.worst %}
@@ -396,7 +398,7 @@
         </div>
       {% endif %}
     </section>
-  {% else %}
+  {% elif not (verdict and verdict.no_devices) %}
     {# Fără probleme rămase: fie scanarea nu a găsit nimic, fie toate au fost verificate ca rezolvate #}
     {% set all_fixed = history_id is none and steps and steps.verified_count %}
     <section class="worst worst-ok card" id="worst" aria-labelledby="worst-h">

@@ -1057,14 +1057,16 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.get("/history")
     def history():
         items = storage.list_scans(app.config["DB_PATH"])
+        nodev = storage.scan_ids_without_devices(app.config["DB_PATH"])
         # Pentru coloana „față de anterioara”: scorul ultimei scanări citibile de dinainte (doar afișare, din motor).
+        # O scanare fără dispozitive nu are scor afișat, deci nu intră nici în comparație, nici în grafic.
         rows, prev = [], None
         for it in items:
-            rows.append({"item": it, "prev": prev})
-            if it.status == "ok":
+            rows.append({"item": it, "prev": prev, "nodev": it.id in nodev})
+            if it.status == "ok" and it.id not in nodev:
                 prev = it.score
         return render_template(
-            "history.html", items=items, rows=rows, trend=score_trend(items),
+            "history.html", items=items, rows=rows, trend=score_trend([i for i in items if i.id not in nodev]), nodev=nodev,
             deleted=request.args.get("deleted") == "1",
             # None = nu s-a cerut ștergerea scanărilor brute; True = șterse; False = nu s-au putut șterge
             deleted_raw={"1": True, "0": False}.get(request.args.get("raw", "")),

@@ -367,3 +367,13 @@ def test_upload_over_the_request_limit_gets_the_friendly_message(tmp_path):
     page = client.get(resp.headers["Location"]).get_data(as_text=True)
     assert "Nu am putut folosi fișierul ales." in page and "prea mare" in page
     assert storage.list_scans(app.config["DB_PATH"]) == []
+
+
+def test_scan_without_devices_shows_no_score(tmp_path):
+    """0 dispozitive = scanarea n-a văzut nimic (altă rețea), nu „rețea sigură”: fără scorul 100, cu explicația."""
+    from netscan.ui.view import verdict_view
+    empty = load(V6A)[0]
+    empty.hosts, empty.findings = {} if isinstance(empty.hosts, dict) else [], []
+    v = verdict_view(empty)
+    assert v["no_devices"] and v["verdict_key"] == "verdict_no_devices"
+    assert not verdict_view(load(V6A)[0])["no_devices"]

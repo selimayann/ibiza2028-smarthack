@@ -36,9 +36,10 @@
         {% set s = r.item %}
         <tr>
           <td class="rt-main"><a class="row-main-link" href="{{ url_for('history_scan', scan_id=s.id) }}" title="{{ s.file }}">{{ fmt_time(s.started_at) }}<span class="sr-only"> ({{ s.file }})</span></a></td>
-          <td data-label="{{ T('score_label') }}"><div>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_tag(s.score) }}{% endif %}</div></td>
+          <td data-label="{{ T('score_label') }}"><div>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% elif r.nodev %}<span class="score-tag sev-chip sev-chip-info"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('no_devices_tag') }}</span>{% else %}{{ score_tag(s.score) }}{% endif %}</div></td>
           <td data-label="{{ T('hist_change') }}"><div>
             {% if s.status == 'error' %}<span class="muted">{{ error_message(s.error_code) }}</span>
+            {% elif r.nodev %}<span class="muted">{{ T('verdict_no_devices') }}</span>
             {% elif r.prev is none %}<span class="delta delta-same">{{ T('hist_first') }}</span>
             {% else %}
               {# Culoarea schimbării: verde DOAR dacă scorul a crescut și a ajuns în zona sigură (Bun, de la 80);
@@ -51,7 +52,7 @@
             {% endif %}
           </div></td>
           <td class="rt-links"><span class="row-links">
-            {% if s.status == 'ok' and r.prev is not none %}<a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('see_proof') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
+            {% if s.status == 'ok' and r.prev is not none and not r.nodev %}<a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('see_proof') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
             {% if s.status == 'ok' %}<a href="{{ url_for('history_report', scan_id=s.id) }}">{{ T('report_short') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
           </span></td>
         </tr>
@@ -83,7 +84,7 @@
         <text class="trend-axis trend-date" x="{{ trend.first.x }}" y="{{ trend.height - 8 }}" text-anchor="start" aria-hidden="true">{{ fmt_time(trend.first.started_at) }}</text>
         <text class="trend-axis trend-date" x="{{ trend.last.x }}" y="{{ trend.height - 8 }}" text-anchor="end" aria-hidden="true">{{ fmt_time(trend.last.started_at) }}</text>
       </svg>
-      {% set ok_items = items|selectattr('status', 'equalto', 'ok')|list %}
+      {% set ok_items = items|selectattr('status', 'equalto', 'ok')|rejectattr('id', 'in', nodev)|list %}
       {% set best = ok_items|sort(attribute='score')|last %}
       <dl class="trend-aside">
         <div class="stat"><dt>{{ T('stat_last') }}</dt><dd>{{ score_tag(trend.last.score) }}<br><span class="muted">{{ fmt_time(trend.last.started_at) }}</span></dd></div>

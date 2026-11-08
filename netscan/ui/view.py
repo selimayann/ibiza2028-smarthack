@@ -378,7 +378,7 @@ def verdict_view(scan: Scan | None, fixed_keys=frozenset(), accepted_keys=frozen
     from netscan.ui.explain_stub import get_explanation
 
     if scan is None or scan.status != "ok":
-        return {"band": None, "score": None, "clean": False, "n_high": 0, "n_medium": 0, "n_low": 0, "n_info": 0,
+        return {"band": None, "score": None, "clean": False, "no_devices": False, "n_high": 0, "n_medium": 0, "n_low": 0, "n_info": 0,
                 "n_findings": 0, "n_devices": 0, "n_devices_with_problems": 0, "n_fixed": 0, "n_accepted": 0,
                 "worst": None, "worst_name": None, "worst_ip": None, "first_step": None, "first_code": None,
                 "tie_name": None, "tie_ip": None, "counts_text": ""}
@@ -399,7 +399,12 @@ def verdict_view(scan: Scan | None, fixed_keys=frozenset(), accepted_keys=frozen
     # Textul verdictului: scorul poate ieși „Bun” (formula oficială) deși rămâne o problemă gravă (ex. o cameră
     # expusă = 20 de puncte, scor 80). Pentru un om netehnic „arată bine” ar fi înșelător, deci spunem și asta.
     # Scorul și banda NU se schimbă; doar propoziția.
-    if not scan.findings:
+    # Nicio adresă găsită: nu e „rețea sigură”, ci o scanare care n-a văzut nimic (altă rețea, laptop deconectat).
+    # Scorul motorului rămâne 100 (scores.csv); UI-ul doar nu-l arată ca verdict.
+    no_devices = not scan.hosts
+    if no_devices:
+        verdict_key = "verdict_no_devices"
+    elif not scan.findings:
         verdict_key = "verdict_clean"
     elif band in ("good", "fair") and high_left:
         verdict_key = f"verdict_{band}_high" + ("_1" if high_left == 1 else "")
@@ -407,6 +412,7 @@ def verdict_view(scan: Scan | None, fixed_keys=frozenset(), accepted_keys=frozen
         verdict_key = f"verdict_{band}"
     return {
         "band": band, "score": scan.score, "clean": not scan.findings, "verdict_key": verdict_key,
+        "no_devices": no_devices,
         **{f"n_{k}": v for k, v in counts.items()},
         "n_findings": len(scan.findings), "n_devices": len(scan.hosts),
         "n_devices_with_problems": len({f.device_id for f in scan.findings}),
