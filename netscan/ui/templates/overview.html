@@ -40,7 +40,7 @@
             {% if st.status != 'verified' %}
             <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .verify-msg, #step-now">
               {{ hidden }}{{ key_fields }}
-              <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</button>
+              <button type="submit" class="button-primary" data-busy="{{ T('step_checking') }}"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg><span>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</span></button>
             </form>
             {# Ghidul animat pas cu pas (dialog). Fără JavaScript, linkul duce la pagina dispozitivului (aceeași scanare). #}
             <a class="button button-secondary guide-open" href="{{ url_for('device', device_id=st.finding.device_id, **scan_ref) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
@@ -225,7 +225,7 @@
     {% set pb, pa = fmt_time(proof.started_before), fmt_time(proof.started_after) %}
     <h1 id="verdict-h" class="verdict-title">{% if dir == 'up' %}{{ T('proof_headline')|format(pb, pa, proof.score_before, proof.score_after) }}{% elif dir == 'down' %}{{ T('proof_headline_down')|format(pb, pa, proof.score_before, proof.score_after) }}{% else %}{{ T('proof_headline_same')|format(pb, pa, proof.score_after) }}{% endif %}</h1>
   {% else %}
-    <h1 id="verdict-h" class="verdict-title">{{ T('verdict_clean') if verdict.clean else T('verdict_' ~ band) }}</h1>
+    <h1 id="verdict-h" class="verdict-title">{{ T(verdict.verdict_key) if verdict.verdict_key else (T('verdict_clean') if verdict.clean else T('verdict_' ~ band)) }}</h1>
   {% endif %}
   {% if not verdict.clean %}<p class="verdict-counts">{{ verdict.counts_text }}</p>{% endif %}
 </section>
