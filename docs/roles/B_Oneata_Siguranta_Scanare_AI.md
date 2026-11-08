@@ -261,7 +261,7 @@ Vendorii, MAC-urile și titlurile de mai sus sunt inventate pentru test. Nu sunt
 - Parsezi cu `ipaddress.ip_address()` / `ip_network(strict=False)`. Orice nu se parsează (hostname, text, `172.20.10.5; rm -rf /`) → refuz `NOT_AN_IP`. **Nu faci niciodată rezolvare DNS.**
 - IPv6 → refuz în această fază (`IPV6_NOT_SUPPORTED`).
 - Refuz dacă adresa nu e privată sau e loopback, link-local, multicast, nespecificată sau rezervată. `100.64.0.0/10` (rețeaua operatorului mobil) nu e privată în Python, deci e refuzată automat; scrie oricum test explicit pentru ea.
-- Ținta trebuie să fie `subnet_of()` unul din allowlist. Allowlist-ul implicit = subnetul interfeței active. Intrările suplimentare (`NETSCAN_ALLOWLIST`) trec și ele prin aceleași verificări.
+- Ținta trebuie să fie `subnet_of()` unul din allowlist. Allowlist-ul implicit = subnetul interfeței active. `NETSCAN_ALLOWLIST` poate doar să-l **îngusteze**: se păstrează numai intrările din interiorul subnetului (`subnet_of`); o intrare din afară e ignorată, deci variabila nu lărgește niciodată ce scanăm.
 - Mesaje bilingve, simple: „Nu scanez această adresă: nu face parte din rețeaua ta (172.20.10.0/28).” / „I won't scan this address: it is not part of your network (172.20.10.0/28).”
 
 **Teste (`tests/test_guardrail.py`)**, cu allowlist `172.20.10.0/28`:

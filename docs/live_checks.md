@@ -28,7 +28,8 @@ Un jurat găsește singur cel mai periculos dispozitiv și prima reparație.
 start.bat            (Windows, dublu-click; din terminal: .\start.bat)
 start.command        (macOS)
 ```
-Se deschide `http://127.0.0.1:5055/`. Juriul trebuie să vadă cardul **„Cel mai periculos dispozitiv”** cu pasul „Fă asta întâi”.
+Se deschide `http://127.0.0.1:5055/`, pagina **Acasă**. Juriul trebuie să vadă sus „Pe scurt” (verdictul, scorul, cel mai periculos dispozitiv) și **„Fă asta întâi”**.
+(Rularea locală de mai jos e din 7 nov., înainte ca prima pagină să se numească Acasă; conținutul e același.)
 
 - **Rulat local** (V2): `Cel mai periculos dispozitiv · Cameră 192.168.1.40 · Ridicat · Imaginea camerei expusă ·
   CAMERA_STREAM_EXPOSED · Port 554 · Imaginile camerei video pot fi văzute direct din rețea…`
@@ -64,6 +65,10 @@ Mesajele de refuz așteptate (cod de ieșire 2):
 | `router.local`, `8.8.8.8; rm -rf /` | `Nu scanez această adresă: nu este o adresă IP …` (fără DNS) |
 | laptopul conectat la Wi-Fi-ul venue, orice țintă | `Ești conectat la altă rețea Wi-Fi decât hotspotul echipei, așa că nu scanez.` |
 
+În aplicație, același guardrail e în spatele butoanelor de pe **Acasă**: „Scanează acum” și „Pornește protecția live” nu fac
+nimic fără bifa de consimțământ, iar pe altă rețea (sau cu un VPN pornit) refuză. Pagina
+**„Ce știe SafeEel despre tine”** (subsolul oricărei pagini) arată ce e salvat local și nu pornește nimic în rețea.
+
 - **Rulat local:** mesajele de mai sus, din `check_target` cu allowlist-ul hotspotului `172.20.10.0/28`
   (`8.8.8.8` → NOT_PRIVATE, `10.240.0.0/16` → OUTSIDE_ALLOWLIST, `172.20.10.14` → acceptat).
   Laptopul fiind pe Wi-Fi-ul venue, `python -m netscan scan 8.8.8.8` a refuzat chiar mai devreme: `Ești conectat la altă rețea Wi-Fi decât hotspotul echipei, așa că nu scanez.` (exit 2).
@@ -84,7 +89,8 @@ Juriul trebuie să vadă un mesaj clar, fără crash, iar restul folderului se a
 ```
 python -m netscan diff fixtures/lab/scan_01_before.xml fixtures/lab/scan_03_after.xml
 ```
-În UI: `NETSCAN_SCANS_DIR=fixtures/lab`, „Salvează” pe `scan_01_before.xml`, apoi pe `scan_03_after.xml` → comparația.
+În UI: `NETSCAN_SCANS_DIR=fixtures/lab`, pe Acasă „Salvează în istoric” pe `scan_01_before.xml`, apoi pe `scan_03_after.xml`;
+apoi **Progres** → **„Vezi dovada”** la a doua scanare → scorul 0 → 30, ce s-a reparat și ce a rămas.
 
 - **Rulat local:** `Scor standard: 0 → 30`; `Probleme rezolvate (2): TELNET_OPEN 172.20.10.14 port 2323, DB_EXPOSED 172.20.10.14 port 6379`.
 
