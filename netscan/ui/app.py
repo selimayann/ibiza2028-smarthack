@@ -220,10 +220,22 @@ REPLY_STATES = {
 }
 
 
+def _llm_timed_out(reply) -> bool:
+    """Modelul local n-a răspuns (prea lent sau oprit): nu e o informație inventată prinsă de validator."""
+    return list(getattr(reply, "problems", None) or []) == ["LLM_ERROR"]
+
+
 def reply_state(reply) -> str:
     if getattr(reply, "source", None) == "llm":
         return "verificat"
-    return "prins" if getattr(reply, "problems", None) else "fara-ai"
+    return "prins" if getattr(reply, "problems", None) and not _llm_timed_out(reply) else "fara-ai"
+
+
+def reply_label(reply) -> tuple[str, str]:
+    """(cheia textului, iconița) pentru sursa răspunsului."""
+    if _llm_timed_out(reply):
+        return "ask_src_slow", "info"
+    return REPLY_STATES[reply_state(reply)]
 
 
 def assistant_ctx(action: str, api: str, scan: Scan | None, ref: dict | None, question: str, reply,
@@ -240,7 +252,8 @@ def assistant_ctx(action: str, api: str, scan: Scan | None, ref: dict | None, qu
             "open_url": f"{action}?{urlencode({**ref, 'ask': 1})}#chat",
             "open": bool(request.args.get("ask")) or bool(question), "llm_on": local_ai_enabled(),
             "file": scan.file, "started_at": scan.started_at, "show_changes": show_changes,
-            "state": reply_state(reply) if reply is not None else None}
+            "state": reply_state(reply) if reply is not None else None,
+            "src": reply_label(reply) if reply is not None else None}
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -1210,7 +1223,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if reply is None:
             return {"ok": False, "text": i18n.t(g.lang, "ai_error")}, 200
         state = reply_state(reply)
-        key, icon = REPLY_STATES[state]
+        key, icon = reply_label(reply)
         return {
             "ok": True, "text": reply.text, "source": reply.source, "state": state,
             "source_label": i18n.t(g.lang, key), "source_icon": icon,

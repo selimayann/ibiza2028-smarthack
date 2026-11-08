@@ -25,7 +25,7 @@
     <div class="msg-row"><span class="msg-volt">{{ volt("asteapta") }}</span><p class="msg msg-bot">{{ T('ai_welcome')|format(fmt_time(a.started_at)) if a.started_at is not none else T('ai_welcome_nodate') }}</p></div>
     {% if a.question and a.reply %}
       <p class="msg msg-user"><span class="sr-only">{{ T('ask_you') }} </span>{{ a.question }}</p>
-      {% set src_key, src_icon = REPLY_STATES[a.state] %}
+      {% set src_key, src_icon = a.src or REPLY_STATES[a.state] %}
       <div class="msg-row msg-row-{{ a.state }}"><span class="msg-volt">{{ volt(a.state) }}</span>
       <div class="msg msg-bot" id="ask-answer" tabindex="-1">
         <p class="ask-a">{{ a.reply.text }}</p>

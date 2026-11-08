@@ -238,18 +238,30 @@ def vectors() -> Optional[dict[str, list[float]]]:
     return {i: _unit(v) for i, v in vecs.items()}
 
 
-def hybrid_search(question: str, k: int = 3, embed=None) -> list[Hit]:
-    """Căutarea pentru RAG: după sens (vectorul întrebării de la `embed`) combinat cu BM25, prin RRF ponderat.
-    `embed(texts) -> list[vector]` vine de la Ollama local; dacă lipsește, cade sau nu are fișierul: doar BM25."""
+SIM_MIN = 0.50   # asemănarea minimă (cosinus, bge-m3) ca o întrebare neînțeleasă să primească o intrare: măsurat,
+                 # întrebările fără legătură (rețete, mașini, teme) ajung la cel mult ~0.47, cele bune au mediana ~0.60
+
+
+def semantic_scores(question: str, embed) -> Optional[dict[str, float]]:
+    """Asemănarea (cosinus) întrebării cu fiecare intrare, sau None fără vectori / fără Ollama."""
     vecs = vectors() if embed is not None else None
     if vecs is None:
-        return search(question, k)
+        return None
     try:
         qv = _unit(embed([question])[0])
-    except Exception:  # Ollama oprit / model lipsă: căutarea obișnuită
+    except Exception:  # Ollama oprit / model lipsă
+        return None
+    return {i: sum(a * b for a, b in zip(qv, v)) for i, v in vecs.items()}
+
+
+def hybrid_search(question: str, k: int = 3, embed=None, sims: Optional[dict[str, float]] = None) -> list[Hit]:
+    """Căutarea pentru RAG: după sens (vectorul întrebării de la `embed`) combinat cu BM25, prin RRF ponderat.
+    `embed(texts) -> list[vector]` vine de la Ollama local; dacă lipsește, cade sau nu are fișierul: doar BM25."""
+    sims = sims if sims is not None else semantic_scores(question, embed)
+    if sims is None:   # fără vectori sau Ollama oprit: căutarea obișnuită
         return search(question, k)
     entries = {e["id"]: e for e in load()["entries"]}
-    sem = sorted(vecs, key=lambda i: -sum(a * b for a, b in zip(qv, vecs[i])))
+    sem = sorted(sims, key=lambda i: -sims[i])
     bm = [h.id for h in search(question, len(entries))]
     score: dict[str, float] = {}
     for pos, i in enumerate(bm):
@@ -278,7 +290,11 @@ def context(question: str, lang: str = "ro", k: int = 2, max_chars: int = 1600, 
     """Fragmentele pentru modelul local (RAG): [{"id", "question", "text", "note"}], tăiate la max_chars în total.
     Cu `embed` (Ollama local), căutarea e după sens + BM25; fără, doar BM25."""
     out, used = [], 0
-    for h in hybrid_search(question, k, embed):
+    hits = hybrid_search(question, k + 2, embed)
+    # Textele de refuz („Nu te pot ajuta cu asta…”, categoria Etică) intră doar dacă sunt primul rezultat: ca al
+    # doilea fragment, modelul le lipea la un răspuns bun.
+    hits = [h for n, h in enumerate(hits) if n == 0 or h.entry.get("category") != "Etică"][:k]
+    for h in hits:
         text = answer_text(h.entry, lang)
         if used + len(text) > max_chars:
             text = text[: max(0, max_chars - used)]

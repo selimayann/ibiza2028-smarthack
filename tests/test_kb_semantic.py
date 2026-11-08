@@ -54,3 +54,46 @@ def test_rag_context_uses_the_local_embedder(monkeypatch):
     monkeypatch.setattr(local_llm, "default_embedder", lambda: fake_embed_towards("F4"))
     ctx = a._kb_context("ce e asta cu reteaua aia separata", "ro")
     assert ctx and ctx[0]["id"] == "F4"
+
+
+# --- răspunsul de bază, intenția și sursa (problemele găsite cu modelul real) ---------------------------------
+
+def test_what_is_http_gives_the_definition_and_the_scan_problem():
+    from netscan.engine.parser import analyze_file
+    from pathlib import Path
+    v4 = analyze_file(str(Path(__file__).parent.parent / "fixtures" / "validation" / "V4_legacy.xml"))
+    for q, lang in (("ce inseamna http", "ro"), ("ce inseamna https", "ro"), ("what is http", "en")):
+        text, intent = a.fallback_answer(q, v4, lang)
+        assert intent == "glossary" and text.startswith("HTTP / HTTPS")
+        assert "192.168.1.1 (port 80)" in text.splitlines()[1]
+    assert a.fallback_answer("ce e telnet", v4, "ro")[1] == "code"      # telnet rămâne problema din scanare
+
+
+def test_why_lost_points_is_the_score_explanation():
+    from netscan.engine.parser import analyze_file
+    from pathlib import Path
+    v4 = analyze_file(str(Path(__file__).parent.parent / "fixtures" / "validation" / "V4_legacy.xml"))
+    assert a.fallback_answer("de ce am pierdut puncte", v4, "ro")[1] == "score_how"
+
+
+def test_refusal_texts_are_never_a_second_rag_fragment():
+    ctx = kb.context("ce e retea pentru oaspeti", "ro", embed=fake_embed_towards("F4"))
+    assert ctx[0]["id"] == "F4" and all(kb.get(c["id"])["category"] != "Etică" for c in ctx[1:])
+
+
+def test_unknown_question_uses_meaning_with_a_threshold(monkeypatch):
+    monkeypatch.setattr(local_llm, "default_embedder", lambda: fake_embed_towards("F2"))
+    assert a.kb_answer("cum ajung in meniul routerului", a.INTENT_UNKNOWN, "ro")[1] == "F2"
+    far = [0.0] * len(next(iter(kb.vectors().values())))
+    far[0] = 1.0                                   # un vector care nu seamănă cu nicio intrare: sub SIM_MIN
+    monkeypatch.setattr(local_llm, "default_embedder", lambda: (lambda texts: [far for _ in texts]))
+    if max(sum(x * y for x, y in zip(kb._unit(far), v)) for v in kb.vectors().values()) < kb.SIM_MIN:
+        assert a.kb_answer("spune-mi o reteta de clatite", a.INTENT_UNKNOWN, "ro") is None
+
+
+def test_timeout_is_not_shown_as_a_caught_ai_mistake():
+    from netscan.ui.app import reply_label, reply_state
+    slow = a.Answer("text", "fallback", "first", ["LLM_ERROR"])
+    caught = a.Answer("text", "fallback", "first", ["PORT"])
+    assert reply_state(slow) == "fara-ai" and reply_label(slow)[0] == "ask_src_slow"
+    assert reply_state(caught) == "prins" and reply_label(caught)[0] == "ask_src_caught"

@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 
 DEFAULT_URL = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "qwen2.5:7b"
-DEFAULT_TIMEOUT = 30.0
+DEFAULT_TIMEOUT = 60.0   # fără placă video, qwen2.5:3b răspunde în ~20–35 s pe un laptop obișnuit
 DEFAULT_KEEP_ALIVE = "30m"   # modelul rămâne încărcat în placa video între întrebări (demo)
 MAX_ANSWER_CHARS = 1200
 LOCAL_HOSTS = frozenset({"127.0.0.1", "::1"})
@@ -98,7 +98,7 @@ def make_llm(env: Optional[dict] = None, opener_factory: Callable = _no_proxy_op
             "prompt": build_prompt(context),
             "stream": False,
             "keep_alive": keep_alive,
-            "options": {"temperature": 0.2, "num_predict": 220},
+            "options": {"temperature": 0.2, "num_predict": 140},
         }).encode("utf-8")
         req = urllib.request.Request(f"{base}/api/generate", data=body,
                                      headers={"Content-Type": "application/json"}, method="POST")
