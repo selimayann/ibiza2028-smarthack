@@ -67,7 +67,7 @@ TEMPLATES: dict[str, dict] = {
         "text": "A program on this device is an old version with security bugs that attackers already know about. "
                 "For some of them there are ready-made tools that break in automatically.",
         "steps": [
-            "Update the old program (its name is under \"Evidence\") or the device firmware.",
+            "Update the old program or the device firmware to the latest version.",
             "If there are no more updates, turn off the service or replace the device.",
             "Turn on automatic updates if the device has them.",
         ],

@@ -107,8 +107,11 @@ def test_smb_first_step_says_where():
     assert RO["SMB_EXPOSED"]["steps"][3] == "Instalează toate actualizările sistemului."
 
 
-def test_outdated_first_step_points_to_the_evidence():
-    assert "„Dovadă”" in RO["OUTDATED_SERVICE"]["steps"][0] and '"Evidence"' in EN["OUTDATED_SERVICE"]["steps"][0]
+def test_outdated_first_step_reads_well_on_its_own():
+    # Pasul apare și în fraza-rezumat de pe Acasă („Începe cu …: <pas>”), deci trebuie să sune bine singur.
+    # Numele programului vechi e afișat lângă, la „Dovadă”, pe cardul cu cel mai periculos dispozitiv.
+    for steps in (RO["OUTDATED_SERVICE"]["steps"], EN["OUTDATED_SERVICE"]["steps"]):
+        assert "(" not in steps[0] and "Dovadă" not in steps[0] and "Evidence" not in steps[0]
 
 
 @pytest.mark.parametrize("lang", LANGS)

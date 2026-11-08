@@ -70,7 +70,7 @@ TEMPLATES: dict[str, dict] = {
         "harm": "Cineva poate folosi o unealtă gata făcută ca să intre în dispozitiv.",
         "text": "Un program de pe acest dispozitiv e o versiune veche, cu greșeli pe care atacatorii le știu deja. Pentru unele există unelte gata făcute care intră singure.",
         "steps": [
-            "Actualizează programul vechi (numele lui e la „Dovadă”) sau firmware-ul dispozitivului.",
+            "Actualizează programul vechi sau firmware-ul dispozitivului la ultima versiune.",
             "Dacă nu mai are actualizări, oprește serviciul sau schimbă dispozitivul.",
             "Pornește actualizările automate, dacă există.",
         ],
