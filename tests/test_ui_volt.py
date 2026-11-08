@@ -40,7 +40,8 @@ def test_ai_off_shows_waiting_volt_and_no_ai_state(tmp_path, monkeypatch):
     monkeypatch.delenv("NETSCAN_LOCAL_LLM", raising=False)
     client, _ = make_client(tmp_path, [sample()])
     html = client.get("/?ask=1").get_data(as_text=True)
-    assert 'id="volt-tpl"' in html and "s-asteapta" in html
+    # mascota (chenarul cu 3 puncte) e doar în antetul ferestrei; mesajele nu mai au mascota lângă ele
+    assert 'class="chat-avatar" aria-hidden="true"><svg class="fab-dots"' in html and "msg-volt" not in html
     data = client.get("/api/ask?scan=0&q=" + quote("Ce fac întâi?")).get_json()
     assert data["state"] == "fara-ai" and data["source_icon"] == "info"
     html = client.get("/?q=" + quote("Ce fac întâi?")).get_data(as_text=True)

@@ -1446,3 +1446,11 @@ details.live-open { border-top: 0; padding-top: 0; margin-top: var(--s-2, .5rem)
   0%, 60%, 100% { opacity: .35; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-3px); }
 }
+
+/* Fereastra de chat: mascota (chenarul cu 3 puncte) doar în antet. Mesajele tale: negru pe alb (dreapta);
+   răspunsurile asistentului: alb pe albastru (stânga), ca să se distingă dintr-o privire. Albul pe #3333FF: 6,9:1. */
+.chat-avatar .fab-dots { width: 1.75rem; height: 1.75rem; }
+.chat-log .msg-bot { background: var(--brand); color: var(--brand-ink); border: 0; }
+.chat-log .msg-bot .msg-src, .chat-log .msg-bot.msg-thinking { color: var(--brand-ink); }
+.chat-log .msg-bot .msg-src .icon { color: var(--brand-ink); --eel-eye: var(--brand); }
+.chat-log .msg-user { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }

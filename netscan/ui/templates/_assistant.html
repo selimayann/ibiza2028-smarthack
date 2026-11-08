@@ -1,7 +1,6 @@
 {# FR-12 + D8: asistentul AI, ca buton fix + fereastră de chat (<dialog> nativ).
    Fără JavaScript: butonul reîncarcă pagina cu fereastra deschisă, iar formularele sunt GET obișnuite.
    Întrebarea și răspunsul sunt text simplu (autoescape); în JS se pun doar cu textContent. #}
-{% from "_volt.html" import volt %}
 {% set a = assistant %}
 {# Scanarea se păstrează după fișier + dată (a.ref), nu după poziția în listă. #}
 {% macro ref_fields(ref) %}{% for k, v in ref.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}{% endmacro %}
@@ -12,7 +11,7 @@
 
 <dialog class="chat" id="chat" aria-labelledby="chat-h"{% if a.open %} open{% endif %} data-api="{{ a.api }}" data-thinking="{{ T('ai_thinking') }}" data-error="{{ T('ai_error') }}" data-you="{{ T('ask_you') }}">
   <div class="chat-head">
-    <div class="chat-avatar" aria-hidden="true">{{ volt("asteapta") }}</div>
+    <div class="chat-avatar" aria-hidden="true"><svg class="fab-dots" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path class="b" d="M18 8 H46 A14 14 0 0 1 60 22 V38 A14 14 0 0 1 46 52 H24 L12 60 V50.6 A14 14 0 0 1 4 38 V22 A14 14 0 0 1 18 8 Z"/><circle class="d d1" cx="20" cy="30" r="4.5"/><circle class="d d2" cx="32" cy="30" r="4.5"/><circle class="d d3" cx="44" cy="30" r="4.5"/></svg></div>
     <div class="chat-title">
       <h2 id="chat-h">{{ T('ai_title') }}</h2>
       <p class="chat-badge{% if not a.llm_on %} off{% endif %}"><span class="dot" aria-hidden="true"></span>{{ T('ai_badge_on') if a.llm_on else T('ai_badge_off') }}</p>
@@ -23,20 +22,17 @@
   </div>
 
   <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="{{ T('ai_log') }}" tabindex="-1">
-    <div class="msg-row"><span class="msg-volt">{{ volt("asteapta") }}</span><p class="msg msg-bot">{{ T('ai_welcome')|format(fmt_time(a.started_at)) if a.started_at is not none else T('ai_welcome_nodate') }}</p></div>
+    <div class="msg-row"><p class="msg msg-bot">{{ T('ai_welcome')|format(fmt_time(a.started_at)) if a.started_at is not none else T('ai_welcome_nodate') }}</p></div>
     {% if a.question and a.reply %}
       <p class="msg msg-user"><span class="sr-only">{{ T('ask_you') }} </span>{{ a.question }}</p>
       {% set src_key, src_icon = a.src or REPLY_STATES[a.state] %}
-      <div class="msg-row msg-row-{{ a.state }}"><span class="msg-volt">{{ volt(a.state) }}</span>
+      <div class="msg-row msg-row-{{ a.state }}">
       <div class="msg msg-bot" id="ask-answer" tabindex="-1">
         <p class="ask-a">{{ a.reply.text }}</p>
         <p class="msg-src"><svg class="icon" aria-hidden="true"><use href="#i-{{ src_icon }}"/></svg>{{ T(src_key) }}</p>
       </div></div>
     {% endif %}
   </div>
-
-  {# Pentru app.js: Volt în fiecare stare, clonat lângă bula de răspuns (nu se afișează singur). #}
-  <template id="volt-tpl">{% for st in ('gandeste', 'verificat', 'prins', 'fara-ai') %}{{ volt(st) }}{% endfor %}</template>
 
   <form class="chat-suggest" method="get" action="{{ a.action }}#chat" data-chat-form aria-label="{{ T('ask_examples') }}">
     {{ ref_fields(a.ref) }}
