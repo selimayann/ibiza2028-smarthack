@@ -19,7 +19,7 @@
         <label for="scan">{{ T('shown_scan') }}</label>
         <div class="picker-row">
           <select id="scan" name="file" data-autosubmit>
-            {% for s in scan_list %}<option value="{{ s.file }}" title="{{ s.file }}"{% if loop.index0 == selected %} selected{% endif %}>{{ T('scan_option')|format(s.file, s.score) if s.status == 'ok' else T('scan_option_error')|format(s.file) }}</option>{% endfor %}
+            {% for s in scan_list %}<option value="{{ s.file }}" title="{{ s.file }}"{% if loop.index0 == selected %} selected{% endif %}>{{ (T('scan_option_nodev')|format(s.file) if not s.hosts else T('scan_option')|format(s.file, s.score)) if s.status == 'ok' else T('scan_option_error')|format(s.file) }}</option>{% endfor %}
           </select>
           <button type="submit" class="button-secondary">{{ T('show') }}</button>
         </div>
