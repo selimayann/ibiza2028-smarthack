@@ -80,18 +80,21 @@
   {% if live.msg %}<p class="live-msg" id="live-said" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('live_msg_' ~ live.msg) }}</p>{% endif %}
 
   {% if live.status == 'off' %}
+    {# Oprită: un rând. Pornirea (cu confirmare), scanarea completă și explicațiile stau într-un singur acordeon;
+       doar o scanare în curs rămâne la vedere. #}
     <p class="live-off-line"><strong>{{ T('live_section_off') }}</strong> {{ T('live_off_short') }}</p>
-    <form class="consent-form" method="post" action="{{ url_for('live_start') }}" data-swap="#live" data-focus="#live-said, #live-h">
-      {{ token_field() }}
-      <label class="consent"><input type="checkbox" name="confirm" value="1" required><span>{{ T('consent_live') }}</span></label>
-      {# Ușa-capcană: separată și nebifată implicit; fără ea, protecția live nu ascultă pe niciun port #}
-      <label class="consent consent-optional"><input type="checkbox" name="trap" value="1"><span>{{ T('trap_optin') }}</span></label>
-      <div><button type="submit" class="button-secondary"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('live_start') }}</button></div>
-    </form>
-    {% if scan_has_news %}{{ scan_block() }}{% endif %}
-    <details class="live-more">
-      <summary>{{ T('live_more') }}</summary>
+    {% if scan_busy %}{{ scan_block() }}{% endif %}
+    <details class="live-more"{% if live.msg %} open{% endif %}>
+      <summary>{{ T('live_open_controls') }}</summary>
       <div class="fold-body">
+        <form class="consent-form" method="post" action="{{ url_for('live_start') }}" data-swap="#live" data-focus="#live-said, #live-h">
+          {{ token_field() }}
+          <label class="consent"><input type="checkbox" name="confirm" value="1" required><span>{{ T('consent_live') }}</span></label>
+          {# Ușa-capcană: separată și nebifată implicit; fără ea, protecția live nu ascultă pe niciun port #}
+          <label class="consent consent-optional"><input type="checkbox" name="trap" value="1"><span>{{ T('trap_optin') }}</span></label>
+          <div><button type="submit" class="button-secondary"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('live_start') }}</button></div>
+        </form>
+        {% if not scan_busy %}{{ scan_block() }}{% endif %}
         <p class="live-lead">{{ T('live_off_body') }}</p>
         <ul class="live-explain">
           <li>{{ T('live_explain_1') }}</li>
@@ -100,7 +103,6 @@
         </ul>
         <p class="live-safe"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{{ T('live_explain_safe') }}</p>
         <p class="live-note">{{ live.trap_note }}</p>
-        {% if not scan_has_news %}{{ scan_block() }}{% endif %}
       </div>
     </details>
   {% elif live.status == 'paused' %}
@@ -124,14 +126,12 @@
           {% else %}{{ T('live_trap_off') }}{% endif %}
         </dd></div>
     </dl>
-    <p class="live-note">{{ live.trap_note }}</p>
 
     {% if live.starting %}
       <p class="live-starting">{{ T('live_starting') }}</p>
     {% else %}
       <h3 class="live-sub">{{ T('live_devices') }}</h3>
       {% if live.devices %}
-      <p class="live-help">{{ T('live_doors_help') }}</p>
       <div class="table-wrap">
         <table class="live-table">
           <thead><tr>
@@ -187,7 +187,14 @@
       {% else %}
         <p class="muted">{{ T('live_no_devices') }}</p>
       {% endif %}
-      <p class="live-note">{{ T('live_note_scan') }}</p>
+      <details class="live-more">
+        <summary>{{ T('live_how') }}</summary>
+        <div class="fold-body">
+          <p class="live-help">{{ T('live_doors_help') }}</p>
+          <p class="live-note">{{ T('live_note_scan') }}</p>
+          <p class="live-note">{{ live.trap_note }}</p>
+        </div>
+      </details>
     {% endif %}
 
     <h3 class="live-sub">{{ T('live_events') }}</h3>

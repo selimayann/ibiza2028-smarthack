@@ -66,7 +66,9 @@
         <p>{% if ev.port is not none %}{{ T('trap_text')|format(ev.ip, fmt_time(ev.ts), ev.port) }}{% else %}{{ T('trap_text_noport')|format(ev.ip, fmt_time(ev.ts)) }}{% endif %}</p>
         {% if ev.ip in known %}<p><a href="{{ url_for('device', device_id=known[ev.ip][0], **known[ev.ip][1]) }}">{{ T('trap_device') }}<span class="sr-only"> {{ ev.ip }}</span></a></p>{% endif %}
       {% else %}
-        <p>{{ ev.text_ro if lang == 'ro' else ev.text_en }}</p>
+        {# Textul salvat de monitor poate conține codul catalogului: îl afișăm cu numele pe înțeles #}
+        {%- set txt = ev.text_ro if lang == 'ro' else ev.text_en -%}
+        <p>{{ txt|replace(ev.code, '„' ~ code_name(ev.code) ~ '”') if ev.code and ev.code in txt else txt }}</p>
       {% endif %}
     </div>
   </li>

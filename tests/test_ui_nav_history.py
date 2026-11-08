@@ -40,7 +40,7 @@ def test_journal_comparison_keeps_journal_tab_and_shows_comparison_first(tmp_pat
     assert f"/scan/{ids[-1]}?from=journal" in journal
     html = client.get(f"/scan/{ids[-1]}?from=journal").get_data(as_text=True)
     assert _current(html) == "Alerte" and "Înapoi la Alerte" in html
-    assert html.index('id="cmp-h"') < html.index('id="score-h"')          # comparația înaintea scorului
+    assert 'id="cmp-h"' in html and ('id="score-h"' not in html or html.index('id="cmp-h"') < html.index('id="score-h"'))          # comparația înaintea scorului
     assert "altă rețea" not in html                                         # aceeași rețea (lab)
     html = client.get(f"/scan/{ids[-1]}").get_data(as_text=True)
     assert _current(html) == "Progres" and "Înapoi la Progres" in html

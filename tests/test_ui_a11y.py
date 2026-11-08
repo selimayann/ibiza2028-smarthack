@@ -117,7 +117,7 @@ def test_big_number_is_the_engine_score_and_severity_has_words(tmp_path):
     html = _home(tmp_path)
     assert f'<span class="score-num">{scan.score}</span>' in html
     assert "Risc ridicat" in html and "#i-high" in html    # pictogramă + cuvânt, nu doar culoare
-    assert "Cum se calculează scorul?" in html
+    assert "Detalii despre scor" in html
 
 
 def test_live_panel_off_is_compact_with_required_consent(tmp_path):
@@ -169,7 +169,7 @@ def test_device_page_summary_jump_list_and_technical_details(tmp_path):
     c, _ = _client(tmp_path, [scan])
     worst = max({f.device_id for f in scan.findings}, key=lambda d: sum(f.points for f in scan.findings if f.device_id == d))
     html = c.get(f"/device/{worst}").get_data(as_text=True)
-    assert "Probleme:" in html and "Fă asta întâi" in html and 'class="problem-index"' in html
+    assert "Probleme:" in html and "Fă asta întâi" in html and '<details class="problem card"' in html
     main = _outside_details(html)
     for f in scan.findings:
         if f.device_id == worst:

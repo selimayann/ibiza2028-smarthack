@@ -106,8 +106,8 @@ def test_save_from_the_device_page_and_show_everywhere(tmp_path):
     assert "192.168.1.40" in device                                      # IP-ul rămâne lângă nume
 
     overview = page(client, "/")
-    worst = re.search(r'<p class="worst-device">(.*?)</p>', overview, re.S).group(1)
-    assert NAME in worst and "192.168.1.40" in worst                     # cardul „cel mai periculos”: nume + IP mic
+    worst = re.search(r'class="worst-device">(.*?)</h2>', overview, re.S).group(1)
+    assert NAME in worst and '<p class="worst-ip mono" translate="no">192.168.1.40' in overview                     # cardul „cel mai periculos”: nume + IP mic
     rows = re.findall(r'<p class="dev-name">(.*?)</p>', overview, re.S)
     assert any(NAME in r for r in rows)                                  # lista dispozitivelor
     assert "Cameră" in overview                                          # tipul rămâne ca sub-titlu
