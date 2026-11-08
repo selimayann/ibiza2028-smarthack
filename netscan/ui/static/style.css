@@ -1481,3 +1481,10 @@ details > summary, details > summary:hover, details[open] > summary,
 details > summary *, details > summary:hover * { text-decoration: none !important; }
 /* În „Ce vede cineva care ascultă”, titlul figurii repeta textul butonului: rămâne doar pentru cititorul de ecran */
 .eaves-details .eaves-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+/* „Ai trecut prin toți pașii”: fundal neutru (nu toate sunt reparate: unele doar bifate sau acceptate), titlul verde cu bifă,
+   ce s-a întâmplat ca etichete, iar cele două acțiuni ca butoane egale (nu un buton și un link). */
+.do-first.do-first-done { background: var(--surface); border-color: var(--line); gap: .6rem; }
+.do-first.do-first-done { display: flex; flex-direction: column; }
+.done-tally { margin: .1rem 0 .15rem; }
+.do-first-done .do-first-for { margin: 0; }
+.do-first-done .do-first-actions { margin-top: .3rem; }

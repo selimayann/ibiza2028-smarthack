@@ -79,14 +79,22 @@
           </details>
         </div>
         {% else %}
+        {# Toți pașii parcurși: un titlu, ce s-a întâmplat ca etichete (doar ce nu e zero), o notă scurtă, două butoane egale #}
         <div class="do-first do-first-done">
           <p class="do-first-label" id="step-now" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('steps_all_done') }}</p>
-          <p class="do-first-for">{{ T('steps_all_done_hint')|format(steps.verified_count, steps.declared_count) }}</p>
-          {% if steps.accepted_count %}<p class="do-first-for">{{ plural(steps.accepted_count, 'steps_all_done_accepted') }}</p>{% endif %}
+          {% if steps.verified_count or steps.declared_count or steps.accepted_count %}
+          <p class="sev-chips done-tally">
+            {%- if steps.verified_count %}<span class="sev-chip sev-chip-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ plural(steps.verified_count, 'done_verified') }}</span>{% endif -%}
+            {%- if steps.declared_count %}<span class="sev-chip sev-chip-info"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ plural(steps.declared_count, 'done_declared') }}</span>{% endif -%}
+            {%- if steps.accepted_count %}<span class="sev-chip sev-chip-info"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ plural(steps.accepted_count, 'done_accepted') }}</span>{% endif -%}
+          </p>
+          {% endif %}
+          {% if steps.declared_count %}<p class="do-first-for">{{ T('done_note_declared') }}</p>{% endif %}
+          {% if steps.accepted_count %}<p class="do-first-for">{{ T('done_note_accepted') }}</p>{% endif %}
           <div class="do-first-actions">
-            <a class="button button-secondary" href="{{ url_for('overview', step=1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now">{{ T('step_review') }}</a>
+            <a class="button button-secondary" href="{{ url_for('overview', step=1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now"><svg class="icon" aria-hidden="true"><use href="#i-list"/></svg>{{ T('step_review') }}</a>
             <form method="post" action="{{ url_for('action_reset') }}" data-swap="#summary, #score, #worst" data-focus="#step-now">
-              {{ hidden }}<button type="submit" class="button-link">{{ T('step_reset') }}</button>
+              {{ hidden }}<button type="submit" class="button-secondary"><svg class="icon" aria-hidden="true"><use href="#i-reset"/></svg>{{ T('step_reset') }}</button>
             </form>
           </div>
         </div>
