@@ -260,7 +260,7 @@ def test_pacer_limits_attempts_per_second():
 
 def test_snapshot_and_persisted_events_never_contain_a_full_mac(tmp_path):
     net = Net()
-    text = "Interface: 172.20.10.10 --- 0xb\n  172.20.10.1  66-48-42-94-c3-64  dynamic\n"
+    text = "Interface: 172.20.10.10 --- 0xb\n  172.20.10.1  66-48-42-00-00-01  dynamic\n"
     m = make(net, tmp_path, persist=True,
              read_table=lambda info: neighbors.parse_windows_arp(text, info.ip, info.cidr))
     sweep(m, T0)

@@ -63,7 +63,7 @@ def _normalize_mac(raw: str) -> Optional[str]:
 
 
 def mask_mac(raw: str) -> Optional[str]:
-    """„66-48-42-94-c3-64” -> „66:48:42:XX:XX:XX”. None dacă nu e MAC-ul unui dispozitiv."""
+    """„66-48-42-00-00-01” -> „66:48:42:XX:XX:XX”. None dacă nu e MAC-ul unui dispozitiv."""
     mac = _normalize_mac(raw)
     return None if mac is None else mac[:8] + ":XX:XX:XX"
 
@@ -109,7 +109,7 @@ def parse_windows_arp(text: str, own_ip: str, cidr: str) -> dict[str, Neighbor]:
 
 
 def parse_macos_arp(text: str, own_ip: str, cidr: str) -> dict[str, Neighbor]:
-    """`arp -an -i <iface>`: „? (172.20.10.1) at 66:48:42:94:c3:64 on en0 …”; „(incomplete)” = absent."""
+    """`arp -an -i <iface>`: „? (172.20.10.1) at 66:48:42:00:00:01 on en0 …”; „(incomplete)” = absent."""
     net = ipaddress.IPv4Network(cidr, strict=False)
     out: dict[str, Neighbor] = {}
     for line in (text or "").splitlines()[:MAX_TABLE_LINES]:
