@@ -116,11 +116,14 @@
   </div>
 {%- endmacro %}
 
-{# Scorul ca etichetă: iconiță + număr + bandă (nu doar culoare). #}
-{% macro score_pill(score) -%}
+{# Scorul ca etichetă cu CONTUR (pagina „Progres”), ca etichetele de risc din „Dispozitive”:
+   iconiță + număr + bandă (nu doar culoare). Risc mare = roșu ca „Risc mare” (triunghi), De îmbunătățit = portocaliu
+   (romb), Bun = verde (bifă). Eticheta PLINĂ (band_chip) rămâne doar pentru verdictul de pe Acasă și din raport. #}
+{% macro score_tag(score) -%}
   {%- set b = score_band(score) -%}
   {%- set icon = {'good': 'good', 'fair': 'fair', 'poor': 'high'}[b] -%}
-  <span class="score-pill band-chip band-chip-{{ b }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ icon }}"/></svg><span class="num">{{ score }}</span> <span>{{ T('band_' ~ b) }}</span></span>
+  {%- set tone = {'good': 'ok', 'fair': 'medium', 'poor': 'high'}[b] -%}
+  <span class="score-tag sev-chip sev-chip-{{ tone }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ icon }}"/></svg><span class="num">{{ score }}</span> <span>{{ T('band_' ~ b) }}</span></span>
 {%- endmacro %}
 
 {# Banda scorului ca etichetă PLINĂ (verdictul pentru toată rețeaua); severitățile problemelor au doar contur. #}
