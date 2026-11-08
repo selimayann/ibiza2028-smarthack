@@ -351,7 +351,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if "names" not in g:
             g.names = {}   # numele anunțate apar doar lângă scanarea lor (vezi names_for), altfel nimic
         if "monitor" not in g:
-            g.monitor = extras.monitor_events()          # (evenimente, a rulat monitorul?)
+            g.monitor = extras.monitor_events(app.config["DB_PATH"])          # (evenimente, a rulat monitorul?)
         seen = request.cookies.get(SEEN_COOKIE, "0")
         seen = int(seen) if seen.isdigit() else 0
         new_alerts = sum(1 for e in g.monitor[0] if (e.ts or 0) > seen)
@@ -1058,7 +1058,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/journal")
     def journal_page():
-        g.monitor = extras.monitor_events()
+        g.monitor = extras.monitor_events(app.config["DB_PATH"])
         db = app.config["DB_PATH"]
         by_id = {s.id: s for s in storage.list_scans(db)}
         groups: list[dict] = []
@@ -1068,7 +1068,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             groups[-1]["alerts"].append(a)
         for grp in groups:   # porturile care sunt chiar portul unei probleme noi/rezolvate: pliate dedesubt
             grp["alerts"], grp["folded"] = fold_port_alerts(grp["alerts"])
-        events, monitor_ran = g.monitor if "monitor" in g else extras.monitor_events()
+        events, monitor_ran = g.monitor if "monitor" in g else extras.monitor_events(app.config["DB_PATH"])
         # Legătura spre pagina dispozitivului, dacă IP-ul apare în cea mai nouă scanare citibilă.
         scan_list, known = scans(), {}
         ok = [(i, s) for i, s in enumerate(scan_list) if s.status == "ok"]
@@ -1134,8 +1134,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         ip_of = {h.device_id: h.ip for h in (prev.hosts if prev else [])} | {h.device_id: h.ip for h in scan.hosts}
         ok = scan.status == "ok"
         worst = most_dangerous(scan)
+        # „Deschide această verificare”: aceeași scanare pe Acasă, dacă e încă în folderul afișat
+        live_copy = next((s for s in scans() if s.file == scan.file and s.started_at == scan.started_at), None)
         return render_template(
             "overview.html", scan=scan, scan_list=[], selected=0,
+            scan_file_ref=scan_ref(live_copy) if live_copy is not None else None,
             devices=rank_devices(scan), worst=worst,
             summary=summary_sentence(scan, worst),
             score_std=scan.score if ok else None, score_now=scan.score if ok else None, score_now_differs=False,

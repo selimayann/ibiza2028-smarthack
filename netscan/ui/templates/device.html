@@ -46,7 +46,6 @@
   {% if d.findings %}
     <p class="sum-line"><strong>{{ T('problems_count')|format(d.findings|length) }}</strong>
       <span class="sum-risk">{{ T('highest_risk') }} {{ sev(d.max_severity) }}</span></p>
-    {{ sev_counts(d.findings, 'sev-line', fixed_keys) }}
     {% if first_finding %}
       <p class="sum-first"><span class="muted">{{ T('do_first') }}</span> {{ explain(first_finding.code).steps[0] }}</p>
       {% if first_step %}
@@ -58,26 +57,20 @@
   {% endif %}
 </section>
 
-{% if d.findings|length > 2 %}
-<nav class="problem-index" aria-labelledby="jump-h">
-  <h2 id="jump-h" class="jump-title">{{ T('jump_title') }}</h2>
-  <ol>
-    {% for f in d.findings %}<li><a href="#p-{{ loop.index }}">{{ sev(f.severity) }} <span>{{ code_name(f.code) }}</span></a></li>{% endfor %}
-  </ol>
-</nav>
-{% endif %}
-
+{# Problemele: câte un acordeon pe problemă, în ordinea riscului; prima e deschisă. Titlul spune tot ce trebuie
+   ca să alegi; explicația, pașii și detaliile se văd la deschidere. #}
 <section aria-labelledby="f-h">
   <h2 id="f-h">{{ T('findings_title') }}</h2>
   {% for f in d.findings %}
     {% set ex = explain(f.code) %}
-    <article class="problem card" id="p-{{ loop.index }}" aria-labelledby="p-{{ loop.index }}-h">
-      <div class="problem-head">
-        <h3 id="p-{{ loop.index }}-h">{{ sev(f.severity) }}<span class="problem-name">{{ code_name(f.code) }}</span></h3>
-        <p class="problem-meta">{{ port_label(f) }}</p>
-      </div>
-      {% if f.key() in fixed_keys %}<p class="badges"><span class="tag tag-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('fixed_tag') }}</span></p>
-      {% elif f.key() in accepted_keys %}<p class="badges"><span class="tag">{{ T('accepted_tag') }}</span></p>{% endif %}
+    <details class="problem card" id="p-{{ loop.index }}"{% if loop.first %} open{% endif %}>
+      <summary class="problem-head">
+        <h3 class="problem-title" id="p-{{ loop.index }}-h">{{ sev(f.severity) }}<span class="problem-name">{{ code_name(f.code) }}</span></h3>
+        <span class="problem-meta">{{ port_label(f) }}</span>
+        {% if f.key() in fixed_keys %}<span class="tag tag-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('fixed_tag') }}</span>
+        {% elif f.key() in accepted_keys %}<span class="tag">{{ T('accepted_tag') }}</span>{% endif %}
+      </summary>
+      <div class="problem-body">
       <p class="problem-text">{{ ex.text }}</p>
       {{ harm_line(f.code) }}
       <h4>{{ T('how_to_fix') }}</h4>
@@ -112,7 +105,8 @@
           {% endif %}
         </div>
       </details>
-    </article>
+      </div>
+    </details>
   {% else %}
     <p class="notice">{{ T('no_findings') }}</p>
   {% endfor %}
@@ -131,10 +125,9 @@
 </details>
 {% endif %}
 
-<section aria-labelledby="p-h">
-  <h2 id="p-h">{{ T('ports_title') }}</h2>
+<section aria-label="{{ T('ports_title') }}">
   <details class="fold tech">
-    <summary>{{ T('for_technician') }} ({{ d.host.ports|length }})</summary>
+    <summary>{{ T('ports_title') }} · {{ T('for_technician') }} ({{ d.host.ports|length }})</summary>
     <div class="fold-body">
       <dl class="facts">
         <div><dt>{{ T('mac') }}</dt><dd class="mono">{{ d.host.mac_masked or T('unknown') }}</dd></div>

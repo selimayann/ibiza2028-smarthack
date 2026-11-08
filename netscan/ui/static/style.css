@@ -1204,3 +1204,139 @@ dialog.guide .mono { font-family: ui-monospace, Consolas, monospace; }
 /* Caseta „Progres după reparațiile confirmate”: scorul oficial se schimbă abia după o scanare nouă */
 .score-after p.after-note { display: block; margin-top: .3rem; padding-left: 1.4rem; color: var(--muted); }
 .do-first-actions .guide-open { margin-right: 0; }
+
+/* ---------- distill: mai puțin zgomot (impeccable distill + craft floor) ---------- */
+/* Rezumatul: subtitlul verdictului, nu un card */
+.summary, .summary-problems, .summary-calm { margin: var(--s-2) 0 0; padding: 0; background: none; border: 0; border-radius: 0; }
+.summary-text { font-family: inherit; font-size: var(--fs-2); font-weight: 400; line-height: 1.5; color: var(--ink); max-width: 62ch; }
+.verdict-head { padding-bottom: var(--s-4); }
+/* Cel mai periculos: un singur titlu, adresa mică dedesubt */
+h2.worst-device { font-size: var(--fs-3); line-height: 1.25; }
+h2.worst-device .worst-label { display: inline; font-size: inherit; font-weight: 600; color: var(--muted); }
+.worst-ip { color: var(--muted); font-size: 1rem; margin-top: .15rem; }
+.worst-issue { border-left: 0; padding: 0; margin-top: var(--s-3); }
+.worst-problem { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; font-size: var(--fs-2); }
+.worst-issue .harm, .harm { border-left: 0; border-radius: var(--radius-sm); }
+.fold-inline { margin-top: .35rem; }
+.fold-inline > summary { cursor: pointer; color: var(--link); text-decoration: underline; text-underline-offset: .18em; min-height: 2.75rem; display: inline-flex; align-items: center; }
+.fold-inline .worst-text { margin-top: .25rem; max-width: 65ch; }
+/* Pasul: o casetă calmă, fără bara groasă din stânga; un singur buton plin */
+.do-first, .do-first-verified, .do-first-done { border-left: 0; border: 1px solid var(--brand-line); border-radius: var(--radius); }
+.do-first-verified, .do-first-done { border-color: var(--good); }
+.step-nav { gap: .25rem 1rem; }
+.step-link { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.75rem; color: var(--link); text-decoration: underline; text-underline-offset: .18em; font-weight: 600; }
+.step-link .icon { width: 1em; height: 1em; }
+.ip-note, .proof-limits, .score-after { border-left: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.ip-note { padding: .6rem .9rem; }
+.open-check { margin: var(--s-4) 0; }
+/* Pagina dispozitivului: problemele ca acordeoane */
+details.problem { padding: 0; }
+details.problem > summary { list-style: none; cursor: pointer; padding: 1rem 1.3rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1rem; min-height: 2.75rem; }
+details.problem > summary::-webkit-details-marker { display: none; }
+details.problem > summary::before { content: ""; width: .55rem; height: .55rem; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); align-self: center; margin-right: .2rem; transition: transform .15s; }
+details.problem[open] > summary::before { transform: rotate(45deg); }
+details.problem > summary:hover .problem-name { text-decoration: underline; text-underline-offset: .18em; }
+.problem-title { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; font-family: var(--head); font-weight: 600; font-size: var(--fs-2); }
+.problem-body { padding: 0 1.3rem 1.2rem; }
+.problem-body .problem-text { margin-top: 0; }details.problem > summary.problem-head { flex-direction: row; align-items: baseline; }
+details.problem > summary::before { content: none; }
+details.problem > summary::after { content: ""; flex: none; width: .55rem; height: .55rem; margin-left: auto; align-self: center; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+details.problem[open] > summary::after { transform: rotate(-135deg); }
+/* ---------- accesibilitate (WCAG 2.2): ținte, reflow la 320px, focus pe graficul de progres ---------- */
+input[type="checkbox"], input[type="radio"] { width: 1.5rem; height: 1.5rem; flex: none; accent-color: var(--brand); }
+.trend-chart a:focus { outline: none; }
+.trend-chart a:focus-visible .trend-hit { fill: none; stroke: var(--focus); stroke-width: 3; }
+.trend-chart a:focus-visible .trend-dot { stroke: var(--focus); stroke-width: 3; }
+.trend-chart a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 26rem) {
+  .rtable, .history-table { table-layout: fixed; width: 100%; }
+  .rtable td, .rtable th { overflow-wrap: anywhere; word-break: break-word; }
+}
+@media (max-width: 26rem) { .delta { white-space: normal; } }
+
+/* ---------- design-audit: ierarhie calmă ---------- */
+.about-row { justify-content: flex-start; }
+.proof-title { font-size: var(--fs-3); }
+details.proof-still > summary { list-style: none; cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; }
+details.proof-still > summary::-webkit-details-marker { display: none; }
+details.proof-still > summary h3 { display: inline-flex; align-items: center; gap: .4rem; text-decoration: underline; text-underline-offset: .2em; text-decoration-color: var(--line-strong); }
+details.proof-still > summary h3::after { content: ""; width: .5rem; height: .5rem; margin-left: .5rem; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); }
+details.proof-still[open] > summary h3::after { transform: rotate(-135deg); }
+.proof .compare-col li .mono { color: var(--muted); }
+/* Acordeoanele se deschid lin (fără mișcare dacă sistemul cere „reduce motion”: regula globală) */
+@keyframes fold-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+details[open] > :not(summary) { animation: fold-in .18s cubic-bezier(.2, .8, .2, 1); }
+/* Butonul asistentului nu acoperă textul pe ecrane late */
+@media (min-width: 64rem) { main.wrap { padding-right: 6.5rem; } }
+details.proof-still > summary h3::after { content: none; }
+
+/* ---------- Kokonut: carduri aerisite, inelul scorului, meniu compact sus, intrare discretă ----------
+   Stilul componentelor KokonutUI (carduri cu colțuri mari, umbre fine, mișcare scurtă), refăcut în CSS simplu:
+   aplicația rămâne Flask + Jinja, fără React, fără CDN, compatibilă cu CSP-ul strict. */
+:root { --radius: 18px; --radius-sm: 12px;
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, .04), 0 10px 28px -10px rgba(16, 24, 40, .12); }
+body { background: radial-gradient(70rem 26rem at 15% -8rem, #E2E5FF 0, rgba(226, 229, 255, 0) 70%), var(--bg); }
+.card { border-color: #E3E9F2; }
+
+/* navigația: elementul curent e o „pastilă” (fundal + text îngroșat), nu doar o linie */
+.top nav a[aria-current="page"] { background: var(--brand-tint); border-bottom-color: transparent; border-radius: 999px; }
+
+/* rândul de sus: doar alegerea verificării + un meniu mic „Raport și istoric” */
+.about { border-bottom: 0; padding-bottom: 0; }
+.about-row { gap: var(--s-2) var(--s-3); }
+.about-menu { position: relative; }
+.about-menu > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; min-height: 2.75rem;
+  padding: .45rem 1rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); font-weight: 700; color: var(--ink); }
+.about-menu > summary::-webkit-details-marker { display: none; }
+.about-menu > summary:hover { border-color: var(--muted); }
+.about-menu .about-actions { position: absolute; z-index: 20; top: calc(100% + .5rem); left: 0; width: max-content; max-width: min(24rem, calc(100vw - 2rem));
+  display: flex; flex-direction: column; align-items: stretch; gap: .6rem; padding: 1rem; background: var(--surface);
+  border: 1px solid #E3E9F2; border-radius: var(--radius); box-shadow: var(--shadow-1); }
+.about-menu .about-actions .button, .about-menu .about-actions button { width: 100%; justify-content: center; }
+.about-menu .about-all { padding: .25rem 0; }
+.about-menu .saved { margin: 0; }
+
+/* verdictul: titlul mare, propoziția dedesubt mai liniștită */
+.verdict-head { margin-top: var(--s-5); }
+.verdict-title { letter-spacing: -.02em; }
+.verdict-head .summary-text { font-family: inherit; font-weight: 400; font-size: 1.1875rem; color: var(--muted); }
+
+/* cardul scorului: inel în loc de bară */
+.score { align-items: center; text-align: center; }
+.score-label { font-size: 1rem; color: var(--muted); }
+.ring-wrap { position: relative; width: 11rem; height: 11rem; margin: .25rem auto 0; }
+.score-ring { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.ring-track { fill: none; stroke: #E6ECF4; stroke-width: 10; }
+.ring-fill { fill: none; stroke: currentColor; stroke-width: 10; stroke-linecap: round; }
+.ring-wrap .score-value { position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 0; margin: 0; }
+.ring-wrap .score-num { font-size: 3.5rem; }
+.ring-wrap .score-of { font-size: 1rem; }
+.score-band { justify-content: center; }
+.score .how-score { align-self: stretch; text-align: left; }
+
+/* cel mai periculos dispozitiv: mai puține cutii în cutii */
+.worst { padding: var(--s-5); }
+.worst .harm { background: transparent; border-left: 0; padding: 0; border-radius: 0; color: var(--muted); }
+.worst .harm strong { font-weight: 700; }
+.do-first { background: linear-gradient(180deg, var(--brand-tint), #FBFBFF); border: 1px solid var(--brand-line); border-radius: var(--radius); }
+.more-body .step-howto { margin-top: 0; }
+
+/* butonul principal: puțină adâncime, ca să fie evident unde apeși */
+.button-primary { box-shadow: 0 1px 2px rgba(51, 51, 255, .25), 0 8px 18px -8px rgba(51, 51, 255, .55); }
+
+/* listele: rândul se luminează la trecerea mouse-ului */
+.dev-row, .device-row { border-radius: var(--radius-sm); transition: background-color .15s ease; }
+.dev-row:hover, .device-row:hover { background: rgba(238, 240, 255, .55); }
+
+/* intrare discretă, în trepte (doar dacă utilizatorul nu a cerut mișcare redusă) */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes kk-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .verdict-head, .verdict > .score, .verdict > .worst, main .section, .live-panel { animation: kk-rise .45s cubic-bezier(.2, .7, .2, 1) both; }
+  .verdict > .score { animation-delay: .06s; }
+  .verdict > .worst { animation-delay: .12s; }
+  main .section { animation-delay: .18s; }
+  .ring-fill { animation: kk-ring .9s cubic-bezier(.2, .7, .2, 1) .15s both; }
+  @keyframes kk-ring { from { stroke-dasharray: 0 100; } }
+  .button-primary { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
+  .button-primary:hover { transform: translateY(-1px); }
+}

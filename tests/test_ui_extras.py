@@ -41,7 +41,7 @@ def install(monkeypatch, name, **attrs):
 
 def fake_local_data(monkeypatch, alerts=(), trap=()):
     data = {"alerts": list(alerts), "trap": list(trap)}
-    install(monkeypatch, "local_data", alerts_path=lambda: "alerts", trap_path=lambda: "trap",
+    install(monkeypatch, "local_data", alerts_path=lambda *a: "alerts", trap_path=lambda *a: "trap",
             read_events=lambda path: data[path])
 
 

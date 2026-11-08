@@ -66,8 +66,9 @@
         {% endfor %}
         <path class="trend-line" d="{{ trend.path }}" aria-hidden="true"/>
         {% for p in trend.points %}
-          <a href="{{ url_for('history_scan', scan_id=p.scan_id) }}" aria-label="{{ T('trend_point')|format(fmt_time(p.started_at), p.score) }}">
-            <title>{{ fmt_time(p.started_at) }}: {{ p.score }}</title>
+          {# Numele linkului = exact textul din <title> (WCAG 2.5.3: eticheta vizibilă e în numele accesibil) #}
+          <a href="{{ url_for('history_scan', scan_id=p.scan_id) }}">
+            <title>{{ T('trend_point')|format(fmt_time(p.started_at), p.score) }}</title>
             <circle class="trend-hit" cx="{{ p.x }}" cy="{{ p.y }}" r="14"/>
             <circle class="trend-dot" cx="{{ p.x }}" cy="{{ p.y }}" r="5"/>
           </a>

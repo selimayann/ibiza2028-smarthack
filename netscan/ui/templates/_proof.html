@@ -28,10 +28,11 @@
       <h3><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('proof_fixed')|format(proof.fixed|length) }}</h3>
       {{ proof_list(proof.fixed|sort(attribute='finding.points', reverse=true), 'fixed') }}
     </div>
-    <div class="compare-col compare-warn">
-      <h3><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('proof_still')|format(proof.still|length) }}</h3>
+    {# Ce a rămas: la cerere, ca vestea bună (reparat și dovedit) să nu fie îngropată sub o listă lungă #}
+    <details class="compare-col compare-warn proof-still">
+      <summary><h3><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('proof_still')|format(proof.still|length) }}</h3></summary>
       {{ proof_list(proof.still|sort(attribute='points', reverse=true), 'still') }}
-    </div>
+    </details>
     {% if proof.new %}
     <div class="compare-col compare-bad">
       <h3><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('proof_new')|format(proof.new|length) }}</h3>
