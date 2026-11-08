@@ -401,7 +401,7 @@
               {{ sev_counts(d.findings, 'sev-chips', fixed_keys) }}
               {% if ns.fixed %}<span class="tag tag-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('fixed_tag') }} ({{ ns.fixed }})</span>{% endif %}
             {% else %}
-              <span class="sev sev-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('device_ok') }}</span>
+              <span class="sev-chip sev-chip-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('device_ok') }}</span>
             {% endif %}
           </div>
         </div>

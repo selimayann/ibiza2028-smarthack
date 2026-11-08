@@ -51,18 +51,27 @@
   --tint: #F3F7FC;
   --link: #3333FF;
   --focus: #3333FF;
+  /* Severitățile: roșu · portocaliu · galben. Textul și pictograma rămân închise la culoare (contrast >= 5.5:1 pe
+     fundalul lor), culoarea vie e în contur (-line) și fundal (-tint). */
   --high: #b3261e;
-  --medium: #8f4700;
-  --low: #6e5a00;
+  --medium: #A34100;
+  --low: #6B5200;
   --info: #5B6570;
   --good: #16663a;
-  --good-tint: #EAF5EE;
-  --fair: #8f4700;
+  --good-tint: #E3F4EA;
+  --fair: #A34100;
+  --high-line: #E5534B;
+  --medium-line: #F08A3C;
+  --low-line: #E0B400;
+  --info-line: #9AA5B4;
+  --good-line: #3DAA6A;
+  --low-tint: #FFF5C4;
+  --info-tint: #EEF1F5;
   --on-icon: #ffffff;
   --radius: 12px;
   --radius-sm: 8px;
-  --medium-tint: #FFF6EC;
-  --high-tint: #FDEDEC;
+  --medium-tint: #FFEBDC;
+  --high-tint: #FDE8E7;
   --term-bg: #1E2329;
   --term-ink: #E9EDF1;
   --hl: #FFE58A;
@@ -1355,10 +1364,14 @@ body { background: radial-gradient(70rem 26rem at 15% -8rem, #E2E5FF 0, rgba(226
 /* Etichetele de risc cu număr (aceeași formă peste tot: Acasă, Dispozitive, Verificări și raport). */
 .sev-chips { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .45rem; margin: 0; }
 .chips-lead { color: var(--ink); margin-right: .15rem; }
-.sev-chip { --c: var(--info); display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .7rem; border-radius: 999px; border: 1px solid var(--c); color: var(--c);
-  background: color-mix(in srgb, var(--c) 9%, var(--surface)); font-weight: 700; white-space: nowrap; }
+.sev-chip { --c: var(--info); --cl: var(--info-line); --ct: var(--info-tint); display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .7rem;
+  border-radius: 999px; border: 1px solid var(--cl); color: var(--c); background: var(--ct); font-weight: 700; white-space: nowrap; }
 .sev-chip .icon { width: 1em; height: 1em; }
 .sev-chip .count { margin-left: .1rem; font-variant-numeric: tabular-nums; }
-.sev-chip-high { --c: var(--high); } .sev-chip-medium { --c: var(--medium); } .sev-chip-low { --c: var(--low); } .sev-chip-info { --c: var(--info); }
+.sev-chip-high { --c: var(--high); --cl: var(--high-line); --ct: var(--high-tint); }
+.sev-chip-medium { --c: var(--medium); --cl: var(--medium-line); --ct: var(--medium-tint); }
+.sev-chip-low { --c: var(--low); --cl: var(--low-line); --ct: var(--low-tint); }
+.sev-chip-info { --c: var(--info); --cl: var(--info-line); --ct: var(--info-tint); }
+.sev-chip-ok { --c: var(--good); --cl: var(--good-line); --ct: var(--good-tint); }
 .verdict-chips { margin-top: var(--s-2, .5rem); }
 .check-counts.sev-chips { color: inherit; }

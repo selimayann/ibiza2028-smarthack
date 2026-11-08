@@ -7,6 +7,17 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">
 </head>
 <body>
+{# Aceleași forme ca în aplicație (triunghiul și rombul cu „!”), desenate aici: raportul descărcat nu are sprite-ul paginii. #}
+{% macro ico(k) -%}
+<svg class="r-ico" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+{%- if k == 'high' or k == 'poor' %}<path d="M10 1.5 19 17.5H1z" fill="currentColor"/><path d="M10 7v5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.1" fill="#fff"/>
+{%- elif k == 'medium' %}<path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M10 6.2v4.6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="13.6" r="1.1" fill="#fff"/>
+{%- elif k == 'fair' %}<path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M6.5 10h7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+{%- elif k == 'low' %}<circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2.5"/>
+{%- elif k == 'info' %}<circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="M10 9v5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="6.2" r="1.1" fill="#fff"/>
+{%- else %}<circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="m6 10.3 2.7 2.7L14.2 7.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+{%- endif %}</svg>
+{%- endmacro %}
   <nav class="report-actions" aria-label="{{ T('report_title') }}">
     <a class="r-back" href="{{ back_url }}"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('report_back') }}</a>
     <button type="button" id="print-report" class="r-print"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>{{ T('report_print') }}</button>
@@ -29,19 +40,18 @@
     <section class="r-box r-error"><h2>{{ T('error_title') }}</h2><p>{{ error_message(scan.error_code) }}</p></section>
   {% else %}
     {% set band = score_band(scan.score) %}
-    {% set sev_mark = {'high': '▲', 'medium': '◆', 'low': '○', 'info': 'ℹ'} %}
     {% set nd, nf = devices|length, scan.findings|length %}
     {# Sus: un singur card de verdict (scorul + o frază + cifrele pe un rând), apoi „Fă asta întâi” pe toată lățimea #}
     <section class="r-verdict r-{{ band }}" aria-label="{{ T('report_summary') }}">
       <div class="r-score">
         <p class="r-label">{{ T('report_score_short') }}</p>
         <p class="r-score-line"><span class="r-num">{{ scan.score }}</span> <span class="r-of">{{ T('score_of') }}</span></p>
-        <p class="r-band">{{ {'good': '●', 'fair': '◆', 'poor': '▲'}[band] }} {{ T('band_' ~ band) }}</p>
+        <p class="r-band">{{ ico(band) }} {{ T('band_' ~ band) }}</p>
       </div>
       <div class="r-verdict-text">
         <p class="r-verdict-title">{{ T('verdict_clean') if verdict and verdict.clean else T('verdict_' ~ band) }}</p>
         <p class="r-facts"><strong>{{ nd }}</strong> {{ T('report_device')|lower if nd == 1 else T('report_devices')|lower }} · <strong>{{ nf }}</strong> {{ T('report_problem_one') if nf == 1 else T('report_problems')|lower }}{% if nf %}:{% endif %}
-          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<span class="r-chip r-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }} <strong>{{ counts[sev] }}</strong></span>{% endif %}{% endfor %}</p>
+          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<span class="r-chip r-{{ sev }}">{{ ico(sev) }} {{ T('sev_' ~ sev) }} <strong>{{ counts[sev] }}</strong></span>{% endif %}{% endfor %}</p>
         {% if compare and proof %}<p class="r-before-after">{{ T('report_before_after')|format(compare.score_before, compare.score_after, proof.n_fixed, proof.n_new) }}</p>{% endif %}
       </div>
     </section>
@@ -65,7 +75,7 @@
           {% set std = standards(f.code) %}
           <tr>
             <td class="r-n">{{ row.n }}</td>
-            <td><strong class="r-sev r-sev-{{ f.severity }}"><span aria-hidden="true">{{ sev_mark[f.severity] }}</span> {{ T('sev_' ~ f.severity) }}:</strong> {{ code_name(f.code) }}
+            <td><strong class="r-sev r-sev-{{ f.severity }}">{{ ico(f.severity) }} {{ T('sev_' ~ f.severity) }}:</strong> {{ code_name(f.code) }}
               {% if row.status == 'fixed' %}<span class="r-tag r-tag-good">✓ {{ T('fixed_tag') }}</span>{% elif row.status == 'accepted' %}<span class="r-tag">{{ T('accepted_tag') }}</span>{% endif %}
               <br><span class="r-code">{{ f.code }}</span>
               <span class="r-small r-muted"> · {{ T('evidence') }}: <span class="r-mono">{{ evidence_text(f) }}</span>
@@ -79,7 +89,7 @@
       {# Legenda: sub tabel, doar pentru severitățile care apar (forma + cuvântul, nu doar culoarea) #}
       <section class="r-legend" aria-labelledby="legend-h">
         <h3 id="legend-h">{{ T('legend_title') }}</h3>
-        <ul>{% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li><span class="r-sev r-sev-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }}:</span> {{ T('legend_' ~ sev) }}</li>{% endif %}{% endfor %}</ul>
+        <ul>{% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li><span class="r-sev r-sev-{{ sev }}">{{ ico(sev) }} {{ T('sev_' ~ sev) }}:</span> {{ T('legend_' ~ sev) }}</li>{% endif %}{% endfor %}</ul>
       </section>
       <p class="r-small r-muted">{{ T('report_more') }}</p>
       {% else %}

@@ -1,5 +1,5 @@
 /* Raportul pentru furnizorul IT (FR-14): sobru, tipăribil pe A4, fără resurse externe. */
-:root { --ink: #343A40; --muted: #5B6570; --line: #D5DEEA; --line-strong: #7D8A9C; --medium: #8f4700; --low: #6e5a00; --info: #5B6570; --good-tint: #EAF5EE; --high: #b3261e; --fair: #8f4700; --good: #16663a; --link: #3333FF; --brand: #3333FF; --bg: #F0F8FF; color-scheme: light; }
+:root { --ink: #343A40; --muted: #5B6570; --line: #D5DEEA; --line-strong: #7D8A9C; --medium: #A34100; --low: #6B5200; --info: #5B6570; --good-tint: #EAF5EE; --high: #b3261e; --fair: #A34100; --good: #16663a; --link: #3333FF; --brand: #3333FF; --bg: #F0F8FF; color-scheme: light; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
 a { color: var(--link); }
@@ -41,9 +41,10 @@ p { margin: .3rem 0; }
 .r-verdict-title { font-size: 1.3em; font-weight: 800; line-height: 1.2; }
 .r-facts { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .45rem; }
 /* Severitățile: simbol + text + număr (lizibil și alb-negru), culoare ca în aplicație. */
-.r-high { --c: #b3261e; --t: #fbeae9; } .r-medium { --c: #8f4700; --t: #fbefe3; }
-.r-low { --c: #6e5a00; --t: #f6f1d9; } .r-info { --c: #5B6570; --t: #eceff2; }
-.r-chip { color: var(--c); background: var(--t); border: 1px solid var(--c); border-radius: 999px; padding: .05rem .65rem; font-weight: 600; white-space: nowrap; }
+/* roșu · portocaliu · galben: textul închis (--c), conturul viu (--l), fundalul deschis (--t) — ca în aplicație */
+.r-high { --c: #B3261E; --l: #E5534B; --t: #FDE8E7; } .r-medium { --c: #A34100; --l: #F08A3C; --t: #FFEBDC; }
+.r-low { --c: #6B5200; --l: #E0B400; --t: #FFF5C4; } .r-info { --c: #5B6570; --l: #9AA5B4; --t: #EEF1F5; }
+.r-chip { display: inline-flex; align-items: center; gap: .3em; color: var(--c); background: var(--t); border: 1px solid var(--l); border-radius: 999px; padding: .05rem .65rem; font-weight: 600; white-space: nowrap; }
 .r-chip strong { margin-left: .2em; }
 .r-first { margin-top: .8rem; padding: .7rem 1rem; border-left: 5px solid var(--brand); background: var(--bg); border-radius: 0 8px 8px 0; }
 .r-first p { margin: 0; } .r-first p + p { margin-top: .2rem; }
@@ -60,6 +61,7 @@ th { color: var(--muted); }
 .r-table .r-n { width: 1.5em; }
 .r-box { padding: 1rem; border: 2px solid var(--high); border-radius: 10px; margin-top: 1.5rem; }
 .r-sev { font-weight: 700; white-space: nowrap; }
+.r-ico { width: 1em; height: 1em; vertical-align: -.12em; flex: none; }
 .r-sev-high { color: var(--high); } .r-sev-medium { color: var(--medium); } .r-sev-low { color: var(--low); } .r-sev-info { color: var(--info); }
 .r-tag { display: inline-block; margin-left: .3em; padding: 0 .45em; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); font-weight: 700; white-space: nowrap; }
 .r-tag-good { color: var(--good); border-color: var(--good); background: var(--good-tint); }
