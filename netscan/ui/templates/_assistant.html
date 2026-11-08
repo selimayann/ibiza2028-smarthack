@@ -3,8 +3,9 @@
    Întrebarea și răspunsul sunt text simplu (autoescape); în JS se pun doar cu textContent. #}
 {% from "_volt.html" import volt %}
 {% set a = assistant %}
-{% set base_q = ('scan=' ~ a.scan_index ~ '&') if a.scan_index is not none else '' %}
-<a class="ai-fab" href="{{ a.action }}?{{ base_q }}ask=1#chat" data-chat-open aria-haspopup="dialog" aria-controls="chat">
+{# Scanarea se păstrează după fișier + dată (a.ref), nu după poziția în listă. #}
+{% macro ref_fields(ref) %}{% for k, v in ref.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}{% endmacro %}
+<a class="ai-fab" title="{{ T('ai_open') }}" href="{{ a.open_url }}" data-chat-open aria-haspopup="dialog" aria-controls="chat">
   {{ volt("asteapta", "fab-volt") }}<span class="fab-text">{{ T('ai_open') }}</span>
 </a>
 
@@ -21,7 +22,7 @@
   </div>
 
   <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="{{ T('ai_log') }}" tabindex="-1">
-    <div class="msg-row"><span class="msg-volt">{{ volt("asteapta") }}</span><p class="msg msg-bot">{{ T('ai_welcome')|format(a.file) }}</p></div>
+    <div class="msg-row"><span class="msg-volt">{{ volt("asteapta") }}</span><p class="msg msg-bot">{{ T('ai_welcome')|format(fmt_time(a.started_at)) if a.started_at is not none else T('ai_welcome_nodate') }}</p></div>
     {% if a.question and a.reply %}
       <p class="msg msg-user"><span class="sr-only">{{ T('ask_you') }} </span>{{ a.question }}</p>
       {% set src_key, src_icon = REPLY_STATES[a.state] %}
@@ -37,7 +38,7 @@
   <template id="volt-tpl">{% for st in ('gandeste', 'verificat', 'prins', 'fara-ai') %}{{ volt(st) }}{% endfor %}</template>
 
   <form class="chat-suggest" method="get" action="{{ a.action }}#chat" data-chat-form aria-label="{{ T('ask_examples') }}">
-    {% if a.scan_index is not none %}<input type="hidden" name="scan" value="{{ a.scan_index }}">{% endif %}
+    {{ ref_fields(a.ref) }}
     <input type="hidden" name="ask" value="1">
     {% for k in ('ask_ex1', 'ask_ex2', 'ask_ex5') + (('ask_ex4',) if a.show_changes else ()) + ('ask_ex3', 'ask_ex6') %}
       <button type="submit" name="q" value="{{ T(k) }}">{{ T(k) }}</button>
@@ -45,7 +46,7 @@
   </form>
 
   <form class="chat-form" method="get" action="{{ a.action }}#chat" data-chat-form>
-    {% if a.scan_index is not none %}<input type="hidden" name="scan" value="{{ a.scan_index }}">{% endif %}
+    {{ ref_fields(a.ref) }}
     <input type="hidden" name="ask" value="1">
     <label for="q" class="sr-only">{{ T('ask_title') }}</label>
     <input id="q" name="q" type="text" maxlength="500" autocomplete="off" placeholder="{{ T('ask_title') }}…" required>

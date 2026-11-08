@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{# „Ce știe SafeEel despre tine”: doar citire. Numerele vin din baza locală și din fișierele locale; rețeaua e citită
+   din setările calculatorului (fără pachete). Numele Wi-Fi e text nesigur: doar autoescape. #}
+{% block title %}{{ T('trust_title') }} · SafeEel{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ T('trust_title') }}</h1>
+    <p class="lead">{{ T('trust_lead') }}</p>
+  </div>
+</div>
+
+<div class="trust-grid">
+  <section class="trust-card card" aria-labelledby="t-stored-h">
+    <h2 id="t-stored-h"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg>{{ T('trust_stored_title') }}</h2>
+    <ul class="trust-list">
+      <li>{{ plural(counts.scans, 'trust_scans') }}</li>
+      <li>{{ plural(counts.devices, 'trust_devices') }}</li>
+      <li>{{ plural(counts.findings, 'trust_findings') }}</li>
+      <li>{{ plural(counts.done, 'trust_done') }}</li>
+      <li>{{ plural(counts.verified, 'trust_verified') }}</li>
+      <li>{{ plural(counts.accepted, 'trust_accepted') }}</li>
+      {% if counts.names %}<li>{{ plural(counts.names, 'trust_names') }}</li>{% endif %}
+      <li>{{ plural(n_alerts, 'trust_alerts') }}</li>
+      <li>{{ plural(n_trap, 'trust_trap') }}</li>
+      <li>{{ plural(n_raw, 'trust_raw') }}</li>
+    </ul>
+  </section>
+
+  <section class="trust-card card" aria-labelledby="t-where-h">
+    <h2 id="t-where-h"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{{ T('trust_where_title') }}</h2>
+    <dl class="trust-where">
+      <div><dt>{{ T('trust_where_db') }}</dt><dd class="mono" translate="no">{{ db_dir }}</dd></div>
+      <div><dt>{{ T('trust_where_scans') }}</dt><dd class="mono" translate="no">{{ scans_dir }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="trust-card card" aria-labelledby="t-mac-h">
+    <h2 id="t-mac-h"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('trust_mac_title') }}</h2>
+    <p>{{ T('trust_mac_body') }}</p>
+    {% if mac_example %}
+      <p>{{ T('trust_mac_example') }} <span class="mono" translate="no">{{ mac_example }}</span></p>
+    {% else %}
+      <p class="muted">{{ T('trust_mac_none') }}</p>
+    {% endif %}
+    <p class="muted">{{ T('trust_mac_raw') }}</p>
+  </section>
+
+  <section class="trust-card card" aria-labelledby="t-salt-h">
+    <h2 id="t-salt-h"><svg class="icon" aria-hidden="true"><use href="#i-{{ 'good' if own_salt else 'medium' }}"/></svg>{{ T('trust_salt_title') }}</h2>
+    <p>{{ T('trust_salt_own') if own_salt else T('trust_salt_default') }}</p>
+  </section>
+
+  <section class="trust-card card" aria-labelledby="t-limits-h">
+    <h2 id="t-limits-h"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('trust_limits_title') }}</h2>
+    <ul class="trust-list">
+      {% for i in range(1, 7) %}<li>{{ T('trust_limit_' ~ i) }}</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="trust-card card" aria-labelledby="t-net-h">
+    <h2 id="t-net-h"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg>{{ T('trust_net_title') }}</h2>
+    {% if net is none %}
+      <p>{{ T('trust_net_unknown') }}</p>
+      <p>{{ T('trust_net_not') }}</p>
+    {% elif net.allowed %}
+      <p><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('trust_net_ok')|format(net.ssid or '—', net.cidr or '—') }}</p>
+      {% if net.gateway %}<p>{{ T('trust_net_router')|format(net.gateway) }}</p>{% endif %}
+    {% else %}
+      <p><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('trust_net_not') }}</p>
+      {% if net.reason %}<p class="muted">{{ T('trust_net_why') }} {{ net.reason }}</p>{% endif %}
+    {% endif %}
+    <p class="muted">{{ T('trust_net_note') }}</p>
+  </section>
+</div>
+
+<div class="danger-zone">
+  <div>
+    <h2 class="trust-delete-h">{{ T('trust_delete_title') }}</h2>
+    <p>{{ T('trust_delete_body') }}</p>
+  </div>
+  <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>
+</div>
+{% endblock %}

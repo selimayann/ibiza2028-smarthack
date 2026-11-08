@@ -80,6 +80,16 @@ CREATE TABLE IF NOT EXISTS verified_steps (
     verified_at INTEGER NOT NULL,
     PRIMARY KEY (scan_key, device_id, port, code)
 );
+-- riscurile acceptate de utilizator („e dispozitivul meu, știu de ce e așa”): problema rămâne în raport,
+-- iar scorul NU se schimbă (scorul standard e doar al motorului)
+CREATE TABLE IF NOT EXISTS accepted_risks (
+    scan_key TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    code TEXT NOT NULL,
+    accepted_at INTEGER NOT NULL,
+    PRIMARY KEY (scan_key, device_id, port, code)
+);
 -- numele date de utilizator dispozitivelor („Camera din sufragerie”), pe device_id (nu pe MAC și nu pe IP).
 -- CREATE TABLE IF NOT EXISTS: o bază veche primește tabelul la prima conectare, fără să-și piardă datele.
 CREATE TABLE IF NOT EXISTS device_names (
@@ -199,6 +209,35 @@ def find_scan(file: str, started_at: int | None, path: str | Path | None = None)
     return row["id"] if row else None
 
 
+@dataclass
+class StoredCounts:
+    """Ce e salvat local în baza de date (pentru pagina „Ce știe SafeEel despre tine”)."""
+    scans: int = 0
+    hosts: int = 0            # rânduri de dispozitive, din toate scanările salvate
+    devices: int = 0          # dispozitive diferite (device_id distinct)
+    findings: int = 0
+    done: int = 0             # pași bifați de utilizator
+    verified: int = 0         # pași confirmați pe date reale
+    accepted: int = 0         # riscuri acceptate
+    names: int = 0            # nume date de utilizator dispozitivelor
+    mac_example: str | None = None   # un MAC MASCAT din baza de date (niciodată cel complet; nu există aici)
+
+
+def stored_counts(path: str | Path | None = None) -> StoredCounts:
+    """Numărătorile din baza locală. Doar citire (dar connect() creează schema dacă baza nu există încă)."""
+    with closing(connect(path)) as conn:
+        one = lambda sql: conn.execute(sql).fetchone()[0]  # noqa: E731  (SQL fix din cod, fără date de intrare)
+        mac = conn.execute("SELECT mac_masked FROM hosts WHERE mac_masked IS NOT NULL AND mac_masked != ''"
+                           " ORDER BY scan_id DESC, position LIMIT 1").fetchone()
+        return StoredCounts(
+            scans=one("SELECT COUNT(*) FROM scans"), hosts=one("SELECT COUNT(*) FROM hosts"),
+            devices=one("SELECT COUNT(DISTINCT device_id) FROM hosts"), findings=one("SELECT COUNT(*) FROM findings"),
+            done=one("SELECT COUNT(*) FROM done_actions"), verified=one("SELECT COUNT(*) FROM verified_steps"),
+            accepted=one("SELECT COUNT(*) FROM accepted_risks"), names=one("SELECT COUNT(*) FROM device_names"),
+            mac_example=mac["mac_masked"] if mac else None,
+        )
+
+
 def previous_scan_id(scan_id: int, path: str | Path | None = None) -> int | None:
     """Ultima scanare citibilă (status "ok") dinaintea celei date, în ordinea istoricului.
     Fișierele cu eroare n-au dispozitive, deci o comparație cu ele ar arăta totul ca „nou”."""
@@ -215,13 +254,39 @@ def previous_scan_id(scan_id: int, path: str | Path | None = None) -> int | None
 def delete_history(path: str | Path | None = None) -> None:
     """Șterge tot istoricul (NFR-02)."""
     with closing(connect(path)) as conn, conn:
-        for table in ("device_names", "verified_steps", "done_actions", "findings", "ports", "hosts", "scans"):
+        for table in ("device_names", "accepted_risks", "verified_steps", "done_actions", "findings", "ports", "hosts",
+                      "scans"):
             conn.execute(f"DELETE FROM {table}")  # nume fixe din cod, nu date din scanare
     with closing(connect(path)) as conn:
         conn.execute("VACUUM")
     # B: și alertele monitorului și încercările de la ușa-capcană (fișiere locale lângă baza de date).
     from netscan.scan.local_data import delete_local_data
     delete_local_data(path or db_path())
+
+
+RAW_SCAN_PATTERNS = ("*.xml", "*.xml.part")       # fișierele brute scrise de scanerul nostru (cu MAC-uri reale)
+RAW_SCAN_FILES = (".scan_progress.json",)           # progresul scanării (IP-uri, porturi)
+FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures"
+
+
+def delete_raw_scans(folder: str | Path) -> int:
+    """NFR-02: șterge și scanările brute din folderul NOSTRU de scanări (scans/): *.xml, *.xml.part și
+    .scan_progress.json. Nu atinge alte fișiere (de ex. nmap-service-probes.netscan) și refuză orice folder din
+    fixtures/ (Validation, lab, Test Set). Întoarce câte fișiere a șters."""
+    root = Path(folder).resolve()
+    fixtures = FIXTURES_DIR.resolve()
+    if root == fixtures or fixtures in root.parents:
+        raise ValueError("refuz să șterg din fixtures/")
+    if not root.is_dir():
+        return 0
+    targets = [p for pattern in RAW_SCAN_PATTERNS for p in root.glob(pattern)]
+    targets += [root / name for name in RAW_SCAN_FILES]
+    deleted = 0
+    for p in targets:
+        if p.is_file() and not p.is_symlink() and p.parent.resolve() == root:
+            p.unlink()
+            deleted += 1
+    return deleted
 
 
 # ---------- numele date dispozitivelor ----------
@@ -358,6 +423,7 @@ def reset_done(scan: Scan, path: str | Path | None = None) -> None:
     with closing(connect(path)) as conn, conn:
         conn.execute("DELETE FROM done_actions WHERE scan_key = ?", (scan_key(scan),))
         conn.execute("DELETE FROM verified_steps WHERE scan_key = ?", (scan_key(scan),))
+        conn.execute("DELETE FROM accepted_risks WHERE scan_key = ?", (scan_key(scan),))
 
 
 def verified_keys(scan: Scan, path: str | Path | None = None) -> set[tuple]:
@@ -373,4 +439,20 @@ def mark_verified(scan: Scan, keys, path: str | Path | None = None) -> None:
         conn.executemany(
             "INSERT OR IGNORE INTO verified_steps (scan_key, device_id, port, code, verified_at) VALUES (?, ?, ?, ?, ?)",
             [(scan_key(scan), d, -1 if port is None else port, c, now) for d, port, c in keys],
+        )
+
+
+def accepted_keys(scan: Scan, path: str | Path | None = None) -> set[tuple]:
+    """Riscurile acceptate de utilizator pentru această scanare (nu schimbă scorul)."""
+    with closing(connect(path)) as conn:
+        rows = conn.execute("SELECT device_id, port, code FROM accepted_risks WHERE scan_key = ?", (scan_key(scan),))
+        return {(r["device_id"], None if r["port"] == -1 else r["port"], r["code"]) for r in rows}
+
+
+def mark_accepted(scan: Scan, key: tuple, path: str | Path | None = None) -> None:
+    device_id, port, code = key
+    with closing(connect(path)) as conn, conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO accepted_risks (scan_key, device_id, port, code, accepted_at) VALUES (?, ?, ?, ?, ?)",
+            (scan_key(scan), device_id, -1 if port is None else port, code, int(time.time())),
         )

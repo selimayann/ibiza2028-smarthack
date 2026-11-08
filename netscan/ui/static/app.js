@@ -8,6 +8,23 @@
   document.documentElement.classList.add("js");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Fiecare înlocuire a panoului live (după un clic al utilizatorului) mărește contorul. O reîmprospătare automată
+  // pornită înainte nu mai are voie să scrie peste panoul mai nou (ar readuce o stare veche).
+  let liveSeq = 0;
+
+  // Primul element care există, în ordinea din listă (nu în ordinea din pagină): ".live-msg, #live-h" = mesajul,
+  // dacă există, altfel titlul. Dacă nu există niciunul, focusul merge pe un loc sigur (#step-now / #live-h).
+  const pickFocus = (focusSel, selectors) => {
+    const list = (focusSel || "").split(",").map((s) => s.trim()).filter(Boolean);
+    for (const sel of list) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    if (!list.length) return null;
+    const fallback = selectors.some((s) => s === "#live") ? "#live-h" : "#step-now";
+    return document.querySelector(fallback) || document.getElementById("main");
+  };
+
   // Butonul asistentului: întreg sus pe pagină, doar Volt după ce derulezi (nu mai acoperă cardurile).
   // Îl căutăm la fiecare eveniment, pentru că actualizările parțiale îl înlocuiesc.
   const compactFab = () => document.querySelector(".ai-fab")?.classList.toggle("is-compact", window.scrollY > 120);
@@ -15,6 +32,7 @@
   document.addEventListener("DOMContentLoaded", compactFab);
 
   async function swap(url, init, selectors, focusSel, keepUrl) {
+    if (selectors.includes("#live")) liveSeq += 1;
     let res;
     try {
       res = await fetch(url, { ...init, credentials: "same-origin", headers: { "X-Requested-With": "fetch" } });
@@ -31,11 +49,14 @@
         else if (now && !next) now.remove(); // de ex. o scanare ilizibilă nu are asistent
       }
       if (doc.title) document.title = doc.title;
+      compactFab();   // butonul asistentului poate fi unul nou, înlocuit mai sus
     };
     // Focusul merge pe ce s-a schimbat (de ex. pasul nou), ca tastatura și cititorul de ecran să-l găsească.
     const focus = () => {
-      const el = focusSel && document.querySelector(focusSel);
-      if (el) el.focus({ preventScroll: true });
+      const el = pickFocus(focusSel, selectors);
+      if (!el) return;
+      if (!el.matches("a[href], button, input, select, textarea, summary, [tabindex]")) el.setAttribute("tabindex", "-1");
+      el.focus({ preventScroll: true });
     };
     if (document.startViewTransition && !reduced) {
       document.startViewTransition(apply).updateCallbackDone.then(focus, focus);
@@ -55,14 +76,25 @@
     e.preventDefault();
     const method = (form.getAttribute("method") || "get").toUpperCase();
     const data = new FormData(form);
+    // Butonul apăsat poate purta o valoare (de ex. job=scan / job=auto), ca la trimiterea normală a formularului.
+    if (e.submitter && e.submitter.name) data.set(e.submitter.name, e.submitter.value);
     let url = form.action.split("#")[0];
     const init = { method };
     if (method === "GET") url += (url.includes("?") ? "&" : "?") + new URLSearchParams(data).toString();
     else init.body = data;
-    const busy = form.querySelector("button[type=submit]");
-    if (busy) busy.disabled = true;
+    const busy = form.querySelectorAll("button[type=submit]");
+    busy.forEach((b) => { b.disabled = true; });
     const ok = await swap(url, init, targets(form), form.dataset.focus, method === "GET" || form.dataset.keepUrl === "1");
-    if (!ok) form.submit(); // dacă ceva nu merge, revenim la comportamentul normal
+    if (!ok) {
+      // dacă ceva nu merge, revenim la comportamentul normal (cu butonul apăsat, ca valoarea lui să ajungă la server)
+      busy.forEach((b) => { b.disabled = false; });
+      if (e.submitter && typeof form.requestSubmit === "function") {
+        form.removeAttribute("data-swap");
+        form.requestSubmit(e.submitter);
+      } else {
+        form.submit();
+      }
+    }
   });
 
   document.addEventListener("click", async (e) => {
@@ -92,17 +124,31 @@
     const ms = parseInt(el.dataset.poll || "0", 10);
     if (!ms || Date.now() < liveNext) return;
     liveBusy = true;
+    const seq = liveSeq;
     try {
       const res = await fetch(el.dataset.panel, { credentials: "same-origin", headers: { "X-Requested-With": "fetch" } });
-      if (res.ok) {
-        const next = new DOMParser().parseFromString(await res.text(), "text/html").getElementById("live");
-        const now = liveEl();
-        if (next && now && next.dataset.version !== now.dataset.version) {
+      const html = res.ok ? await res.text() : "";
+      const next = html && seq === liveSeq ? new DOMParser().parseFromString(html, "text/html").getElementById("live") : null;
+      const now = liveEl();
+      // seq !== liveSeq: între timp utilizatorul a apăsat ceva în panou și a venit deja un panou mai nou
+      if (seq === liveSeq && next && now && next.dataset.version !== now.dataset.version) {
+        { // eslint-disable-line no-lone-blocks
+          const hadFocus = now.contains(document.activeElement);
           const key = focusKey(document.activeElement, now);
           const before = now.dataset.latest || "";
+          const fixesBefore = now.dataset.fixes || "0";
           now.replaceWith(next);
+          // O reparație confirmată live: scorul (al motorului) și cardul dispozitivului se actualizează singure.
+          if ((next.dataset.fixes || "0") !== fixesBefore && document.getElementById("score")) {
+            swap(window.location.href.split("#")[0], { method: "GET" }, ["#score", "#worst"], null, false);
+          }
           const f = key && document.querySelector(key);
           if (f) f.focus({ preventScroll: true });
+          else if (hadFocus) {
+            // elementul cu focus a dispărut (de ex. butonul „Da, e al nostru”): focusul rămâne în panou, pe titlu
+            const h = document.getElementById("live-h");
+            if (h) h.focus({ preventScroll: true });
+          }
           const say = document.getElementById("live-announce");
           if (say && next.dataset.latest && next.dataset.latest !== before) say.textContent = next.dataset.latest;
         }
@@ -113,10 +159,18 @@
     liveBusy = false;
   }, 1000);
 
-  // Alegerea scanării: se schimbă direct când alegi din listă (butonul „Arată” rămâne pentru tastatură și fără JS).
+  // Alegerea scanării: se schimbă direct doar când alegi cu mausul/degetul. Cu tastatura, săgețile schimbă
+  // opțiunea la fiecare apăsare, deci nu trimitem nimic: apeși „Arată” (WCAG 3.2.2, fără schimbare la intrare).
+  let keyboardPick = false;
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest && e.target.closest("select[data-autosubmit]")) keyboardPick = true;
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.closest && e.target.closest("select[data-autosubmit]")) keyboardPick = false;
+  });
   document.addEventListener("change", (e) => {
     const sel = e.target.closest("select[data-autosubmit]");
-    if (sel && sel.form) sel.form.requestSubmit();
+    if (sel && sel.form && !keyboardPick) sel.form.requestSubmit();
   });
 
   // ---------- asistentul AI: fereastra de chat (<dialog> nativ) ----------

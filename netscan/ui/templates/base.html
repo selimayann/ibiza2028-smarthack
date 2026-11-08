@@ -12,7 +12,7 @@
   <link rel="preload" href="{{ url_for('static', filename='fonts/atkinson-hyperlegible-next-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body{% if assistant %} class="has-fab"{% endif %}>
   {# Iconițe: forma diferă per severitate, ca să nu depindem de culoare. #}
   <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
     <symbol id="i-high" viewBox="0 0 20 20"><path d="M10 1.5 19 17.5H1z" fill="currentColor"/><path d="M10 7v5" stroke="var(--on-icon)" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.1" fill="var(--on-icon)"/></symbol>
@@ -38,7 +38,7 @@
   <a class="skip" href="#main">{{ T('skip_link') }}</a>
   <header class="top">
     <div class="wrap top-inner">
-      {# Doar logo-ul duce la Dashboard; sloganul de lângă e text simplu, nu link #}
+      {# Doar logo-ul duce la pagina Acasă; sloganul de lângă e text simplu, nu link #}
       <div class="brand">
         <a class="brand-link" href="{{ url_for('overview') }}"><img class="brand-logo" src="{{ url_for('static', filename='brand/safeeel-lockup-horizontal-light.svg') }}" alt="SafeEel, {{ T('nav_overview') }}" width="141" height="36"></a>
         <span class="brand-tagline">{{ T('app_title') }}</span>
@@ -46,10 +46,13 @@
       <div class="top-right">
         <nav aria-label="{{ T('nav_label') }}">
           <a href="{{ url_for('overview') }}"{% if request.endpoint == 'overview' or (request.endpoint == 'device' and not from_devices) %} aria-current="page"{% endif %}>{{ T('nav_overview') }}</a>
+          <a href="{{ url_for('results.results_page') }}"{% if request.endpoint == 'results.results_page' %} aria-current="page"{% endif %}>{{ T('nav_checks') }}</a>
           <a href="{{ url_for('inventory') }}"{% if request.endpoint == 'inventory' or (request.endpoint == 'device' and from_devices) %} aria-current="page"{% endif %}>{{ T('nav_devices') }}</a>
           <a href="{{ url_for('journal_page') }}"{% if request.endpoint == 'journal_page' or (request.endpoint == 'history_scan' and from_journal) %} aria-current="page"{% endif %}>{{ T('nav_journal') }}{% if new_alerts and request.endpoint != 'journal_page' %}<span class="nav-badge" aria-hidden="true">{{ T('nav_new_alerts')|format(new_alerts) }}</span><span class="sr-only">, {{ T('nav_new_alerts_sr')|format(new_alerts) }}</span>{% endif %}</a>
           <a href="{{ url_for('history') }}"{% if request.endpoint in ('history', 'history_delete_confirm') or (request.endpoint == 'history_scan' and not from_journal) %} aria-current="page"{% endif %}>{{ T('nav_history') }}</a>
         </nav>
+        {# Pe telefon, asistentul e un buton în antet (nu plutește peste conținut); pe ecrane late, butonul rotund de jos. #}
+        {% if assistant %}<a class="ai-top" href="{{ assistant.open_url }}" data-chat-open aria-haspopup="dialog" aria-controls="chat" title="{{ T('ai_open') }}"><svg class="icon" aria-hidden="true"><use href="#i-ai"/></svg><span aria-hidden="true">AI</span><span class="sr-only">{{ T('ai_open') }}</span></a>{% endif %}
         {# Limba: control separat; limba curentă e marcată, cealaltă e un link în limba ei. #}
         <div class="lang-switch" role="group" aria-label="{{ T('lang_label') }}">
           <svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg>
@@ -69,10 +72,13 @@
   <main id="main" class="wrap">
     {% block content %}{% endblock %}
   </main>
+  {# Ferestrele (dialog) stau în afara drumului principal al paginii: se deschid doar la cerere. #}
+  {% block dialogs %}{% endblock %}
   <footer class="foot">
     <div class="wrap foot-inner">
       <p class="foot-local"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{{ T('footer_local') }}</p>
       <p>{{ T('footer_rules') }}</p>
+      <p><a class="foot-trust" href="{{ url_for('trust') }}"{% if request.endpoint == 'trust' %} aria-current="page"{% endif %}>{{ T('footer_trust') }}</a></p>
     </div>
   </footer>
   {% if assistant %}{% include "_assistant.html" %}{% endif %}

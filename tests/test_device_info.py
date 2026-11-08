@@ -136,3 +136,24 @@ def test_v4_unknown_device_is_private_address():
     assert any(f.code == "UNKNOWN_DEVICE" and f.ip == "192.168.1.99" for f in v4.findings)
     info = di.describe(h99)
     assert info.private_mac and info.vendor is None
+
+
+# --- un NAS nu e „PC Windows” (are și el SMB pe 445) ----------------------------------------------------
+
+@pytest.mark.parametrize("vendor, hostname", [
+    ("Synology Incorporated", None), ("QNAP Systems, Inc.", None), ("Western Digital", None),
+    ("BUFFALO.INC", None), ("ASUSTOR Inc.", None), (None, "nas"), (None, "casa-NAS01"), (None, "nas.local"),
+])
+def test_nas_with_smb_is_a_server(vendor, hostname):
+    assert di.describe(host(ports=[445, 139, 5000], vendor=vendor, hostname=hostname)).device_type == "server"
+    assert di.describe(host(ports=[445], vendor=vendor, hostname=hostname, dtype="pc_windows")).device_type == "server"
+
+
+@pytest.mark.parametrize("hostname", ["jonas-laptop", "DESKTOP-NASTASE", "dinastia"])
+def test_names_that_only_contain_nas_are_not_a_nas(hostname):
+    assert di.describe(host(ports=[445], hostname=hostname)).device_type == "pc_windows"
+
+
+def test_nas_gateway_is_still_the_router():
+    h = host(ip="172.20.10.1", ports=[445], vendor="Synology Incorporated")
+    assert di.describe(h, gateway_ip="172.20.10.1").device_type == "router"

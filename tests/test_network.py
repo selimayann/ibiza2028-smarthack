@@ -310,13 +310,16 @@ def test_psutil_missing(monkeypatch):
     assert n.detect_network(fake_runner({}), None, "windows", ENV).status == n.PSUTIL_MISSING
 
 
-def test_linux_ignores_vpn_default_route():
+def test_linux_ignores_vpn_default_route_but_refuses_while_the_vpn_is_on():
     ps = FakePsutil({"lo": (True, "127.0.0.1", "255.0.0.0"), "wlp2s0": (True, "172.20.10.4", "255.255.255.240"),
                      "tun0": (True, "10.8.0.2", "255.255.255.0"), "docker0": (True, "172.17.0.1", "255.255.0.0")})
     run = fake_runner({"ip": LINUX_ROUTE, "iw": "\tSSID: RSH-ibiza2028\n"})
     info = n.detect_network(run, ps, "linux", ENV)
     assert (info.status, info.iface, info.cidr, info.gateway, info.ssid) == \
-        (n.OK, "wlp2s0", "172.20.10.0/28", "172.20.10.1", "RSH-ibiza2028")
+        (n.VPN_ON, "wlp2s0", "172.20.10.0/28", "172.20.10.1", "RSH-ibiza2028")
+    assert info.vpn_ifaces == ["tun0"] and not info.scan_allowed
+    ps.ifaces["tun0"] = (False, "10.8.0.2", "255.255.255.0")             # VPN oprit: hotspotul e din nou OK
+    assert n.detect_network(run, ps, "linux", ENV).status == n.OK
 
 
 def test_linux_ssid_fallback_to_nmcli():
@@ -327,10 +330,90 @@ def test_linux_ssid_fallback_to_nmcli():
 
 def test_macos():
     ps = FakePsutil({"lo0": (True, "127.0.0.1", "255.0.0.0"), "en0": (True, "172.20.10.2", "255.255.255.240"),
-                     "utun3": (True, "100.100.1.1", "255.255.255.255")})
+                     "awdl0": (True, "169.254.3.3", "255.255.0.0")})
     run = fake_runner({"route": MAC_ROUTE, "ipconfig": MAC_SUMMARY})
     info = n.detect_network(run, ps, "macos", ENV)
     assert (info.status, info.iface, info.cidr, info.ssid) == (n.OK, "en0", "172.20.10.0/28", "RSH-ibiza2028")
+
+
+def test_macos_utun_with_ipv4_is_a_vpn():
+    ps = FakePsutil({"lo0": (True, "127.0.0.1", "255.0.0.0"), "en0": (True, "172.20.10.2", "255.255.255.240"),
+                     "utun3": (True, "100.100.1.1", "255.255.255.255")})
+    run = fake_runner({"route": MAC_ROUTE, "ipconfig": MAC_SUMMARY})
+    info = n.detect_network(run, ps, "macos", ENV)
+    assert (info.status, info.iface, info.vpn_ifaces) == (n.VPN_ON, "en0", ["utun3"])
+
+
+# --- VPN pornit lângă hotspot -----------------------------------------------------------------
+
+class FakePsutilV6(FakePsutil):
+    """Ca FakePsutil, dar unele interfețe au doar IPv6 (ca utun0..utun3 de pe orice Mac)."""
+
+    def __init__(self, ifaces, v6_only):
+        super().__init__(ifaces)
+        self.v6_only = set(v6_only)
+
+    def net_if_addrs(self):
+        out = super().net_if_addrs()
+        for name in self.v6_only:
+            out[name] = [Addr(socket.AF_INET6, "fe80::1", "ffff:ffff:ffff:ffff::")]
+        return out
+
+
+WIN_VPN_ADAPTERS = WIN_ADAPTERS[:-1] + (
+    ',{"Name":"Tailscale","InterfaceDescription":"Tailscale Tunnel"}'
+    ',{"Name":"Ethernet 5","InterfaceDescription":"TAP-Windows Adapter V9"}'
+    ',{"Name":"wg-office","InterfaceDescription":"WireGuard Tunnel"}'
+    ',{"Name":"Ethernet 6","InterfaceDescription":"Cisco AnyConnect Secure Mobility Client Virtual Miniport Adapter"}'
+    ',{"Name":"ZeroTier One [8056c2e21c]","InterfaceDescription":"ZeroTier Virtual Port"}]'
+)
+
+
+@pytest.mark.parametrize("name, ip", [
+    ("Tailscale", "100.101.102.103"), ("Ethernet 5", "10.8.0.6"), ("wg-office", "10.66.0.2"),
+    ("Ethernet 6", "10.200.1.9"), ("ZeroTier One [8056c2e21c]", "10.147.17.4"),
+])
+def test_windows_vpn_on_the_hotspot_refuses_and_names_the_vpn(name, ip):
+    ifaces = dict(WIN_IFACES, **{name: (True, ip, "255.255.255.0")})
+    info = n.detect_network(windows_runner(powershell=WIN_VPN_ADAPTERS), FakePsutil(ifaces), "windows", ENV)
+    assert info.status == n.VPN_ON and not info.scan_allowed
+    assert info.vpn_ifaces == [name] and info.iface == "Wi-Fi" and info.other_ifaces == []
+    ro, en = n.describe(info, "ro"), n.describe(info, "en")
+    assert f"Ai un VPN pornit ({name})" in ro and "oprește VPN-ul înainte de scanare" in ro
+    assert f"You have a VPN turned on ({name})" in en and "Rețeaua: nu scanez aici" in ro
+    assert n.status_message(info)[0].startswith(f"Ai un VPN pornit ({name})")
+
+
+def test_vpn_that_is_down_or_has_no_ipv4_is_ignored():
+    ifaces = dict(WIN_IFACES, Tailscale=(False, "100.101.102.103", "255.255.255.255"),
+                  **{"wg-office": (True, "", ""), "utun0": (True, "", "")})
+    ps = FakePsutilV6(ifaces, v6_only={"utun0", "wg-office"})
+    info = n.detect_network(windows_runner(powershell=WIN_VPN_ADAPTERS), ps, "windows", ENV)
+    assert info.status == n.OK and info.vpn_ifaces == []
+
+
+def test_docker_hyperv_virtualbox_are_still_only_ignored_not_vpn():
+    ifaces = dict(WIN_IFACES, docker0=(True, "172.17.0.1", "255.255.0.0"),
+                  vboxnet0=(True, "192.168.57.1", "255.255.255.0"))
+    info = n.detect_network(windows_runner(), FakePsutil(ifaces), "windows", ENV)
+    assert info.status == n.OK and info.vpn_ifaces == [] and info.scan_allowed
+    for name, desc in [("Ethernet 2", "VirtualBox Host-Only Ethernet Adapter"), ("docker0", None),
+                       ("vEthernet (WSL (Hyper-V firewall))", "Hyper-V Virtual Ethernet Adapter")]:
+        assert n.is_virtual_iface(name, desc) and not n.is_vpn_iface(name, desc)
+
+
+def test_vpn_is_a_warning_when_the_network_is_already_refused():
+    netsh = WIN_NETSH.replace("RSH-ibiza2028", "Venue Free WiFi")
+    ifaces = dict(WIN_IFACES, Tailscale=(True, "100.101.102.103", "255.255.255.255"))
+    info = n.detect_network(windows_runner(netsh=netsh, powershell=WIN_VPN_ADAPTERS), FakePsutil(ifaces),
+                            "windows", ENV)
+    assert info.status == n.WRONG_SSID and n.VPN_ON in info.warnings
+    assert "! Ai un VPN pornit (Tailscale)" in n.describe(info, "ro")
+
+
+def test_vpn_message_without_names_still_reads_well():
+    ro, en = n.message(n.VPN_ON)
+    assert "%s" not in ro and "%s" not in en and "(VPN)" in ro
 
 
 def test_never_lists_nearby_wifi_networks():
@@ -349,8 +432,11 @@ def test_never_lists_nearby_wifi_networks():
 
 def test_describe_bilingual():
     info = n.detect_network(windows_runner(), FakePsutil(WIN_IFACES), "windows", ENV)
-    assert "Scanare live: permisă" in n.describe(info, "ro")
-    assert "Live scan: allowed" in n.describe(info, "en")
+    assert "Rețeaua: hotspotul echipei (scanez doar în 172.20.10.0/28)" in n.describe(info, "ro")
+    assert "Network: team hotspot (I only scan inside 172.20.10.0/28)" in n.describe(info, "en")
+    refused = n.NetworkInfo(iface="Wi-Fi", ip="10.240.3.7", cidr="10.240.0.0/16", status=n.WRONG_SSID)
+    assert "Rețeaua: nu scanez aici" in n.describe(refused, "ro")
+    assert "Network: I won't scan here" in n.describe(refused, "en")
 
 
 def test_cidr_feeds_guardrail():

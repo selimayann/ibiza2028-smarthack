@@ -83,18 +83,20 @@ OWASP_IOT = {
 # - serviciu de care nu e nevoie, deschis în rețea → CIS 4.8 + OWASP I2 (punctul de pornire din ghid);
 # - parolă/date în clar (Telnet, FTP, HTTP) → CIS 3.10 / 4.6 + OWASP I7; CIS 4.6 numește explicit Telnet și HTTP;
 # - parole din fabrică / fără parolă → CIS 4.7, 5.2 + OWASP I1, I9;
+# - logare cu parolă pe care atacatorii încearcă s-o ghicească (RDP, VNC, SMB: explicația cere parole lungi / o
+#   parolă obligatorie) → OWASP I1 după I2;
 # - versiuni vechi → CIS 2.2, 7.3, 7.4 + OWASP I5, I4;
 # - dispozitiv necunoscut → CIS 1.1, 1.2 (inventar) + OWASP I8.
 MAPPING: dict[str, dict[str, list[str]]] = {
     "TELNET_OPEN": {"cis": ["4.6", "4.8", "3.10"], "owasp_iot": ["I2", "I7"]},
-    "RDP_EXPOSED": {"cis": ["4.8", "4.5", "5.2"], "owasp_iot": ["I2"]},
+    "RDP_EXPOSED": {"cis": ["4.8", "4.5", "5.2"], "owasp_iot": ["I2", "I1"]},
     "VNC_EXPOSED": {"cis": ["4.8", "5.2", "3.10"], "owasp_iot": ["I2", "I1"]},
     "DB_EXPOSED": {"cis": ["4.4", "4.7", "12.2"], "owasp_iot": ["I2", "I9"]},
     "CAMERA_STREAM_EXPOSED": {"cis": ["4.7", "4.8", "12.2"], "owasp_iot": ["I1", "I6", "I2"]},
     "OUTDATED_SERVICE": {"cis": ["2.2", "7.4", "7.3"], "owasp_iot": ["I5", "I4"]},
     "FTP_CLEARTEXT": {"cis": ["3.10", "4.8"], "owasp_iot": ["I7", "I2"]},
     "HTTP_ADMIN_CLEARTEXT": {"cis": ["4.6", "3.10", "4.7"], "owasp_iot": ["I7", "I1"]},
-    "SMB_EXPOSED": {"cis": ["4.8", "4.5", "7.3"], "owasp_iot": ["I2"]},
+    "SMB_EXPOSED": {"cis": ["4.8", "4.5", "7.3"], "owasp_iot": ["I2", "I1"]},
     "MQTT_EXPOSED": {"cis": ["4.8", "3.10", "5.2"], "owasp_iot": ["I2", "I9", "I7"]},
     "UPNP_EXPOSED": {"cis": ["4.2", "4.8"], "owasp_iot": ["I9", "I2"]},
     "SNMP_EXPOSED": {"cis": ["4.7", "4.8", "3.10"], "owasp_iot": ["I9", "I1"]},

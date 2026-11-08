@@ -248,7 +248,10 @@
     "UNKNOWN_DEVICE",
     "nu recunosc",
     "străin",
-    "intrus"
+    "intrus",
+    "hotspot",
+    "parola hotspot",
+    "scot dispozitiv"
    ],
    "q_ro": "Am un dispozitiv necunoscut. E un intrus?",
    "a_ro": "Nu neapărat. „Necunoscut” înseamnă doar că scanarea n-a putut afla nici producătorul, nici numele, iar dispozitivul are servicii deschise. Telefoanele și laptopurile noi își ascund adresa reală, deci verifică întâi dacă nu e unul de-al tău.",
@@ -256,6 +259,7 @@
     "Caută dispozitivul în lista de dispozitive conectate din router.",
     "Compară cu telefoanele și laptopurile din casă (inclusiv ale celor care stau la tine).",
     "Dacă nu e al nimănui cunoscut, schimbă parola Wi-Fi.",
+    "Dacă rețeaua e hotspotul unui telefon, parola se schimbă din telefon: pe iPhone, Setări → Hotspot personal → Parolă Wi-Fi; pe Android, Setări → Conexiuni → Hotspot mobil.",
     "Dă-i un nume în router ca să-l recunoști data viitoare.",
     "Mută dispozitivele inteligente și pe cele necunoscute în rețeaua pentru oaspeți."
    ],
@@ -265,6 +269,7 @@
     "Look for the device in your router's list of connected devices.",
     "Compare it with the phones and laptops at home (including those of people staying with you).",
     "If nobody recognises it, change the Wi-Fi password.",
+    "If the network is a phone's hotspot, change the password on the phone: on iPhone, Settings → Personal Hotspot → Wi-Fi Password; on Android, Settings → Connections → Mobile Hotspot.",
     "Give it a name in the router so you recognise it next time.",
     "Move smart devices and unknown ones to the guest network."
    ],
@@ -351,13 +356,16 @@
     "dau afară",
     "deconectez",
     "kick",
-    "blocare dispozitiv"
+    "blocare dispozitiv",
+    "hotspot",
+    "parola hotspot",
+    "scot dispozitiv"
    ],
    "q_ro": "Pot bloca sau da afară un dispozitiv din aplicație?",
-   "a_ro": "Nu, aplicația nu schimbă nimic în rețea. Din router poți bloca un dispozitiv sau schimba parola Wi-Fi; după schimbare, reconectează-ți dispozitivele cu parola nouă.",
+   "a_ro": "Nu, aplicația nu schimbă nimic în rețea. Din router poți bloca un dispozitiv sau schimba parola Wi-Fi; după schimbare, reconectează-ți dispozitivele cu parola nouă. Dacă rețeaua e hotspotul unui telefon, parola se schimbă din telefon: pe iPhone, Setări → Hotspot personal → Parolă Wi-Fi; pe Android, Setări → Conexiuni → Hotspot mobil.",
    "steps_ro": [],
    "q_en": "Can I block or kick a device from the app?",
-   "a_en": "No, the app does not change anything on the network. From your router you can block a device or change the Wi-Fi password; after changing it, reconnect your devices with the new password.",
+   "a_en": "No, the app does not change anything on the network. From your router you can block a device or change the Wi-Fi password; after changing it, reconnect your devices with the new password. If the network is a phone's hotspot, change the password on the phone: on iPhone, Settings → Personal Hotspot → Wi-Fi Password; on Android, Settings → Connections → Mobile Hotspot.",
    "steps_en": [],
    "note": ""
   },

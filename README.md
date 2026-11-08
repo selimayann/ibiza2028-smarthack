@@ -68,12 +68,14 @@ După instalare (secțiunea Setup), interfața pornește dintr-un **dublu-click*
 
 Scriptul folosește mediul virtual `.venv` dacă există, pornește `python -m netscan ui --port 5055` și deschide browserul pe `http://127.0.0.1:5055/`. Ascultă doar pe 127.0.0.1, fără drepturi de administrator, fără scanare și fără instalări. Portul 5055 (nu 5000), pentru că pe macOS portul 5000 e folosit de AirPlay Receiver. Oprire: închide fereastra.
 
-### Dashboard: rețeaua ta, live
+### Acasă (Home): pagina principală
 
-Prima pagină (**Dashboard**) arată sus **„Rețeaua ta acum”**:
-- **„Pornește protecția live”**: cât timp laptopul e pe hotspotul echipei, vezi pe loc cine e conectat (la ~20 s), ce porturi riscante sunt deschise (în fiecare minut), cine a venit sau a plecat și dacă cineva încearcă să intre pe ușa-capcană. Când laptopul pleacă de pe hotspot, totul intră în pauză singur (nici capcana nu mai ascultă) și repornește când revii. Rămâne pornită și la următoarea deschidere a aplicației.
-- **„Scanează acum”** / **„Scanează automat la 15 minute”**: scanarea completă cu nmap, pornită din aplicație. Sistemul cere permisiunea de administrator (UAC pe Windows, parola pe macOS); vezi faza, procentul și porturile găsite pe măsură ce apar. La final scanarea intră în istoric, alertele față de scanarea anterioară intră în Jurnal, iar Dashboard-ul arată rezultatul (problemele și scorul, de la motor).
-- Sub panou rămân scanările tale (`scans/`, cea mai nouă prima); fără nicio scanare proprie, exemplele din Validation Set. `NETSCAN_SCANS_DIR` alege alt folder (de ex. `fixtures/lab`).
+Meniul: **Acasă · Dispozitive · Alerte · Progres** (în engleză: Home · Devices · Alerts · Progress). Prima pagină, **Acasă**, e calmă și se citește de sus în jos:
+- **Pe scurt:** verdictul într-o propoziție, scorul (de la motor) și câte probleme sunt, cu cuvinte simple: *Risc ridicat / mediu / scăzut / Doar de știut* (culoarea nu e niciodată singurul semn). Dedesubt, **„Fă asta întâi”**: cea mai gravă problemă și primul pas.
+- **Scanările:** lista scanărilor tale (`scans/`, cea mai nouă prima; fără nicio scanare proprie, exemplele din Validation Set; `NETSCAN_SCANS_DIR` alege alt folder, de ex. `fixtures/lab`) și **„Salvează în istoric”**.
+- **Jos, protecția live, oprită implicit.** „Pornește protecția live” merge doar cu bifa de consimțământ („în hotspot sunt doar dispozitivele noastre”). Cât timp laptopul e pe hotspotul echipei, vezi cine e conectat (la ~20 s), cine a venit sau a plecat și, doar pentru dispozitivele echipei, ce porturi riscante sunt deschise (în fiecare minut). Un dispozitiv nou nu e atins până nu apeși **„Da, e al nostru”**. Ușa-capcană are bifa ei separată, nebifată implicit. Când laptopul pleacă de pe hotspot, totul intră în pauză și repornește când revii. La fiecare deschidere a aplicației protecția pornește oprită; o pornești tu.
+- **„Scanează acum”** / **„Scanează automat la 15 minute”** (tot cu bifă de consimțământ): scanarea completă cu nmap, pornită din aplicație. Sistemul cere permisiunea de administrator (UAC pe Windows, parola pe macOS); vezi faza, procentul și porturile găsite pe măsură ce apar. Cât rulează, verificările live **așteaptă** (bugetul de pachete e al scanării). Scanarea din aplicație folosește `--min-rate 80 --max-rate 100`. La final scanarea intră în istoric, schimbările intră în Alerte, iar Acasă arată rezultatul (problemele și scorul, de la motor).
+- În subsolul fiecărei pagini: **„Ce știe SafeEel despre tine”**, o pagină care doar citește ce e salvat local (scanări, pași bifați, alerte, încercări la capcană) și unde.
 
 ## Setup
 
@@ -87,7 +89,7 @@ cp .env.example .env             # completează valorile local; .env nu intră �
 pytest
 ```
 
-În `.env` sunt obligatorii pentru scanarea live: `NETSCAN_EXPECTED_SSID` (numele hotspotului, ex. `RSH-Ibiza2028`) și `NETSCAN_SALT` (un text lung, aleatoriu, de ex. `python -c "import secrets; print(secrets.token_hex(32))"`). Tool-ul citește singur `.env` din folderul curent.
+În `.env` sunt obligatorii pentru scanarea live: `NETSCAN_EXPECTED_SSID` (numele hotspotului, ex. `RSH-Ibiza2028`) și `NETSCAN_SALT` (un text lung, aleatoriu, de ex. `python -c "import secrets; print(secrets.token_hex(32))"`). Lăsați `NETSCAN_REQUIRE_SSID=1` (ca în `.env.example`): fără numele Wi-Fi citit, `scan` refuză (subnetul singur nu dovedește hotspotul: orice hotspot de iPhone e `172.20.10.0/28`). Scanarea din aplicație și protecția live cer oricum numele Wi-Fi. Tool-ul citește singur `.env` din folderul curent.
 
 **Windows**
 - Folosiți Python-ul oficial (python.org sau Microsoft Store). Python-ul din MSYS2 (`C:\msys64\...`, cel găsit des primul de Git Bash) nu poate instala `psutil`. Verificare: `python -c "import sysconfig; print(sysconfig.get_platform())"` trebuie să afișeze `win-amd64`.
@@ -108,23 +110,23 @@ python -m netscan ask <fișier.xml> "Ce fac întâi?" --local-ai          # + re
 python -m netscan ask <fișier.xml> x --verify-text "<text inventat>"   # demo: validatorul respinge datele inventate
 python -m netscan demo-ai-check fixtures/lab/scan_01_before.xml   # demo pentru juriu: 3 texte simulate respinse, 1 acceptat
 python -m netscan watch --every 15 --confirm      # monitorul: scanează periodic doar hotspotul, alerte la schimbări
-python -m netscan trap --confirm                  # ușa-capcană: alertă când cineva din hotspot încearcă să intre
+python -m netscan trap --confirm                  # ușa-capcană: notează doar cine a încercat (IP, oră, port), nu citește nimic
 python -m netscan listen --confirm                # ascultare pasivă: numele anunțate de dispozitive (mDNS/SSDP)
 ```
 
 ### Supraveghere fără agenți: monitorul și ușa-capcană
 
 - **`watch`** (FR-13): la fiecare ciclu (minimum 10 minute) reverifică rețeaua și ținta ca la `scan`, rulează aceeași comandă nmap și anunță în terminal, în RO/EN: dispozitiv nou/plecat, port nou/închis, problemă nouă/rezolvată, scor schimbat. Dacă laptopul nu mai e pe hotspot, ciclul se sare fără scanare. Terminal de Administrator; fără `--confirm`, doar dry-run. **NFR-04:** procesul de admin scrie doar fișierele XML (`scans/watch_*.xml`, ultimele 5). Istoricul și alertele (`data/alerts.jsonl`, pentru UI) le aduce `python -m netscan import-scans`, rulat **ca utilizator normal** (refuză să ruleze ca admin), ca baza de date să rămână a ta și s-o vadă UI-ul. La fel `scan --confirm`: scrie doar XML-ul.
-- **`trap`**: un Telnet fals (implicit portul 2323) pe IP-ul laptopului din hotspot. Nimeni legitim nu se conectează acolo, deci orice încercare e o alertă: „cineva din rețea (IP) a încercat să intre”. Nu execută nimic, citește și aruncă ce primește, păstrează **doar IP, ora și portul** (`data/trap_attempts.jsonl`, șterse automat după 7 zile și de „Șterge istoricul”). Ignoră IP-urile din `NETSCAN_TRAP_IGNORE` (de ex. laptopul care scanează). Pe Windows trebuie permis portul în firewall doar pe rețeaua Private (comanda apare la dry-run).
+- **`trap`** (opt-in: din linia de comandă cu `--confirm`, în aplicație doar cu bifa ei): un port fals (implicit 2323) pe IP-ul laptopului din hotspot. Nimeni legitim nu se conectează acolo, deci orice încercare e o alertă: „cineva din rețea (IP) a încercat să intre”. Nu trimite niciun prompt, **nu citește nimic** din ce se trimite și închide imediat conexiunea; păstrează **doar IP, ora și portul** (`data/trap_attempts.jsonl`, șterse automat după 7 zile și de „Șterge istoricul”). Ignoră IP-urile din `NETSCAN_TRAP_IGNORE` (de ex. laptopul care scanează). Pe Windows trebuie permis portul în firewall doar pe rețeaua Private (comanda apare la dry-run).
 - **`listen`**: ascultă doar anunțurile pe care dispozitivele le trimit singure (mDNS, SSDP) pe interfața hotspotului, ca să afle nume ca „Chromecast Sufragerie” sau „HP LaserJet”. Nu trimite cereri și nu deschide link-urile din anunțuri; păstrează local doar IP, nume, serviciu (`data/device_names.jsonl`, șterse de „Șterge istoricul”).
 - **„Ce vede cineva care ascultă”**: la FTP, Telnet și HTTP fără HTTPS, asistentul (și UI-ul) arată cum arată o logare pentru cineva care ascultă rețeaua (`PASS parola-ta`). E un **exemplu inventat**; nu capturăm traficul nimănui.
-- **Protecția live** (din Dashboard): aceleași verificări de rețea ca la `scan`, refăcute la ~10 s. Prezența: câte o datagramă UDP goală spre fiecare adresă din hotspot (cel mult 25/s), apoi tabela ARP a sistemului; porturile riscante: câte o conexiune TCP închisă imediat (cel mult 10/s), fără să trimitem sau să citim date. Capcana ascultă doar pe IP-ul din hotspot. MAC-urile rămân mascate, nimic nu iese din hotspot. Programele, versiunile, problemele și scorul le dă doar scanarea completă.
+- **Protecția live** (din Acasă, cu bifa de consimțământ): aceleași verificări de rețea ca la `scan`, plus numele Wi-Fi citit și egal cu `NETSCAN_EXPECTED_SSID`, refăcute la ~10 s. Prezența: câte o datagramă UDP goală spre fiecare adresă din hotspot (cel mult 25/s), apoi tabela ARP a sistemului; porturile riscante, doar pe dispozitivele echipei: câte o conexiune TCP închisă imediat (cel mult 10/s), fără să trimitem sau să citim date. Stă în pauză cât rulează scanarea completă. Capcana pornește doar dacă e bifată și ascultă doar pe IP-ul din hotspot. MAC-urile rămân mascate, nimic nu iese din hotspot. Programele, versiunile, problemele și scorul le dă doar scanarea completă.
 - Niciuna nu instalează nimic pe alte dispozitive și nu citește log-uri: vedem din rețea ce uși sunt deschise și cine încearcă să intre, nu ce e înăuntru.
 
 ### Utilizare responsabilă
 
 - Scanează doar dispozitivele tale. Pentru musafiri, folosește o rețea separată pentru oaspeți.
-- Aplicația e **doar defensivă**: comanda nmap e fixă (fără scripturi de atac sau brute force), nu testează parole, nu exploatează nimic, capcana nu păstrează parole sau ce scrie cineva și nu răspunde înapoi spre cine a încercat, iar asistentul refuză cererile de atac.
+- Aplicația e **doar defensivă**: comanda nmap e fixă (fără scripturi de atac sau brute force), nu testează parole, nu exploatează nimic, nu deconectează niciun dispozitiv (la „cum scot un dispozitiv?” asistentul dă pașii siguri: parola hotspotului / Wi-Fi-ului, blocarea din router), capcana nu citește nimic și nu răspunde înapoi spre cine a încercat, iar asistentul refuză cererile de atac.
 - Guardrail-ul refuză orice țintă din afara hotspotului propriu.
 
 **Baza de cunoștințe (RAG):** `docs/knowledge_base.pdf` (56 de întrebări RO/EN: produs, dispozitive, scor, cele 15 coduri, acțiuni, refuzuri) e transformată în `netscan/scan/data/knowledge_base.json` cu `python -m netscan.scan.build_kb` (are nevoie de `pip install pypdf`, doar pentru acest pas). Asistentul caută local în ea (BM25, fără internet): fără AI răspunde direct cu intrarea potrivită (de ex. „Cred că am fost hackuit” → F10), iar cu AI-ul local intrările găsite sunt contextul modelului, verificat apoi de validator. Întrebările despre scanare (cel mai periculos dispozitiv, scorul, un IP) rămân construite din scanare. După orice modificare a PDF-ului, rulează din nou `build_kb` (un test verifică asta).
@@ -144,9 +146,9 @@ python -m netscan scan --lang en             # mesajele în engleză
 ```
 
 Înainte de orice scanare, tool-ul verifică în ordine:
-1. **Rețeaua** (`network`): o singură rețea fizică activă (Wi-Fi și cablu în același timp → refuz), interfețele virtuale (Docker, WSL, VirtualBox, VPN) sunt ignorate, iar numele Wi-Fi trebuie să fie `NETSCAN_EXPECTED_SSID`.
-2. **Ținta** (`check_target`): doar adrese IPv4 din subnetul hotspotului (plus `NETSCAN_ALLOWLIST`). Refuză IP-uri publice, `100.64.0.0/10`, subneturi mai mari decât al nostru, rețele private străine (venue), nume de dispozitive (fără DNS) și orice text care nu e o adresă.
-3. **Comanda nmap** e o listă de argumente (fără shell), cu `--max-rate 100` și ținta normalizată de guardrail.
+1. **Rețeaua** (`network`): o singură rețea fizică activă (Wi-Fi și cablu în același timp → refuz), adaptoarele virtuale (Docker, WSL/Hyper-V, VirtualBox) sunt ignorate, iar numele Wi-Fi trebuie să fie `NETSCAN_EXPECTED_SSID`. Un **VPN pornit** cu adresă IPv4 (Tailscale, WireGuard, OpenVPN, AnyConnect, ZeroTier, `tun`/`utun`/`wg`) → refuz (`VPN_ON`: „Ai un VPN pornit (…). Oprește VPN-ul înainte de scanare.”), la `scan`, în aplicație și la protecția live; analiza fișierelor nu e afectată.
+2. **Ținta** (`check_target`): doar adrese IPv4 din subnetul hotspotului. `NETSCAN_ALLOWLIST` poate doar să **îngusteze** subnetul (ex. `172.20.10.4/30`); o intrare din afara lui e ignorată. Refuză IP-uri publice, `100.64.0.0/10`, subneturi mai mari decât al nostru, rețele private străine (venue), nume de dispozitive (fără DNS) și orice text care nu e o adresă.
+3. **Comanda nmap** e o listă de argumente (fără shell), cu `--max-rate 100` și ținta normalizată de guardrail. Scanarea pornită din aplicație adaugă `--min-rate 80 --max-retries 2 --max-rtt-timeout 300ms` (mai rapidă pe hotspot, tot sub 100 de pachete/s).
 
 **Nimic nu iese din hotspot** (regula organizatorilor: conectarea la alte rețele = descalificare):
 - `-n`: nmap nu face DNS invers (cererile ar ajunge prin telefon la DNS-ul operatorului).

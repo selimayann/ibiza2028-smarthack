@@ -1,4 +1,5 @@
-"""Ușa-capcană (B): un Telnet fals pe laptopul nostru, ca să aflăm când cineva din rețea încearcă să intre.
+"""Ușa-capcană (B): un port fals pe laptopul nostru (2323, unde de obicei e Telnet), ca să aflăm când cineva
+din rețea încearcă să intre.
 
 Idee de la honeypot-uri ca OpenCanary: nimeni legitim nu are de ce să se conecteze acolo, deci orice
 încercare e o alertă. Fără agenți pe alte dispozitive și fără log-uri citite de pe ele.
@@ -6,8 +7,9 @@ Idee de la honeypot-uri ca OpenCanary: nimeni legitim nu are de ce să se conect
 Reguli (aceleași ca serviciile false din lab: „simulăm, nu expunem”):
 - ascultă DOAR pe IP-ul laptopului din hotspot (niciodată 0.0.0.0) și pornește doar dacă rețeaua e OK
   (SSID-ul echipei, o singură rețea); fără --confirm e doar dry-run;
-- nu execută nimic, nu are login real: trimite un prompt, citește ce primește și îl ARUNCĂ, închide în câteva secunde;
-- păstrează doar IP-ul, ora și portul (local, data/trap_attempts.jsonl), niciodată parola sau ce a scris omul;
+- nu execută nimic și nu are login: NU trimite niciun prompt și NU citește nimic din ce se tastează. Notează
+  doar IP-ul, ora și portul și închide conexiunea imediat (fără capturare de parole sau de trafic);
+- păstrează doar IP-ul, ora și portul (local, data/trap_attempts.jsonl);
   încercările mai vechi de 7 zile se șterg automat, iar „Șterge istoricul” le șterge pe toate;
 - ignoră IP-urile din lista de excepții (scannerul nostru, NETSCAN_TRAP_IGNORE) și dă cel mult o alertă
   pe minut pentru același IP; cel mult MAX_CONNECTIONS conexiuni simultane.
@@ -27,16 +29,13 @@ from typing import Callable, Iterable, Optional
 from netscan.scan import local_data, network
 
 DEFAULT_PORT = 2323
-READ_TIMEOUT = 5.0
-MAX_READ = 256
 MAX_CONNECTIONS = 20
 ALERT_EVERY_S = 60
-BANNER = b"\r\nBusyBox v1.24.1 (built-in shell (ash))\r\n\r\nlogin: "
 
 TEXTS = {
     "ro": {
         "attempt": ("Cineva din rețea ({ip}) a încercat să intre pe ușa-capcană (port {port}). Dacă nu știi cine e, "
-                    "verifică dispozitivul și schimbă parolele dispozitivelor tale. Nu am păstrat nimic din ce a scris."),
+                    "verifică dispozitivul și schimbă parolele dispozitivelor tale. Am închis imediat: nu am citit nimic."),
         "listening": "Ușa-capcană ascultă pe {ip}:{port} (doar în hotspot). Oprește cu Ctrl+C.",
         "dry_run": "Dry-run. Aș deschide ușa-capcană pe {ip}:{port} (doar în hotspot). Adaugă --confirm ca s-o pornești.",
         "firewall": ("Pe Windows, permite portul doar pe rețeaua Private (terminal de Administrator):\n"
@@ -49,7 +48,7 @@ TEXTS = {
     },
     "en": {
         "attempt": ("Someone on the network ({ip}) tried to get in through the trap door (port {port}). If you don't "
-                    "know who it is, check that device and change your devices' passwords. Nothing they typed was kept."),
+                    "know who it is, check that device and change your devices' passwords. I closed it at once and read nothing."),
         "listening": "The trap door is listening on {ip}:{port} (hotspot only). Stop with Ctrl+C.",
         "dry_run": "Dry-run. I would open the trap door on {ip}:{port} (hotspot only). Add --confirm to start it.",
         "firewall": ("On Windows, allow the port on the Private network only (Administrator terminal):\n"
@@ -75,7 +74,7 @@ def plan_trap(detect: Callable[[], network.NetworkInfo] = network.detect_network
     """IP-ul pe care are voie să asculte: doar IP-ul laptopului din hotspot, când rețeaua e OK."""
     info = detect()
     if not info.scan_allowed or not info.ip:
-        ro, en = network.MESSAGES.get(info.status, ("Rețeaua nu e potrivită.", "The network isn't suitable."))
+        ro, en = network.status_message(info)
         return TrapPlan(False, None, ro, en)
     ip = ipaddress.IPv4Address(info.ip)
     if not ip.is_private or ip.is_loopback or ip.is_unspecified:
@@ -123,19 +122,18 @@ class TrapServer(socketserver.ThreadingTCPServer):
 
 
 class _Handler(socketserver.BaseRequestHandler):
+    """Notează cine a încercat (IP, oră, port) și închide imediat. Fără prompt de login, fără recv(): nu citim
+    nimic din ce trimite celălalt, deci nu putem capta parole."""
+
     def handle(self) -> None:
         server: TrapServer = self.server  # type: ignore[assignment]
         if not server.slots.acquire(blocking=False):
             return                                     # prea multe conexiuni: închidem imediat
         try:
-            ip = self.client_address[0]
-            server.record(ip, server.server_address[1])
+            server.record(self.client_address[0], server.server_address[1])
             sock: socket.socket = self.request
-            sock.settimeout(READ_TIMEOUT)
             try:
-                sock.sendall(BANNER)
-                sock.recv(MAX_READ)                    # citim și ARUNCĂM: nu păstrăm nimic din ce s-a scris
-                sock.sendall(b"\r\nLogin incorrect\r\n")
+                sock.shutdown(socket.SHUT_RDWR)        # închidem pe loc; socketserver face și close()
             except OSError:
                 pass
         finally:

@@ -10,7 +10,8 @@ Reguli (docs/roles/B_Oneata_Siguranta_Scanare_AI.md, 2.2):
   trec prin aceleași verificări, iar cele invalide sunt ignorate (fail-safe).
 
 Funcția e pură: nu atinge rețeaua și nu citește variabile de mediu. Allowlist-ul se construiește
-cu `build_allowlist()` (subnetul interfeței active + `NETSCAN_ALLOWLIST`).
+cu `build_allowlist()`: subnetul interfeței active, pe care `NETSCAN_ALLOWLIST` îl poate doar ÎNGUSTA
+(ex. un singur dispozitiv), niciodată lărgi.
 """
 from __future__ import annotations
 
@@ -172,9 +173,13 @@ def parse_allowlist_env(value: Optional[str]) -> list[str]:
 
 
 def build_allowlist(iface_cidr: Optional[str], env_value: Optional[str] = None) -> list[IPv4Net]:
-    """Allowlist-ul implicit = subnetul interfeței active, plus intrările din `NETSCAN_ALLOWLIST`."""
-    entries: list[str] = []
-    if iface_cidr:
-        entries.append(iface_cidr)
-    entries.extend(parse_allowlist_env(env_value))
-    return normalize_allowlist(entries)
+    """Allowlist-ul = subnetul interfeței active. `NETSCAN_ALLOWLIST` poate doar să-l ÎNGUSTEZE: se păstrează
+    numai intrările din interiorul subnetului (`subnet_of`), iar dacă rămâne vreuna, ele înlocuiesc subnetul.
+    O intrare din afară (alt subnet privat, rețeaua sălii, internetul) e ignorată: variabila nu poate lărgi
+    niciodată ce scanăm. Fără interfață nu e nimic permis."""
+    base = normalize_allowlist([iface_cidr] if iface_cidr else [])
+    if not base:
+        return []
+    iface = base[0]
+    narrowed = [n for n in normalize_allowlist(parse_allowlist_env(env_value)) if n.subnet_of(iface)]
+    return narrowed or base

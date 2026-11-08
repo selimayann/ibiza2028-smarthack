@@ -1,5 +1,6 @@
 """B: protecția live. Rețeaua, tabela ARP, conexiunile și capcana sunt simulate: testele nu ating rețeaua."""
 import errno
+import hashlib
 import json
 import os
 import re
@@ -19,13 +20,20 @@ ROOT = Path(__file__).parent.parent
 LAB = ROOT / "fixtures" / "lab"
 HOTSPOT = NetworkInfo(iface="Wi-Fi", ip="172.20.10.10", cidr="172.20.10.0/28", gateway="172.20.10.1",
                       ssid="RSH-Ibiza2028", status="OK")
+ENV = {"NETSCAN_EXPECTED_SSID": "RSH-Ibiza2028"}
 VENUE = NetworkInfo(iface="Wi-Fi", ip="10.240.3.7", cidr="10.240.0.0/16", ssid="UnivBuc Free", status="WRONG_SSID")
 FULL_MAC = re.compile(r"\b([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b")
 T0 = 1_800_000_000.0
 
 
-def nb(ip, mac="66:48:42:XX:XX:XX", vendor=None, private=True):
-    return neighbors.Neighbor(ip=ip, mac_masked=mac, vendor=vendor, private_mac=private)
+def dev_id(ip, mac="66:48:42:XX:XX:XX"):
+    """Un device_id de test (12 hex, ca la motor), stabil pentru același MAC și IP."""
+    return hashlib.sha256(f"{mac}|{ip}".encode()).hexdigest()[:12]
+
+
+def nb(ip, mac="66:48:42:XX:XX:XX", vendor=None, private=True, device_id=None):
+    return neighbors.Neighbor(ip=ip, mac_masked=mac, vendor=vendor, private_mac=private,
+                              device_id=device_id or dev_id(ip, mac))
 
 
 class Net:
@@ -57,12 +65,14 @@ class NoPace:
 
 
 def make(net, tmp_path, **kw):
+    kw.setdefault("env", dict(ENV))
     kw.setdefault("persist", False)
     kw.setdefault("trap_server", None)
     kw.setdefault("launcher", lambda job: elevate.Launch(True, elevate.STARTED))
     kw.setdefault("read_table", net.read)
+    kw.setdefault("probe", net.probe)
     return live.LiveMonitor(scans_dir=tmp_path / "scans", db_path=tmp_path / "data" / "netscan.db",
-                            detect=net.detect, poke=net.poke, probe=net.probe, pacer=NoPace(), **kw)
+                            detect=net.detect, poke=net.poke, pacer=NoPace(), **kw)
 
 
 def sweep(m, t):
@@ -108,6 +118,8 @@ def test_neighbors_outside_the_hotspot_are_never_probed(tmp_path):
     net = Net()
     net.present = {"172.20.10.1": nb("172.20.10.1"), "8.8.8.8": nb("8.8.8.8"), "192.168.1.5": nb("192.168.1.5")}
     m = make(net, tmp_path)
+    for ip in net.present:
+        m.approve(dev_id(ip))
     sweep(m, T0)
     assert {ip for ip, _ in net.probed} == {"172.20.10.1"}
     assert [d["ip"] for d in m.snapshot()["devices"]] == ["172.20.10.1"]
@@ -115,19 +127,27 @@ def test_neighbors_outside_the_hotspot_are_never_probed(tmp_path):
 
 # ---------- prezența ----------
 
-def test_baseline_is_quiet_then_a_new_device_is_reported_with_its_ports(tmp_path):
+def test_baseline_is_quiet_then_a_new_device_is_only_reported_until_approved(tmp_path):
     net = Net()
     net.present = {"172.20.10.1": nb("172.20.10.1")}
     m = make(net, tmp_path)
     sweep(m, T0)
     assert m.events == []                                     # ce era deja conectat nu e alertă
-    net.present["172.20.10.9"] = nb("172.20.10.9", "D0:39:57:XX:XX:XX", "Liteon", False)
+    new = nb("172.20.10.9", "D0:39:57:XX:XX:XX", "Liteon", False)
+    net.present["172.20.10.9"] = new
     net.open["172.20.10.9"] = {23}
     sweep(m, T0 + 20)
-    assert kinds(m)[:2] == ["PORT_OPENED", "NEW_DEVICE"]      # cele mai noi primele
-    assert "172.20.10.9 (Liteon)" in m.events[1].text_ro and "23 (Telnet)" in m.events[0].text_ro
+    assert kinds(m) == ["NEW_DEVICE"] and "172.20.10.9 (Liteon)" in m.events[0].text_ro
+    assert "până nu-mi spui că e al vostru" in m.events[0].text_ro and "until you tell me it's yours" in m.events[0].text_en
+    assert not any(ip == "172.20.10.9" for ip, _ in net.probed)          # fără acord: nu îl atingem
     dev = {d["ip"]: d for d in m.snapshot()["devices"]}["172.20.10.9"]
-    assert dev["new"] and dev["open_ports"] == [{"port": 23, "label": "Telnet"}]
+    assert dev["new"] and dev["needs_approval"] and not dev["probed"] and dev["open_ports"] == []
+    assert m.approve(new.device_id)
+    sweep(m, T0 + 40)
+    assert kinds(m)[:2] == ["PORT_OPENED", "DEVICE_APPROVED"] and "23 (Telnet)" in m.events[0].text_ro
+    dev = {d["ip"]: d for d in m.snapshot()["devices"]}["172.20.10.9"]
+    assert dev["approved"] and dev["probed"] and not dev["needs_approval"]
+    assert dev["open_ports"] == [{"port": 23, "label": "Telnet"}]
 
 
 def test_device_gone_after_two_missed_sweeps_and_back(tmp_path):
@@ -161,6 +181,7 @@ def test_ports_changes_between_checks(tmp_path):
     net = Net()
     net.present = {"172.20.10.5": nb("172.20.10.5")}
     m = make(net, tmp_path)
+    m.approve(dev_id("172.20.10.5"))
     sweep(m, T0)
     assert m.events == []
     net.open["172.20.10.5"] = {6379}
@@ -179,7 +200,7 @@ def test_first_check_is_compared_with_the_last_full_scan(tmp_path):
         Host(ip="172.20.10.14", device_id="d", device_type="iot", ports=[
             Port(2121, "tcp", "open", "ftp"), Port(8080, "tcp", "open", "http"), Port(1900, "udp", "open", "upnp")])])
     net = Net()
-    net.present = {"172.20.10.14": nb("172.20.10.14")}
+    net.present = {"172.20.10.14": nb("172.20.10.14", device_id="d")}   # același dispozitiv ca în scanare
     net.open["172.20.10.14"] = {8080, 6379}
     m = make(net, tmp_path, analyze=lambda path: scan)
     sweep(m, T0)
@@ -208,6 +229,7 @@ def test_leaving_the_hotspot_mid_check_stops_the_probes(tmp_path, monkeypatch):
     net = Net()
     net.present = {"172.20.10.5": nb("172.20.10.5")}
     m = make(net, tmp_path)
+    m.approve(dev_id("172.20.10.5"))
     m.tick(T0)
     original = net.probe
 
@@ -272,6 +294,7 @@ def test_trap_listens_only_on_the_hotspot_ip_and_stops_when_leaving(tmp_path):
     FakeTrap.instances = []
     net = Net()
     m = make(net, tmp_path, trap_server=FakeTrap)
+    m.trap_wanted = True                                                  # ce face start(trap=True)
     m.tick(T0)
     trap_ = FakeTrap.instances[-1]
     assert (trap_.bind_ip, trap_.port) == ("172.20.10.10", 2323) and "172.20.10.10" in trap_.ignore
@@ -288,6 +311,7 @@ def test_trap_listens_only_on_the_hotspot_ip_and_stops_when_leaving(tmp_path):
 def test_trap_attempt_is_an_urgent_event_and_keeps_only_ip_time_port(tmp_path):
     FakeTrap.instances = []
     m = make(Net(), tmp_path, trap_server=FakeTrap, persist=True)
+    m.trap_wanted = True
     m.tick(T0)
     FakeTrap.instances[-1].on_attempt({"ts": T0 + 1, "ip": "172.20.10.9", "port": 2323})
     assert m.events[0].kind == "TRAP" and m.events[0].tone == "urgent" and "172.20.10.9" in m.events[0].text_ro
@@ -300,8 +324,111 @@ def test_trap_port_in_use_is_reported(tmp_path):
     def busy(*a):
         raise OSError(errno.EADDRINUSE, "in use")
     m = make(Net(), tmp_path, trap_server=busy)
+    m.trap_wanted = True
     m.tick(T0)
     assert m.trap_state == ("error", "BUSY")
+
+
+def test_trap_is_off_unless_asked_for(tmp_path):
+    FakeTrap.instances = []
+    m = make(Net(), tmp_path, trap_server=FakeTrap)
+    for i in range(3):
+        sweep(m, T0 + i * 30)
+    assert FakeTrap.instances == [] and m.snapshot()["trap_state"] == "off"
+
+
+def _wait_for(cond, tries=200):
+    for _ in range(tries):
+        if cond():
+            return True
+        time.sleep(0.01)
+    return cond()
+
+
+def test_start_without_trap_never_builds_the_trap_server(tmp_path):
+    FakeTrap.instances = []
+    m = make(Net(), tmp_path, trap_server=FakeTrap)
+    assert m.start()
+    try:
+        assert _wait_for(lambda: m.status == live.ACTIVE)
+        time.sleep(0.05)
+        assert FakeTrap.instances == [] and m.snapshot()["trap_state"] == "off"
+    finally:
+        m.stop(remember=False)
+
+
+def test_start_with_trap_listens_and_a_restart_without_it_does_not(tmp_path):
+    FakeTrap.instances = []
+    m = make(Net(), tmp_path, trap_server=FakeTrap)
+    assert m.start(trap=True)
+    try:
+        assert _wait_for(lambda: m.snapshot()["trap_state"] == "listening")
+        assert FakeTrap.instances[-1].bind_ip == "172.20.10.10"
+    finally:
+        m.stop(remember=False)
+    assert m.trap_state == ("off", None)
+    count = len(FakeTrap.instances)
+    assert m.start()
+    try:
+        assert _wait_for(lambda: m.status == live.ACTIVE)
+        time.sleep(0.05)
+        assert len(FakeTrap.instances) == count and m.snapshot()["trap_state"] == "off"
+    finally:
+        m.stop(remember=False)
+
+
+def test_autostart_never_opens_the_trap(tmp_path):
+    FakeTrap.instances = []
+    first = make(Net(), tmp_path, persist=True, trap_server=FakeTrap)
+    assert first.start(trap=True)
+    first.stop(remember=False)
+    FakeTrap.instances = []
+    again = make(Net(), tmp_path, persist=True, trap_server=FakeTrap, env={**ENV, "NETSCAN_LIVE_AUTOSTART": "1"})
+    assert again.autostart()
+    try:
+        assert _wait_for(lambda: again.status == live.ACTIVE)
+        time.sleep(0.05)
+        assert FakeTrap.instances == [] and again.snapshot()["trap_state"] == "off"
+    finally:
+        again.stop(remember=False)
+    assert not make(Net(), tmp_path, persist=True, trap_server=FakeTrap).autostart()   # fără variabilă: nimic
+
+
+def test_vpn_on_pauses_live_and_refuses_the_full_scan(tmp_path):
+    from netscan.scan import network, runner
+    vpn = NetworkInfo(iface="Wi-Fi", ip="172.20.10.10", cidr="172.20.10.0/28", gateway="172.20.10.1",
+                      ssid="RSH-Ibiza2028", status=network.VPN_ON, vpn_ifaces=["Tailscale"])
+    net, built, launched = Net(vpn), [], []
+    m = make(net, tmp_path, trap_server=lambda *a: built.append(a), launcher=launched.append)
+    m.trap_wanted = True
+    for i in range(3):
+        sweep(m, T0 + i * 30)
+    snap = m.snapshot()
+    assert net.poked == [] and net.probed == [] and built == []
+    assert m.status == live.PAUSED and m.reason == network.VPN_ON
+    assert "Ai un VPN pornit (Tailscale)" in snap["reason_ro"] and "VPN turned on (Tailscale)" in snap["reason_en"]
+    assert m.request_full_scan("scan") == "NOT_ON_HOTSPOT" and launched == []
+    plan = runner.prepare_scan(detect=lambda: vpn, env=dict(ENV))
+    assert not plan.ok and "Ai un VPN pornit (Tailscale)" in plan.message("ro")
+
+
+def test_file_analysis_never_reads_the_network(monkeypatch, tmp_path):
+    """Un VPN pornit nu schimbă analiza unui fișier: `analyze` nu citește deloc rețeaua."""
+    from netscan import cli
+    from netscan.scan import network
+
+    def boom(*a, **k):
+        raise AssertionError("analyze nu are voie să detecteze rețeaua")
+    monkeypatch.setattr(network, "detect_network", boom)
+    assert cli.cmd_analyze(cli.build_parser().parse_args(["analyze", str(LAB), "--out", str(tmp_path)])) == 0
+    assert (tmp_path / "findings.csv").exists()
+
+
+def test_live_texts_never_mention_dashboard():
+    for lang in ("ro", "en"):
+        for key, text in live.TEXTS[lang].items():
+            assert "dashboard" not in text.lower(), (lang, key)
+    assert "Acasă" in live.TEXTS["ro"]["FIX_CONFIRMED"] and "Home" in live.TEXTS["en"]["FIX_CONFIRMED"]
 
 
 # ---------- scanarea completă ----------
@@ -402,11 +529,12 @@ def test_stop_full_scan_writes_the_stop_file_only_when_running(tmp_path):
     assert (tmp_path / "scans" / scan_job.STOP_FILE).exists()
 
 
-def test_start_is_remembered_and_resumed(tmp_path):
+def test_start_is_remembered_but_resumed_only_with_explicit_autostart(tmp_path):
     m = make(Net(VENUE), tmp_path, persist=True)
-    m.start()
+    assert m.start()
     m.stop(remember=False)
-    again = make(Net(VENUE), tmp_path, persist=True)
+    assert not make(Net(VENUE), tmp_path, persist=True).autostart()       # implicit: oprită la pornire
+    again = make(Net(VENUE), tmp_path, persist=True, env={**ENV, "NETSCAN_LIVE_AUTOSTART": "1"})
     assert again.autostart() and again.running
     again.stop()
-    assert not make(Net(VENUE), tmp_path, persist=True).autostart()
+    assert not make(Net(VENUE), tmp_path, persist=True, env={**ENV, "NETSCAN_LIVE_AUTOSTART": "1"}).autostart()

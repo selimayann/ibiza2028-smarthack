@@ -19,8 +19,7 @@
   {% elif monitor_ran %}
     <p class="notice">{{ T('monitor_none') }}</p>
   {% else %}
-    <p class="notice">{{ T('monitor_empty') }}</p>
-    <details class="tech-details"><summary>{{ T('monitor_how') }}</summary><p><code>python -m netscan watch --confirm</code></p></details>
+    <p class="notice">{{ T('monitor_empty_live') }} <a href="{{ url_for('overview') }}#live-h">{{ T('go_live') }}</a></p>
   {% endif %}
 </section>
 
@@ -32,9 +31,9 @@
     {% set n_bad = g.alerts|selectattr('tone', 'equalto', 'bad')|list|length %}
     {% set n_good = g.alerts|selectattr('tone', 'equalto', 'good')|list|length %}
     {% set n_info = g.alerts|selectattr('tone', 'equalto', 'info')|list|length %}
-    <li class="journal-day" aria-labelledby="j-{{ g.scan_id }}">
+    <li class="journal-day">
       <div class="journal-day-head">
-        <h3 id="j-{{ g.scan_id }}">{% if g.scan %}{{ fmt_time(g.scan.started_at) }}<span class="file">{{ g.scan.file }}</span>{% endif %}</h3>
+        <h3 id="j-{{ g.scan_id }}">{% if g.scan %}<span title="{{ g.scan.file }}">{{ fmt_time(g.scan.started_at) }}</span>{% if g.scan.status == 'ok' %} <span class="file">· {{ T('score_change') }} {{ g.scan.score }}</span>{% endif %}{% endif %}</h3>
         <p class="journal-sum">
           {%- set parts = [] -%}
           {%- if n_bad %}{% set _ = parts.append(T('j_bad')|format(n_bad)) %}{% endif -%}
@@ -43,18 +42,25 @@
           {{ parts|join(', ') }}
         </p>
       </div>
+      {# Schimbările scanării grupate pe dispozitiv (numele și IP-ul o singură dată); cele lungi, la cerere #}
       {% if g.alerts|length > 6 %}
         {{ alert_groups(g.alerts[:6]) }}
         <details class="journal-more"><summary>{{ T('journal_more')|format(g.alerts|length - 6) }}</summary>{{ alert_groups(g.alerts[6:]) }}</details>
       {% else %}
         {{ alert_groups(g.alerts) }}
       {% endif %}
+      {% if g.folded %}
+        <details class="fold port-fold">
+          <summary>{{ T('port_changes_folded')|format(g.folded|length) }}</summary>
+          <div class="fold-body">{{ alert_groups(g.folded) }}</div>
+        </details>
+      {% endif %}
       <p class="journal-link"><a href="{{ url_for('history_scan', scan_id=g.scan_id, **{'from': 'journal'}) }}">{{ T('see_in_history') }}</a></p>
     </li>
   {% endfor %}
   </ol>
 {% else %}
-  {{ empty_state(T('journal_empty_title'), T('journal_empty'), url_for('overview'), T('go_overview')) }}
+  {{ empty_state(T('journal_empty_title'), T('journal_empty'), url_for('overview'), T('go_overview'), 3) }}
 {% endif %}
 </section>
 {% endblock %}

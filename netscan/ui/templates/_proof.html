@@ -1,10 +1,13 @@
 {# Dovada „înainte / după”: scorul vechi → scorul nou (ale motorului), câte „uși” s-au închis, ce a rămas.
-   Totul vine din diff(); aici nu se calculează nimic. Textele din scanare (nume, IP) se escapează. #}
-{% from "_macros.html" import port_label with context %}
-{% macro proof_list(items) %}
+   Totul vine din diff() (view.proof_view); aici nu se calculează nimic. Problemele dispărute pentru că dispozitivul
+   nu a mai fost văzut NU sunt numărate ca reparate (coloană separată). Textele din scanare (nume, IP) se escapează. #}
+{% from "_macros.html" import sev, port_label with context %}
+{% macro proof_list(items, kind) %}
   <ul>
-    {% for f in items %}
-      <li>{{ code_name(f.code) }}<br>{% if custom_name(f.device_id) %}{{ custom_name(f.device_id) }} · {% endif %}<span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span></li>
+    {% for it in items %}
+      {% set f = it.finding if kind == 'fixed' else it %}
+      <li>{{ sev(f.severity) }} <span>{{ code_name(f.code) }}</span><br>{% if custom_name(f.device_id) %}{{ custom_name(f.device_id) }} · {% endif %}<span class="mono" translate="no">{{ f.ip }}</span> <span class="muted">{{ port_label(f) }}</span>
+        {% if kind == 'fixed' and it.likely_same %}<span class="tag">{{ T('proof_likely_same') }}</span>{% endif %}</li>
     {% else %}
       <li class="muted">{{ T('proof_nothing') }}</li>
     {% endfor %}
@@ -19,22 +22,32 @@
     <span class="proof-side"><span class="proof-cap">{{ T('proof_after') }}</span><span class="proof-num mono">{{ proof.score_after }}</span></span>
     <span class="proof-dir"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-{{ pdir[0] }}"/></svg>{{ T(pdir[1]) }}</span>
   </p>
-  <p class="proof-line">{{ proof_sentence(proof) }}</p>
+  {% if proof_line %}<p class="proof-line">{{ proof_line }}</p>{% endif %}
   <div class="proof-cols">
     <div class="compare-col compare-good">
-      <h3><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('proof_resolved')|format(proof.resolved|length) }}</h3>
-      {{ proof_list(proof.resolved) }}
+      <h3><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('proof_fixed')|format(proof.fixed|length) }}</h3>
+      {{ proof_list(proof.fixed|sort(attribute='finding.points', reverse=true), 'fixed') }}
     </div>
     <div class="compare-col compare-warn">
-      <h3><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('proof_remaining')|format(proof.remaining|length) }}</h3>
-      {{ proof_list(proof.remaining) }}
+      <h3><svg class="icon" aria-hidden="true"><use href="#i-medium"/></svg>{{ T('proof_still')|format(proof.still|length) }}</h3>
+      {{ proof_list(proof.still|sort(attribute='points', reverse=true), 'still') }}
     </div>
     {% if proof.new %}
     <div class="compare-col compare-bad">
       <h3><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('proof_new')|format(proof.new|length) }}</h3>
-      {{ proof_list(proof.new) }}
+      {{ proof_list(proof.new|sort(attribute='points', reverse=true), 'new') }}
+    </div>
+    {% endif %}
+    {% if proof.not_seen %}
+    <div class="compare-col">
+      <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('proof_not_seen')|format(proof.not_seen|length) }}</h3>
+      {{ proof_list(proof.not_seen|sort(attribute='points', reverse=true), 'not_seen') }}
     </div>
     {% endif %}
   </div>
-  <p class="proof-files muted">{{ T('proof_files')|format(proof.before.file ~ ' (' ~ fmt_time(proof.before.started_at) ~ ')', proof.after.file ~ ' (' ~ fmt_time(proof.after.started_at) ~ ')') }}</p>
+  <div class="proof-limits" role="note">
+    <h3><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ T('proof_limits_title') }}</h3>
+    <p>{{ T('proof_limits_body') }}</p>
+  </div>
+  <p class="proof-files muted">{{ T('proof_files')|format(proof.file_before ~ ' (' ~ fmt_time(proof.started_before) ~ ')', proof.file_after ~ ' (' ~ fmt_time(proof.started_after) ~ ')') }}</p>
 </section>

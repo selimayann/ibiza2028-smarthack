@@ -130,9 +130,27 @@ def test_parse_allowlist_env():
     assert parse_allowlist_env(" 172.20.10.0/28 , ,10.0.0.0/29 ") == ["172.20.10.0/28", "10.0.0.0/29"]
 
 
-def test_build_allowlist_from_interface_and_env():
-    nets = build_allowlist("172.20.10.3/28", "10.42.0.0/29, 8.8.8.0/24, junk")
-    assert [str(n) for n in nets] == ["172.20.10.0/28", "10.42.0.0/29"]
+def test_build_allowlist_env_outside_the_interface_is_ignored():
+    """NETSCAN_ALLOWLIST nu poate lărgi: tot ce e în afara subnetului interfeței e ignorat."""
+    nets = build_allowlist("172.20.10.3/28", "10.42.0.0/29, 8.8.8.0/24, junk, 172.20.0.0/16")
+    assert [str(n) for n in nets] == ["172.20.10.0/28"]
+
+
+def test_build_allowlist_env_can_only_narrow():
+    nets = build_allowlist("172.20.10.3/28", "172.20.10.4/30, 10.42.0.0/29")
+    assert [str(n) for n in nets] == ["172.20.10.4/30"]
+    assert check_target("172.20.10.5", nets).ok
+    assert not check_target("172.20.10.9", nets).ok                 # în hotspot, dar în afara îngustării
+
+
+def test_venue_range_in_env_cannot_widen_the_hotspot():
+    nets = build_allowlist("172.20.10.0/28", "10.240.0.0/16")
+    d = check_target("10.240.5.5", nets)
+    assert not d.ok and d.reason_code == g.OUTSIDE_ALLOWLIST
+
+
+def test_build_allowlist_env_without_interface_allows_nothing():
+    assert build_allowlist(None, "172.20.10.0/28") == []
 
 
 def test_build_allowlist_without_interface():

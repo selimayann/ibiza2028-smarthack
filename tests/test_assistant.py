@@ -1,4 +1,5 @@
 """B: asistentul FR-12. Răspunde doar din scanare; LLM-ul e opțional și verificat. Fără rețea."""
+import re
 import socket
 from pathlib import Path
 
@@ -51,7 +52,8 @@ def test_detect_intent(q, intent):
 def test_most_dangerous_matches_contract_order():
     r = a.answer("Care e cel mai periculos dispozitiv?", V2)
     assert r.source == "fallback"
-    assert "192.168.1.40" in r.text and "CAMERA_STREAM_EXPOSED" in r.text   # 30 puncte, high
+    assert "192.168.1.40" in r.text and "Imaginea camerei se vede din rețea" in r.text   # 30 puncte, high
+    assert "30 de puncte de risc" in r.text and "CAMERA_STREAM_EXPOSED" not in r.text   # fără coduri din catalog
     assert "Fă asta întâi" in r.text
 
 
@@ -66,9 +68,19 @@ def test_score_comes_from_engine():
 
 
 def test_code_present_and_absent():
-    assert "Am găsit MQTT_EXPOSED" in a.answer("Ce e MQTT?", V2).text
+    found = a.answer("Ce e MQTT?", V2).text
+    assert "Am găsit problema „Mesajele aparatelor smart, la vedere (MQTT)”" in found and "Ce faci: 1." in found
     r = a.answer("Am telnet?", V2)
-    assert "nu a găsit TELNET_OPEN" in r.text and "1." in r.text   # explicația și pașii tot apar
+    # vestea bună întâi; explicația scurtă rămâne, dar fără pași de reparat pentru o problemă care nu există
+    assert r.text.startswith("Vestea bună") and "Intrare veche, fără lacăt (Telnet)" in r.text
+    assert "Ce faci" not in r.text and "1." not in r.text and "TELNET_OPEN" not in r.text
+
+
+@pytest.mark.parametrize("lang, start", [("ro", "Vestea bună"), ("en", "Good news")])
+def test_absent_problem_starts_with_good_news(lang, start):
+    r = a.answer("Camera mea e spartă?", V4, lang=lang)            # V4 nu are nicio cameră expusă
+    assert r.intent == a.INTENT_CODE and r.text.startswith(start)
+    assert "1." not in r.text and not re.search(r"\b[A-Z]+(?:_[A-Z]+)+\b", r.text)
 
 
 def test_device_by_ip():
@@ -77,12 +89,31 @@ def test_device_by_ip():
 
 
 def test_unknown_device_private_address():
-    assert "UNKNOWN_DEVICE" in a.answer("Ce e 192.168.1.99?", V4).text
+    text = a.answer("Ce e 192.168.1.99?", V4).text
+    assert "Aparat pe care nu l-am recunoscut" in text and "UNKNOWN_DEVICE" not in text
+
+
+@pytest.mark.parametrize("lang", ["ro", "en"])
+@pytest.mark.parametrize("q", ["Care e cel mai periculos dispozitiv?", "Ce probleme am?", "Ce e la 192.168.1.1?",
+                               "Cum repar tot?", "Ce e telnet?", "Care e scorul?", "Câte probleme grave am?"])
+def test_answers_never_show_catalog_codes(q, lang):
+    """Un bunic nu știe ce e TELNET_OPEN: răspunsurile folosesc numele pe înțeles (i18n.code_name)."""
+    for scan in (V2, V4):
+        text = a.answer(q, scan, lang=lang).text
+        assert not re.search(r"\b[A-Z]{2,}(?:_[A-Z]{2,})+\b", text), (q, text)
+
+
+def test_most_dangerous_v4_uses_plain_name_and_lowercase_device():
+    ro = a.fallback_answer("Care e cel mai periculos dispozitiv?", V4)[0]
+    assert "TELNET_OPEN" not in ro and "Intrare veche, fără lacăt (Telnet)" in ro
+    en = a.fallback_answer("Which device is the most dangerous?", V4, "en")[0]
+    assert en.startswith("Most dangerous device: the router") and "Old login without a lock (Telnet)" in en
 
 
 def test_changes_v6a_to_v6b():
     r = a.answer("Ce s-a schimbat?", V6B, previous=V6A)
-    assert "3 rezolvate" in r.text and "60 → 100" in r.text
+    assert "rezolvate 3" in r.text and "60 → 100" in r.text
+    assert "Intrare veche, fără lacăt (Telnet)" in r.text and "TELNET_OPEN" not in r.text
     assert "o singură scanare" in a.answer("Ce s-a schimbat?", V6B).text
 
 
@@ -258,7 +289,7 @@ def test_next_is_second_step():
 
 def test_list_and_ports():
     text = a.answer("Ce probleme am?", V2).text
-    assert "5 probleme" in text and "CAMERA_STREAM_EXPOSED (port 554, gravă)" in text
+    assert "5 probleme" in text and "Imaginea camerei se vede din rețea – port 554, risc ridicat" in text
     ports = a.answer("Ce porturi sunt deschise?", V2).text
     assert "554/tcp (rtsp)" in ports
 
@@ -269,9 +300,40 @@ def test_glossary_ro_en():
 
 
 def test_score_how_and_floor():
-    assert "100 − 60 puncte = 40" in a.answer("Cum se calculează scorul?", V2).text
+    assert "100 − 60 (punctele problemelor găsite) = 40" in a.answer("Cum se calculează scorul?", V2).text
     lab = analyze_file(str(Path(__file__).parent.parent / "fixtures" / "lab" / "scan_01_before.xml"))
     assert "sub 0" in a.answer("Cum se calculează scorul?", lab).text
+
+
+@pytest.mark.parametrize("q", ["De ce am scorul ăsta?", "De ce e scorul mic?", "Why is my score so low?"])
+def test_why_score_goes_to_score_how(q):
+    assert a.detect_intent(q)[0] == a.INTENT_SCORE_HOW
+
+
+def test_score_answer_explains_bands_and_next_fix():
+    text = a.answer("Care e scorul?", V2).text                         # V2: 40, cameră 554 = 20 de puncte
+    assert "40 din 100: risc mare" in text and "80–100 arată bine" in text and "sub 50" in text
+    assert "Imaginea camerei se vede din rețea, pe camera 192.168.1.40 (port 554)" in text
+    assert "valorează 20 de puncte" in text
+    en = a.answer("What is the score?", V2, lang="en").text
+    assert "40 out of 100: high risk" in en and "worth 20 points" in en
+    assert check_llm_text(text, V2).ok and check_llm_text(en, V2).ok    # validatorul acceptă răspunsul
+
+
+def test_severity_words_match_the_ui():
+    """Același vocabular ca în UI (i18n sev_*): „risc ridicat”, nu „gravă”."""
+    from netscan.ui import i18n
+    for lang in ("ro", "en"):
+        for sev in ("high", "medium", "low", "info"):
+            assert a.T[lang]["sev_full"][sev] == i18n.t(lang, "sev_" + sev).lower()
+    text = a.answer("Câte probleme grave am?", V2).text
+    assert "risc ridicat: 1" in text and "gravă" not in text
+
+
+def test_assistant_texts_use_safeeel_and_real_button_names():
+    assert a.answer("Ce face aplicația?", V2).text.startswith("Sunt asistentul SafeEel")
+    assert "„Șterge istoricul meu”" in a.answer("Îmi trimiți datele pe internet?", V2).text
+    assert all("(ERROR)" not in a.T[lang]["score_error"] for lang in ("ro", "en"))
 
 
 def test_is_safe_bands_and_limits():
@@ -339,3 +401,43 @@ def test_fix_all_singular_for_one_info_item():
     assert sum(1 for f in scan.findings if f.points == 0) == 1
     assert "Mai e un lucru doar de știut" in a.answer("Cum repar tot?", scan).text
     assert "There is also one thing" in a.answer("How do I fix everything?", scan, lang="en").text
+
+
+# --- „cum scot un dispozitiv?”: pașii siguri, SafeEel nu deconectează nimic ----------------------------
+
+@pytest.mark.parametrize("q, lang", [
+    ("Cum scot un dispozitiv din rețea?", "ro"), ("Cum dau afară pe cineva de pe hotspot?", "ro"),
+    ("Cum deconectez un dispozitiv străin?", "ro"), ("How do I kick a device off my network?", "en"),
+    ("How do I remove a device from the Wi-Fi?", "en"), ("Can I disconnect someone from my hotspot?", "en"),
+])
+def test_remove_device_gives_safe_steps_and_never_offers_to_disconnect(q, lang):
+    r = a.answer(q, V2, lang=lang)
+    assert r.intent == a.INTENT_REMOVE and r.refs == ["B8"] and r.source == "fallback"
+    if lang == "ro":
+        assert "SafeEel nu deconectează niciodată" in r.text and "tehnică de atac" in r.text
+        assert "Setări → Hotspot personal → Parolă Wi-Fi" in r.text and "Setări → Conexiuni → Hotspot mobil" in r.text
+        assert "schimbă parola Wi-Fi".lower() in r.text.lower() and "bloca dispozitivul" in r.text
+    else:
+        assert "SafeEel never disconnects" in r.text and "attack technique" in r.text
+        assert "Settings → Personal Hotspot → Wi-Fi Password" in r.text and "Mobile Hotspot" in r.text
+        assert "Change the Wi-Fi password" in r.text and "block the device" in r.text
+    assert check_llm_text(r.text, V2).ok                                  # validatorul acceptă textul
+
+
+def test_remove_device_is_static_never_sent_to_the_model():
+    called = []
+    r = a.answer("Cum scot un dispozitiv din rețea?", V2, llm=lambda ctx: called.append(ctx) or "orice")
+    assert called == [] and r.source == "fallback" and a.INTENT_REMOVE in a.STATIC_INTENTS
+
+
+def test_remove_device_on_someone_elses_network_is_still_refused():
+    r = a.answer("Cum dau afară vecinul de pe Wi-Fi-ul lui?", V2)
+    assert r.intent == a.INTENT_SCOPE and r.text.startswith("Nu te pot ajuta")
+
+
+def test_remove_device_texts_are_grounded_in_the_kb():
+    from netscan.scan import kb
+    b8 = kb.get("B8")
+    assert "Hotspot personal" in b8["a_ro"] and "Personal Hotspot" in b8["a_en"]
+    for lang in ("ro", "en"):
+        assert len(a.T[lang]["remove_device"].split("\n")) == 4             # o frază + 3 pași numerotați

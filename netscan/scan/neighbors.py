@@ -10,7 +10,9 @@ Siguranță:
 - adresele le alege live.py, doar din subnetul hotspotului și doar dacă trec de guardrail;
 - socket-ul e legat de IP-ul laptopului din hotspot, deci datagramele nu pot pleca pe altă interfață;
 - datagrama e goală și nu citim niciun răspuns: ARP-ul îl face sistemul, noi citim doar tabela lui;
-- MAC-ul complet nu iese din această funcție: rămân doar primii 3 octeți (AA:BB:CC:XX:XX:XX), ca peste tot.
+- MAC-ul complet nu iese din această funcție: rămân doar primii 3 octeți (AA:BB:CC:XX:XX:XX), ca peste tot,
+  și `device_id`, calculat cu aceeași funcție ca motorul (netscan.engine.parser.device_identity: hash cu salt).
+  Așa recunoaștem dispozitivul din ultima scanare și când altcineva primește același IP.
 """
 from __future__ import annotations
 
@@ -42,6 +44,7 @@ class Neighbor:
     mac_masked: str                    # doar primii 3 octeți
     vendor: Optional[str]              # din lista IEEE offline; None pentru MAC privat sau necunoscut
     private_mac: bool                  # MAC aleatoriu (telefoane și laptopuri moderne)
+    device_id: Optional[str] = None    # ca în scanare (hash-ul MAC-ului complet, cu salt); MAC-ul nu e păstrat
 
 
 def _normalize_mac(raw: str) -> Optional[str]:
@@ -75,11 +78,15 @@ def _in_hotspot(ip: str, net: ipaddress.IPv4Network, own_ip: Optional[str]) -> b
 
 
 def _neighbor(ip: str, raw_mac: str) -> Optional[Neighbor]:
-    masked = mask_mac(raw_mac)
-    if masked is None:
+    full = _normalize_mac(raw_mac)             # „AA:BB:CC:DD:EE:FF”, doar în interiorul acestei funcții
+    if full is None:
         return None
+    from netscan.engine.parser import device_identity   # doar citim funcția motorului, nu o schimbăm
+    device_id, _ = device_identity(full, ip)
+    masked = full[:8] + ":XX:XX:XX"
+    del full
     return Neighbor(ip=ip, mac_masked=masked, vendor=device_info.lookup_vendor(masked),
-                    private_mac=device_info.is_private_mac(masked))
+                    private_mac=device_info.is_private_mac(masked), device_id=device_id)
 
 
 def parse_windows_arp(text: str, own_ip: str, cidr: str) -> dict[str, Neighbor]:

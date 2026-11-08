@@ -56,23 +56,25 @@ class Event:
         return "info"
 
 
-def _read(path_fn: str) -> list[dict]:
+def _read(path_fn: str, db_path=None) -> list[dict]:
     try:
         from netscan.scan import local_data
 
-        rows = local_data.read_events(getattr(local_data, path_fn)())
+        path_of = getattr(local_data, path_fn)
+        rows = local_data.read_events(path_of(db_path) if db_path is not None else path_of())
         return [r for r in (rows or []) if isinstance(r, dict)]
     except Exception:
         return []
 
 
-def watch_events() -> list[Event] | None:
-    """Alertele monitorului (`python -m netscan watch`). None = monitorul n-a rulat (nu există date)."""
+def watch_events(db_path=None) -> list[Event] | None:
+    """Alertele monitorului (`python -m netscan watch`). None = monitorul n-a rulat (nu există date).
+    `db_path`: baza cu istoricul (alertele stau lângă ea); None = NETSCAN_DB_PATH sau data/."""
     try:
         from netscan.scan import local_data  # noqa: F401
     except Exception:
         return None
-    rows = _read("alerts_path")
+    rows = _read("alerts_path", db_path)
     events = []
     for r in rows:
         kind = _text(r.get("kind"), 32).upper()
@@ -85,10 +87,10 @@ def watch_events() -> list[Event] | None:
     return events if rows else None
 
 
-def trap_events() -> list[Event]:
+def trap_events(db_path=None) -> list[Event]:
     """Încercările de intrare prinse de ușa-capcană: doar {ts, ip, port}. Textul îl scrie UI-ul."""
     out = []
-    for r in _read("trap_path"):
+    for r in _read("trap_path", db_path):
         ip = _clean_ip(r.get("ip"))
         if ip is None:
             continue
@@ -97,10 +99,10 @@ def trap_events() -> list[Event]:
     return out
 
 
-def monitor_events() -> tuple[list[Event], bool]:
+def monitor_events(db_path=None) -> tuple[list[Event], bool]:
     """Monitorul + capcana, cele mai noi primele. Al doilea element: dacă monitorul a rulat vreodată."""
-    watch = watch_events()
-    events = (watch or []) + trap_events()
+    watch = watch_events(db_path)
+    events = (watch or []) + trap_events(db_path)
     events.sort(key=lambda e: (e.ts or 0), reverse=True)
     return events, watch is not None or bool(events)
 
@@ -122,8 +124,12 @@ def eavesdrop(code: str, lang: str) -> dict | None:
             "caption": _text(d.get("caption")), "fix": _text(d.get("fix"))}
 
 
+NAMES_WINDOW_S = 6 * 3600   # un nume anunțat se arată doar lângă scanarea făcută cam în același timp
+
+
 def announced_names() -> dict[str, dict]:
-    """Numele anunțate de dispozitive (ascultare pasivă): {ip: {"name", "service"}}. Text nesigur, tăiat la 60."""
+    """Numele anunțate de dispozitive (ascultare pasivă): {ip: {"name", "service", "ts"}}. Text nesigur, tăiat
+    la 60 de caractere; ts = când a fost auzit (None dacă lipsește)."""
     try:
         from netscan.scan.passive import load_names
 
@@ -137,5 +143,15 @@ def announced_names() -> dict[str, dict]:
             continue
         name = _text(info.get("name"), NAME_MAX)
         if name:
-            out[ip] = {"name": name, "service": _text(info.get("service"), NAME_MAX) or None}
+            out[ip] = {"name": name, "service": _text(info.get("service"), NAME_MAX) or None,
+                       "ts": _clean_int(info.get("ts"))}
     return out
+
+
+def names_near(names: dict[str, dict], started_at: int | None, window_s: int = NAMES_WINDOW_S) -> dict[str, dict]:
+    """Doar numele auzite în fereastra de ±window_s în jurul scanării: un nume de acum nu se lipește pe o
+    scanare veche (IP-urile se refolosesc). Fără dată a scanării sau a numelui: nimic."""
+    if started_at is None:
+        return {}
+    return {ip: info for ip, info in (names or {}).items()
+            if info.get("ts") is not None and abs(info["ts"] - started_at) <= window_s}

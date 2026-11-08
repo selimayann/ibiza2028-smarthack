@@ -22,6 +22,7 @@ from netscan.explain import get_explanation
 from netscan.model import SEVERITY_ORDER, Finding, Scan
 from netscan.scan import ai_check
 from netscan.scan.device_info import describe
+from netscan.ui import i18n   # doar texte (fără Flask): numele pe înțeles ale problemelor și pluralul corect
 
 MAX_QUESTION_LEN = 500
 LANGS = ("ro", "en")
@@ -50,6 +51,7 @@ INTENT_SAFE_DEVICES = "safe_devices"  # dispozitivele fără probleme
 INTENT_THANKS = "thanks"
 INTENT_HELP = "help"                # salut / ajutor / ce poți face
 INTENT_KB = "knowledge"             # răspuns din baza de cunoștințe (docs/knowledge_base.pdf)
+INTENT_REMOVE = "remove_device"     # „cum scot / dau afară un dispozitiv?”: pașii siguri, din KB B8
 
 # Baza de cunoștințe (RAG): intrările generale care răspund mai bine decât o intenție din scanare când
 # potrivirea e puternică; restul doar când asistentul nu a înțeles întrebarea.
@@ -61,7 +63,8 @@ KB_WEAK = 8.0         # scor minim când asistentul nu a înțeles întrebarea
 
 # Răspunsuri fixe, care nu depind de scanare: nu se trimit niciodată unui model AI.
 STATIC_INTENTS = frozenset({INTENT_UNKNOWN, INTENT_SCOPE, INTENT_ABOUT, INTENT_PRIVACY, INTENT_PRIVATE_MAC,
-                            INTENT_GLOSSARY, INTENT_SCORE_HOW, INTENT_THANKS, INTENT_HELP})
+                            INTENT_GLOSSARY, INTENT_SCORE_HOW, INTENT_THANKS, INTENT_HELP, INTENT_REMOVE})
+REMOVE_REF = "B8"    # intrarea din baza de cunoștințe pe care se sprijină răspunsul „cum scot un dispozitiv”
 
 # Pragurile etichetei scorului, aceleași ca în UI (netscan/ui/view.py).
 BAND_GOOD_MIN = 80
@@ -118,6 +121,14 @@ SCOPE_WORDS = ("vecin", "vecinul", "vecinului", "vecini", "neighbor", "neighbour
                "altcuiva", "camera vecinului", "ghicesc parola", "aflu parola", "sparg parola", "crack",
                "brute force", "bruteforce", "exploit", "exploatez", "exploateaza", "ddos", "someone else's",
                "guess the password", "steal")
+# „cum scot / dau afară / deconectez un dispozitiv”: răspundem cu pașii siguri; SafeEel nu deconectează nimic singur.
+REMOVE_WORDS = ("dau afara", "da afara", "dai afara", "sa dau afara", "scot un dispozitiv", "scot dispozitivul",
+                "scot din retea", "scot de pe", "sa scot", "cum scot", "elimin un dispozitiv", "elimin dispozitivul",
+                "deconectez un dispozitiv", "deconectez dispozitivul", "deconectez pe cineva", "sa deconectez",
+                "cum deconectez", "il deconectez", "kick", "kick out", "kick off", "remove a device",
+                "remove the device", "remove this device", "remove someone", "remove a stranger",
+                "disconnect a device", "disconnect the device", "disconnect someone", "boot off", "throw off",
+                "get rid of a device", "get someone off", "deauth")
 ABOUT_WORDS = ("ce face aplicatia", "ce face programul", "cum functioneaza", "cum functionezi", "cum lucrezi",
                "ce esti", "cine esti", "ce e netscan", "ce este netscan", "how does it work", "how does this work",
                "what does this app", "what does this tool", "what do you do", "who are you", "what are you")
@@ -137,6 +148,7 @@ LIST_WORDS = ("toate problemele", "lista problemelor", "ce probleme am", "ce pro
 PORTS_WORDS = ("porturi deschise", "porturile deschise", "ce porturi", "open ports", "which ports", "what ports")
 SCORE_HOW_WORDS = ("cum se calculeaza", "cum e calculat", "cum calculezi", "formula", "de ce am scorul",
                    "de ce e scorul", "how is the score", "how do you calculate", "why is my score", "why is the score")
+WHY_WORDS = ("de ce", "din ce cauza", "why", "how come")   # „de ce” + „scor” = cum se calculează scorul
 SEVERITY_WORDS = ("grav", "grave", "gravitate", "severitate", "severitati", "severity", "high", "medium", "low",
                   "cat de grav", "how serious", "how bad", "critic", "critice")
 IS_SAFE_WORDS = ("e sigura", "e sigur", "sunt in siguranta", "sunt protejat", "virus", "virusi", "hackuit",
@@ -174,70 +186,95 @@ T = {
     "ro": {
         "empty": "Scrie o întrebare despre rețeaua ta, de exemplu: „Care e cel mai periculos dispozitiv?”",
         "error_scan": "Fișierul acesta nu a putut fi citit, deci nu pot răspunde din el.",
-        "no_findings": "Scanarea nu a găsit nicio problemă din catalog. Scorul standard este {score}.",
-        "dangerous": "Cel mai periculos dispozitiv: {dev} ({ip}), cu {n} problem{e} și {pts} puncte de risc.",
-        "worst": "Cea mai gravă problemă a lui: {code}{port}.",
+        "no_findings": "Vestea bună: scanarea nu a găsit nicio problemă din lista noastră. Scorul rețelei este {score} din 100.",
+        "dangerous": "Cel mai periculos dispozitiv: {dev} ({ip}), cu {n_txt} și {pts_txt}.",
+        "worst": "Cea mai periculoasă problemă a lui: {name}.",
         "first": "Fă asta întâi, pe {dev} {ip}{port}: {step}",
         "why": "De ce: {text}",
-        "score": "Scorul standard al rețelei este {score} din 100. Probleme găsite: {total} ({sev}).",
-        "score_error": "Fișierul nu a putut fi citit, deci nu are scor (ERROR).",
-        "code_found": "Am găsit {code} pe {where}.",
-        "code_absent": "Scanarea nu a găsit {code} în această rețea.",
+        "score": "Scorul standard al rețelei este {score} din 100: {band}. Probleme găsite: {total} ({sev}).",
+        "score_bands": ("Cum îl citești: {good}–100 arată bine, {fair}–{fair_hi} e de îmbunătățit, sub {fair} e risc "
+                        "mare. Fiecare problemă scade puncte: risc ridicat 20, risc mediu 10, risc scăzut 5."),
+        "score_next": "Repar-o întâi pe cea mai mare: {name}, pe {dev} {ip}{port}. Ea singură valorează {pts_txt}.",
+        "band": {"good": "arată bine", "fair": "e de îmbunătățit", "poor": "risc mare"},
+        "score_error": "Fișierul nu a putut fi citit, deci nu are scor.",
+        "code_found": "Am găsit problema „{name}” pe {where}.",
+        "code_absent": "Vestea bună: scanarea nu a găsit „{name}” în rețeaua ta, deci aici nu ai nimic de reparat.",
+        "code_absent_info": "Ca să știi ce înseamnă: {text}",
         "code_steps": "Ce faci: {steps}",
-        "device_ok": "{dev} ({ip}): nicio problemă din catalog.",
-        "device_has": "{dev} ({ip}) are {n} problem{e}: {codes}.",
+        "device_ok": "{dev} ({ip}): nicio problemă din lista noastră.",
+        "device_has": "{dev} ({ip}) are {n_txt}: {codes}.",
         "device_absent": "Adresa {ip} nu apare în această scanare, deci nu știu nimic despre ea.",
         "device_bad_ip": "Asta nu e o adresă IP validă.",
-        "devices": "În scanare sunt {n} dispozitive: {list}.",
-        "changes_none": "Am o singură scanare, deci nu pot spune ce s-a schimbat. Fă o scanare nouă și compară-le în istoric.",
-        "changes": "Față de scanarea anterioară: {resolved} rezolvate, {new} noi. Scor: {before} → {after}.",
+        "devices": "Dispozitive în scanare ({n}): {list}.",
+        "changes_none": "Am o singură scanare, deci nu pot spune ce s-a schimbat. Fă o scanare nouă și compară-le în pagina Progres.",
+        "changes": "Față de scanarea anterioară: rezolvate {resolved}, noi {new}. Scor: {before} → {after}.",
         "changes_resolved": "Rezolvate: {list}.",
         "changes_new": "Noi: {list}.",
         "out_of_scope": ("Scanarea nu poate răspunde la asta: știu doar ce dispozitive, porturi și probleme am găsit "
                          "în rețeaua ta. Poți întreba: „Care e cel mai periculos dispozitiv?”, „Ce fac întâi?”, "
                          "„Care e scorul?” sau „Ce înseamnă telnet?”"),
         "and": "și",
-        "sev": {"high": "gravă", "medium": "medie", "low": "mică", "info": "informativă"},
+        "sev": {"high": "risc ridicat", "medium": "risc mediu", "low": "risc scăzut", "info": "doar de știut"},
+        "problem": ("problemă", "probleme"),
+        "points": ("punct de risc", "puncte de risc"),
+        "points_short": ("punct", "puncte"),
+        "things": ("lucru", "lucruri"),
     },
     "en": {
         "empty": "Ask a question about your network, for example: \"Which device is the most dangerous?\"",
         "error_scan": "This file could not be read, so I can't answer from it.",
-        "no_findings": "The scan found no problems from the catalog. The standard score is {score}.",
-        "dangerous": "Most dangerous device: {dev} ({ip}), with {n} problem{e} and {pts} risk points.",
-        "worst": "Its worst problem: {code}{port}.",
+        "no_findings": "Good news: the scan found no problems from our list. The network score is {score} out of 100.",
+        "dangerous": "Most dangerous device: {dev} ({ip}), with {n_txt} and {pts_txt}.",
+        "worst": "Its most dangerous problem: {name}.",
         "first": "Do this first, on {dev} {ip}{port}: {step}",
         "why": "Why: {text}",
-        "score": "The network's standard score is {score} out of 100. Problems found: {total} ({sev}).",
-        "score_error": "The file could not be read, so it has no score (ERROR).",
-        "code_found": "I found {code} on {where}.",
-        "code_absent": "The scan did not find {code} on this network.",
+        "score": "The network's standard score is {score} out of 100: {band}. Problems found: {total} ({sev}).",
+        "score_bands": ("How to read it: {good}–100 looks good, {fair}–{fair_hi} needs work, below {fair} is high "
+                        "risk. Each problem takes points off: high risk 20, medium risk 10, low risk 5."),
+        "score_next": "Fix the biggest one first: {name}, on {dev} {ip}{port}. On its own it is worth {pts_txt}.",
+        "band": {"good": "it looks good", "fair": "it needs work", "poor": "high risk"},
+        "score_error": "The file could not be read, so it has no score.",
+        "code_found": "I found the problem “{name}” on {where}.",
+        "code_absent": "Good news: the scan did not find “{name}” on your network, so there is nothing to fix here.",
+        "code_absent_info": "Just so you know what it means: {text}",
         "code_steps": "What to do: {steps}",
-        "device_ok": "{dev} ({ip}): no problems from the catalog.",
-        "device_has": "{dev} ({ip}) has {n} problem{e}: {codes}.",
+        "device_ok": "{dev} ({ip}): no problems from our list.",
+        "device_has": "{dev} ({ip}) has {n_txt}: {codes}.",
         "device_absent": "The address {ip} is not in this scan, so I know nothing about it.",
         "device_bad_ip": "That is not a valid IP address.",
-        "devices": "The scan has {n} devices: {list}.",
-        "changes_none": "I only have one scan, so I can't tell what changed. Run a new scan and compare them in the history.",
-        "changes": "Compared with the previous scan: {resolved} fixed, {new} new. Score: {before} → {after}.",
+        "devices": "Devices in the scan ({n}): {list}.",
+        "changes_none": "I only have one scan, so I can't tell what changed. Run a new scan and compare them on the Progress page.",
+        "changes": "Compared with the previous scan: fixed {resolved}, new {new}. Score: {before} → {after}.",
         "changes_resolved": "Fixed: {list}.",
         "changes_new": "New: {list}.",
         "out_of_scope": ("The scan can't answer that: I only know which devices, ports and problems were found on "
                          "your network. You can ask: \"Which device is the most dangerous?\", \"What should I do "
                          "first?\", \"What is the score?\" or \"What is telnet?\""),
         "and": "and",
-        "sev": {"high": "high", "medium": "medium", "low": "low", "info": "info"},
+        "sev": {"high": "high risk", "medium": "medium risk", "low": "low risk", "info": "just so you know"},
+        "problem": ("problem", "problems"),
+        "points": ("risk point", "risk points"),
+        "points_short": ("point", "points"),
+        "things": ("thing", "things"),
     },
 }
 
 T["ro"].update({
+    "remove_device": ("SafeEel nu deconectează niciodată singur un dispozitiv: asta ar fi o tehnică de atac, iar "
+                      "aplicația e doar defensivă. Ca să scoți un dispozitiv din rețeaua ta:\n"
+                      "1. Schimbă parola Wi-Fi. Dacă rețeaua e hotspotul unui telefon: pe iPhone, Setări → Hotspot "
+                      "personal → Parolă Wi-Fi; pe Android, Setări → Conexiuni → Hotspot mobil.\n"
+                      "2. Reconectează-ți dispozitivele tale cu parola nouă.\n"
+                      "3. Dacă ai un router, poți bloca dispozitivul din lista de dispozitive conectate a routerului."),
     "scope": ("Nu te pot ajuta cu asta. Scanez și explic doar rețeaua ta (hotspotul echipei): să scanezi rețeaua "
               "altcuiva sau să afli parolele altora e interzis și ilegal. Te pot ajuta în schimb să-ți faci rețeaua "
               "mai sigură: întreabă-mă „Ce fac întâi?”."),
-    "about": ("Sunt asistentul netscan. Programul se uită doar la rețeaua ta, caută „ușile lăsate deschise” după o "
+    "about": ("Sunt asistentul SafeEel. Programul se uită doar la rețeaua ta, caută „ușile lăsate deschise” după o "
               "listă fixă de 15 probleme, dă un scor de la 0 la 100 și îți spune pe rând ce să repari. Problemele și "
               "scorul le calculează codul, nu un AI, iar totul rulează pe acest laptop."),
     "privacy": ("Datele rămân pe acest laptop: nu trimit nimic pe internet. Adresele MAC sunt ascunse (de exemplu "
-                "AA:BB:CC:XX:XX:XX), iar istoricul îl poți șterge oricând cu butonul „Șterge istoricul”."),
+                "AA:BB:CC:XX:XX:XX), iar istoricul îl poți șterge oricând cu butonul „Șterge istoricul meu” din "
+                "pagina Progres."),
     "private_mac": ("Unele telefoane și laptopuri noi își schimbă singure adresa MAC, ca să nu poată fi urmărite. De "
                     "aceea nu putem afla producătorul și le arătăm ca „adresă privată”. Dacă nu recunoști dispozitivul, "
                     "caută-l în lista de dispozitive conectate din router."),
@@ -248,43 +285,50 @@ T["ro"].update({
     "fix_all_head": "Planul de reparații, în ordinea riscului (fă-le pe rând):",
     "fix_all_item": "{n}. {dev} {ip}{port}: {step}",
     "fix_all_more": "…și încă {n}. După ce le repari pe acestea, fă o scanare nouă.",
-    "fix_all_info": "Mai sunt {n} lucruri doar de știut (fără puncte), de exemplu SSH deschis.",
-    "fix_all_info_one": "Mai e un lucru doar de știut (fără puncte), de exemplu SSH deschis.",
-    "list_head": "Am găsit {n} probleme în total:",
+    "fix_all_info": "Mai sunt {n_txt} doar de știut (nu scad scorul).",
+    "fix_all_info_one": "Mai e un lucru doar de știut (nu scade scorul).",
+    "list_head": "Am găsit în total {n_txt}:",
     "list_item": "- {dev} {ip}: {items}",
     "ports_head": "Porturile deschise (ușile prin care se poate intra):",
     "ports_item": "- {dev} {ip}: {ports}",
     "ports_none": "Scanarea nu a găsit niciun port deschis.",
     "glossary": "{term}: {definition}",
-    "score_how": ("Scorul pornește de la 100 și scade cu punctele fiecărei probleme: gravă 20, medie 10, mică 5, "
-                  "doar informativă 0. Nu coboară sub 0."),
-    "score_how_scan": "Aici: 100 − {pts} puncte = {score}.",
-    "score_how_floor": "Aici: 100 − {pts} puncte e sub 0, deci scorul e 0.",
-    "severity": ("Gravă: repar-o cât mai repede. Medie: repar-o în zilele următoare. Mică: când ai timp. "
-                 "Informativă: doar de știut, nu e o problemă în sine."),
+    "score_how": ("Scorul pornește de la 100 și scade cu punctele fiecărei probleme: risc ridicat 20, risc mediu 10, "
+                  "risc scăzut 5, doar de știut 0. Nu coboară sub 0."),
+    "score_how_scan": "Aici: 100 − {pts} (punctele problemelor găsite) = {score}.",
+    "score_how_floor": "Aici: 100 − {pts} (punctele problemelor găsite) ar ieși sub 0, deci scorul e 0.",
+    "severity": ("Risc ridicat: repar-o cât mai repede. Risc mediu: în zilele următoare. Risc scăzut: când ai timp. "
+                 "Doar de știut: nu e o problemă în sine."),
     "severity_scan": "În scanarea asta: {sev}.",
     "safe_good": "Scorul tău e {score} din 100: rețeaua arată bine.",
     "safe_fair": "Scorul tău e {score} din 100: rețeaua are câteva probleme de reparat.",
     "safe_bad": "Scorul tău e {score} din 100: rețeaua are probleme serioase. Începe cu „Ce fac întâi?”.",
     "safe_limits": ("Atenție: scanarea vede doar ușile deschise din rețea. Nu poate vedea viruși de pe dispozitive "
                     "sau dacă cineva a intrat deja; pentru asta folosește un antivirus."),
-    "safe_devices": "Dispozitive fără probleme din catalog: {list}.",
+    "safe_devices": "Dispozitive fără probleme din lista noastră: {list}.",
     "safe_devices_none": "Toate dispozitivele scanate au cel puțin o problemă.",
     "thanks": "Cu plăcere! Dacă mai ai întrebări despre rețeaua ta, sunt aici.",
     "help": ("Salut! Te pot ajuta cu rețeaua ta. Întreabă-mă, de exemplu: „Ce fac întâi?”, „Care e cel mai "
              "periculos dispozitiv?”, „Cum repar tot?”, „E sigură rețeaua mea?”, „Ce e un port?” sau "
              "„Ce s-a schimbat?”."),
-    "sev_full": {"high": "gravă", "medium": "medie", "low": "mică", "info": "informativă"},
+    "sev_full": {"high": "risc ridicat", "medium": "risc mediu", "low": "risc scăzut", "info": "doar de știut"},
 })
 T["en"].update({
+    "remove_device": ("SafeEel never disconnects a device by itself: that would be an attack technique, and the app "
+                      "is defensive only. To remove a device from your network:\n"
+                      "1. Change the Wi-Fi password. If the network is a phone's hotspot: on iPhone, Settings → "
+                      "Personal Hotspot → Wi-Fi Password; on Android, Settings → Connections → Mobile Hotspot.\n"
+                      "2. Reconnect your own devices with the new password.\n"
+                      "3. If you have a router, you can block the device in the router's list of connected devices."),
     "scope": ("I can't help with that. I only scan and explain your own network (the team hotspot): scanning someone "
               "else's network or finding other people's passwords is forbidden and illegal. I can help you make your "
               "network safer instead: ask me \"What should I do first?\"."),
-    "about": ("I'm the netscan assistant. The program looks only at your network, finds \"doors left open\" using a "
+    "about": ("I'm the SafeEel assistant. The program looks only at your network, finds \"doors left open\" using a "
               "fixed list of 15 problems, gives a score from 0 to 100 and tells you what to fix, one step at a time. "
               "The problems and the score are computed by code, not by an AI, and everything runs on this laptop."),
     "privacy": ("Your data stays on this laptop: nothing is sent to the internet. MAC addresses are hidden (for "
-                "example AA:BB:CC:XX:XX:XX), and you can delete the history at any time with \"Delete my history\"."),
+                "example AA:BB:CC:XX:XX:XX), and you can delete the history at any time with \"Delete my history\" "
+                "on the Progress page."),
     "private_mac": ("Some newer phones and laptops change their MAC address on their own so they can't be tracked. "
                     "That's why we can't tell the maker and show them as \"private address\". If you don't recognise "
                     "the device, look for it in your router's list of connected devices."),
@@ -295,33 +339,33 @@ T["en"].update({
     "fix_all_head": "Your repair plan, in order of risk (do them one by one):",
     "fix_all_item": "{n}. {dev} {ip}{port}: {step}",
     "fix_all_more": "…and {n} more. After you fix these, run a new scan.",
-    "fix_all_info": "There are also {n} things just to know (no points), for example SSH being open.",
-    "fix_all_info_one": "There is also one thing just to know (no points), for example SSH being open.",
-    "list_head": "I found {n} problems in total:",
+    "fix_all_info": "There are also {n_txt} just to know (they don't lower the score).",
+    "fix_all_info_one": "There is also one thing just to know (it doesn't lower the score).",
+    "list_head": "In total I found {n_txt}:",
     "list_item": "- {dev} {ip}: {items}",
     "ports_head": "Open ports (the doors someone could come in through):",
     "ports_item": "- {dev} {ip}: {ports}",
     "ports_none": "The scan found no open ports.",
     "glossary": "{term}: {definition}",
-    "score_how": ("The score starts at 100 and goes down by the points of each problem: high 20, medium 10, low 5, "
-                  "info 0. It never goes below 0."),
-    "score_how_scan": "Here: 100 − {pts} points = {score}.",
-    "score_how_floor": "Here: 100 − {pts} points is below 0, so the score is 0.",
-    "severity": ("High: fix it as soon as you can. Medium: fix it in the next few days. Low: when you have time. "
-                 "Info: just good to know, not a problem by itself."),
+    "score_how": ("The score starts at 100 and goes down by the points of each problem: high risk 20, medium risk 10, "
+                  "low risk 5, just so you know 0. It never goes below 0."),
+    "score_how_scan": "Here: 100 − {pts} (the points of the problems found) = {score}.",
+    "score_how_floor": "Here: 100 − {pts} (the points of the problems found) would be below 0, so the score is 0.",
+    "severity": ("High risk: fix it as soon as you can. Medium risk: in the next few days. Low risk: when you have "
+                 "time. Just so you know: not a problem by itself."),
     "severity_scan": "In this scan: {sev}.",
     "safe_good": "Your score is {score} out of 100: the network looks good.",
     "safe_fair": "Your score is {score} out of 100: the network has a few problems to fix.",
     "safe_bad": "Your score is {score} out of 100: the network has serious problems. Start with \"What should I do first?\".",
     "safe_limits": ("Note: the scan only sees open doors on the network. It can't see viruses on your devices or "
                     "whether someone already got in; use an antivirus for that."),
-    "safe_devices": "Devices with no problems from the catalog: {list}.",
+    "safe_devices": "Devices with no problems from our list: {list}.",
     "safe_devices_none": "Every scanned device has at least one problem.",
     "thanks": "You're welcome! If you have more questions about your network, I'm here.",
     "help": ("Hi! I can help with your network. Ask me, for example: \"What should I do first?\", \"Which device is "
              "the most dangerous?\", \"How do I fix everything?\", \"Is my network safe?\", \"What is a port?\" or "
              "\"What changed?\"."),
-    "sev_full": {"high": "high", "medium": "medium", "low": "low", "info": "info"},
+    "sev_full": {"high": "high risk", "medium": "medium risk", "low": "low risk", "info": "just so you know"},
 })
 
 TYPE_LABELS = {
@@ -355,10 +399,10 @@ def _ip_key(ip: str) -> tuple:
         return (1, ip)
 
 
-def _plural(lang: str, n: int) -> str:
-    if lang == "ro":
-        return "ă" if n == 1 else "e"
-    return "" if n == 1 else "s"
+def _count(lang: str, n: int, word: str) -> str:
+    """„1 problemă”, „5 probleme”, „20 de probleme” / „1 problem”, „5 problems” (cuvintele din T[lang][word])."""
+    one, many = T[lang][word]
+    return i18n.count_words(lang, n, one, many)
 
 
 def _mid(name: str) -> str:
@@ -368,6 +412,19 @@ def _mid(name: str) -> str:
 
 def _port(f: Finding) -> str:
     return f" (port {f.port})" if f.port is not None else ""
+
+
+def _name(lang: str, code: str) -> str:
+    """Numele pe înțeles al problemei („Intrare veche, fără lacăt (Telnet)”), niciodată codul din catalog."""
+    return i18n.code_name(lang, code)
+
+
+def _label(f: Finding, lang: str, with_sev: bool = False) -> str:
+    """„Imaginea camerei se vede din rețea – port 554, risc ridicat” (numele are deja virgule și paranteze)."""
+    parts = [f"port {f.port}"] if f.port is not None else []
+    if with_sev:
+        parts.append(T[lang]["sev_full"].get(f.severity, f.severity))
+    return _name(lang, f.code) + (" – " + ", ".join(parts) if parts else "")
 
 
 def _dev_name(scan: Scan, ip: str, lang: str) -> str:
@@ -409,6 +466,8 @@ def detect_intent(question: str) -> tuple[str, Optional[str]]:
     q = normalize(question)
     if _has_any(q, SCOPE_WORDS):
         return INTENT_SCOPE, None
+    if _has_any(q, REMOVE_WORDS):
+        return INTENT_REMOVE, None
     m = _IPV4_IN_TEXT.search(q)
     if m:
         return INTENT_DEVICE, m.group(1)
@@ -427,7 +486,7 @@ def detect_intent(question: str) -> tuple[str, Optional[str]]:
         return INTENT_FIX_ALL, None
     if _has_any(q, FIRST_WORDS):
         return INTENT_FIRST, None
-    if _has_any(q, SCORE_HOW_WORDS):
+    if _has_any(q, SCORE_HOW_WORDS) or (_has_any(q, WHY_WORDS) and _has_any(q, SCORE_WORDS)):
         return INTENT_SCORE_HOW, None
     term = _glossary_term(q)
     if term and not any(_has_any(q, w) for w in CODE_WORDS.values()):
@@ -470,9 +529,9 @@ def _answer_dangerous(scan: Scan, lang: str, with_first_step: bool) -> str:
     ip, fs = ranked[0]
     worst = fs[0]
     dev = _dev_name(scan, ip, lang)
-    lines = [t["dangerous"].format(dev=dev, ip=ip, n=len(fs), e=_plural(lang, len(fs)),
-                                   pts=sum(f.points for f in fs)),
-             t["worst"].format(code=worst.code, port=_port(worst))]
+    lines = [t["dangerous"].format(dev=_mid(dev), ip=ip, n_txt=_count(lang, len(fs), "problem"),
+                                   pts_txt=_count(lang, sum(f.points for f in fs), "points")),
+             t["worst"].format(name=_label(worst, lang))]
     if with_first_step:
         ex = get_explanation(worst.code, lang)
         lines.append(t["first"].format(dev=_mid(dev), ip=ip, port=_port(worst), step=ex["steps"][0]))
@@ -494,22 +553,37 @@ def _answer_first(scan: Scan, lang: str) -> str:
     ])
 
 
+def _band(score: int) -> str:
+    """Eticheta scorului, cu aceleași praguri ca în UI (doar citește scorul motorului)."""
+    return "good" if score >= BAND_GOOD_MIN else "fair" if score >= BAND_FAIR_MIN else "poor"
+
+
 def _answer_score(scan: Scan, lang: str) -> str:
+    """Scorul motorului, ce înseamnă (pragurile) și ce problemă cântărește cel mai mult (Finding.points)."""
     t = T[lang]
-    return t["score"].format(score=scan.score, total=len(scan.findings), sev=_sev_counts(scan, lang))
+    lines = [t["score"].format(score=scan.score, band=t["band"][_band(scan.score or 0)], total=len(scan.findings),
+                               sev=_sev_counts(scan, lang)),
+             t["score_bands"].format(good=BAND_GOOD_MIN, fair=BAND_FAIR_MIN, fair_hi=BAND_GOOD_MIN - 1)]
+    plan = _plan(scan)
+    if plan:
+        ip, f = plan[0]
+        lines.append(t["score_next"].format(name=_name(lang, f.code), dev=_mid(_dev_name(scan, ip, lang)), ip=ip,
+                                            port=_port(f), pts_txt=_count(lang, f.points, "points_short")))
+    return "\n".join(lines)
 
 
 def _answer_code(scan: Scan, lang: str, code: str) -> str:
     t = T[lang]
     ex = get_explanation(code, lang)
     found = sorted((f for f in scan.findings if f.code == code), key=lambda f: (_ip_key(f.ip), f.port or 0))
-    if found:
-        where = ", ".join(f"{_mid(_dev_name(scan, f.ip, lang))} {f.ip}{_port(f)}" for f in found)
-        head = t["code_found"].format(code=code, where=where)
-    else:
-        head = t["code_absent"].format(code=code)
+    if not found:
+        # Vestea bună întâi; fără pași de reparat pentru o problemă care nu există în rețea.
+        return "\n".join([t["code_absent"].format(name=_name(lang, code)),
+                          t["code_absent_info"].format(text=ex["text"])])
+    where = ", ".join(f"{_mid(_dev_name(scan, f.ip, lang))} {f.ip}{_port(f)}" for f in found)
     steps = " ".join(f"{i}. {s}" for i, s in enumerate(ex["steps"], 1))
-    parts = [head, ex["text"], t["code_steps"].format(steps=steps)]
+    parts = [t["code_found"].format(name=_name(lang, code), where=where), ex["text"],
+             t["code_steps"].format(steps=steps)]
     from netscan.scan.eavesdrop import as_text   # „ce vede cineva care ascultă” (exemplu inventat)
     sample = as_text(code, lang)
     if sample:
@@ -529,9 +603,9 @@ def _answer_device(scan: Scan, lang: str, ip: str) -> str:
     fs = sorted((f for f in scan.findings if f.ip == ip), key=_finding_key)
     if not fs:
         return t["device_ok"].format(dev=dev, ip=ip)
-    codes = ", ".join(f"{f.code}{_port(f)}" for f in fs)
+    codes = "; ".join(_label(f, lang) for f in fs)
     ex = get_explanation(fs[0].code, lang)
-    return "\n".join([t["device_has"].format(dev=dev, ip=ip, n=len(fs), e=_plural(lang, len(fs)), codes=codes),
+    return "\n".join([t["device_has"].format(dev=dev, ip=ip, n_txt=_count(lang, len(fs), "problem"), codes=codes),
                       t["first"].format(dev=_mid(dev), ip=ip, port=_port(fs[0]), step=ex["steps"][0])])
 
 
@@ -552,27 +626,20 @@ def _answer_changes(scan: Scan, lang: str, previous: Optional[Scan]) -> str:
     lines = [t["changes"].format(resolved=len(resolved), new=len(added),
                                  before=previous.score, after=scan.score)]
     if resolved:
-        lines.append(t["changes_resolved"].format(list=", ".join(f"{f.code} {f.ip}{_port(f)}" for f in resolved)))
+        lines.append(t["changes_resolved"].format(list="; ".join(f"{_label(f, lang)} ({f.ip})" for f in resolved)))
     if added:
-        lines.append(t["changes_new"].format(list=", ".join(f"{f.code} {f.ip}{_port(f)}" for f in added)))
+        lines.append(t["changes_new"].format(list="; ".join(f"{_label(f, lang)} ({f.ip})" for f in added)))
     return "\n".join(lines)
 
 
-SEV_PLURAL_RO = {"high": "grave", "medium": "medii", "low": "mici", "info": "informative"}
-
-
 def _sev_counts(scan: Scan, lang: str) -> str:
-    """„1 gravă, 4 medii” / „1 high, 4 medium”, în ordinea gravității."""
+    """„risc ridicat: 1, risc mediu: 4” / „high risk: 1, medium risk: 4”, în ordinea gravității
+    (aceleași cuvinte ca în UI; forma „eticheta: număr” nu are nevoie de acord la plural)."""
     counts: dict[str, int] = {}
     for f in scan.findings:
         counts[f.severity] = counts.get(f.severity, 0) + 1
     names = T[lang]["sev_full"]
-    parts = []
-    for sev in ("high", "medium", "low", "info"):
-        n = counts.get(sev)
-        if n:
-            word = SEV_PLURAL_RO[sev] if lang == "ro" and n != 1 else names[sev]
-            parts.append(f"{n} {word}")
+    parts = [f"{names[sev]}: {counts[sev]}" for sev in ("high", "medium", "low", "info") if counts.get(sev)]
     return ", ".join(parts) or "0"
 
 
@@ -604,13 +671,12 @@ def _answer_fix_all(scan: Scan, lang: str, limit: int = 8) -> str:
         lines.append(t["fix_all_more"].format(n=len(plan) - limit))
     info = sum(1 for f in scan.findings if f.points == 0)
     if info:
-        lines.append(t["fix_all_info_one" if info == 1 else "fix_all_info"].format(n=info))
+        lines.append(t["fix_all_info_one" if info == 1 else "fix_all_info"].format(n_txt=_count(lang, info, "things")))
     return "\n".join(lines)
 
 
 def _finding_label(f: Finding, lang: str) -> str:
-    sev = T[lang]["sev_full"][f.severity]
-    return f"{f.code} (port {f.port}, {sev})" if f.port is not None else f"{f.code} ({sev})"
+    return _label(f, lang, with_sev=True)
 
 
 def _answer_list(scan: Scan, lang: str) -> str:
@@ -618,9 +684,9 @@ def _answer_list(scan: Scan, lang: str) -> str:
     ranked = ranked_devices(scan)
     if not ranked:
         return t["no_findings"].format(score=scan.score)
-    lines = [t["list_head"].format(n=len(scan.findings))]
+    lines = [t["list_head"].format(n_txt=_count(lang, len(scan.findings), "problem"))]
     for ip, fs in ranked:
-        items = ", ".join(_finding_label(f, lang) for f in fs)
+        items = "; ".join(_finding_label(f, lang) for f in fs)
         lines.append(t["list_item"].format(dev=_dev_name(scan, ip, lang), ip=ip, items=items))
     return "\n".join(lines)
 
@@ -662,7 +728,7 @@ def _answer_severity(scan: Scan, lang: str) -> str:
 def _answer_is_safe(scan: Scan, lang: str) -> str:
     t = T[lang]
     score = scan.score or 0
-    key = "safe_good" if score >= BAND_GOOD_MIN else "safe_fair" if score >= BAND_FAIR_MIN else "safe_bad"
+    key = {"good": "safe_good", "fair": "safe_fair", "poor": "safe_bad"}[_band(score)]
     return "\n".join([t[key].format(score=score), t["safe_limits"]])
 
 
@@ -708,6 +774,8 @@ def fallback_answer(question: str, scan: Scan, lang: str = "ro", previous: Optio
     if not (question or "").strip():
         return t["empty"], INTENT_UNKNOWN
     intent, detail = detect_intent(question[:MAX_QUESTION_LEN])
+    if intent == INTENT_REMOVE:
+        return t["remove_device"], f"{INTENT_REMOVE}:{REMOVE_REF}"
     from_kb = kb_answer(question, intent, lang) if intent not in (INTENT_DEVICE,) else None
     if from_kb:
         label = INTENT_SCOPE if intent == INTENT_SCOPE else INTENT_KB   # un refuz rămâne refuz

@@ -28,19 +28,19 @@ TEMPLATES: dict[str, dict] = {
         "steps": [
             "Dacă nu folosești Remote Desktop, oprește-l: Setări → Sistem → Desktop la distanță → Dezactivat.",
             "Dacă îl folosești, lasă doar utilizatorii care chiar au nevoie și pune-le parole lungi.",
-            "Păstrează activată opțiunea „Network Level Authentication”.",
+            "Lasă pornită verificarea NLA, care cere parola înainte să se deschidă ecranul.",
             "Instalează toate actualizările Windows.",
             "Nu deschide niciodată Remote Desktop spre internet din router; folosește un VPN.",
         ],
     },
     "VNC_EXPOSED": {
         "harm": "Cineva din rețea poate vedea ce faci pe ecran și poate muta mouse-ul în locul tău.",
-        "text": "VNC arată ecranul dispozitivului altcuiva din rețea și îl lasă să-l controleze. Are adesea "
+        "text": "VNC îi arată altcuiva din rețea ecranul acestui dispozitiv și îl lasă să-l controleze. Are adesea "
                 "parole scurte sau deloc, iar ce se vede pe ecran poate trece necriptat.",
         "steps": [
-            "Oprește serverul VNC dacă nu-l folosești.",
-            "Dacă îl folosești, pune o parolă lungă și unică.",
-            "Lasă VNC să accepte conexiuni doar prin SSH sau VPN, nu direct din rețea.",
+            "Oprește programul VNC de pe acest dispozitiv, dacă nu-l folosești.",
+            "Dacă îl folosești, pune în setările programului VNC o parolă lungă și unică.",
+            "Dacă te conectezi din afara casei, folosește un VPN (un tunel criptat) în loc să lași VNC deschis.",
             "Actualizează programul VNC la ultima versiune.",
         ],
     },
@@ -49,10 +49,10 @@ TEMPLATES: dict[str, dict] = {
         "text": "O bază de date ține informațiile unei aplicații și aici poate fi accesată direct din rețea. "
                 "Multe baze de date vin fără parolă, așa că oricine din rețea le-ar putea citi, schimba sau șterge.",
         "steps": [
-            "Setează baza de date să asculte doar pe calculatorul ei (adresa locală), nu pe toată rețeaua.",
-            "Pornește autentificarea și pune o parolă puternică.",
-            "Din firewall, lasă să se conecteze doar aplicația care chiar are nevoie de ea.",
-            "Actualizează serverul bazei de date.",
+            "Caută programul care a pus baza de date pe acest dispozitiv și oprește-l, dacă nu-l mai folosești.",
+            "Dacă îl folosești, cere-i celui care l-a instalat să închidă baza de date pentru restul rețelei.",
+            "Pornește autentificarea (nume și parolă) din setările bazei de date și pune o parolă lungă.",
+            "Actualizează programul bazei de date.",
         ],
     },
     "CAMERA_STREAM_EXPOSED": {
@@ -63,14 +63,14 @@ TEMPLATES: dict[str, dict] = {
             "Schimbă parola din fabrică a camerei cu una lungă și unică.",
             "Oprește transmisia video directă (RTSP) dacă aplicația camerei nu are nevoie de ea.",
             "Actualizează firmware-ul camerei.",
-            "Mută camerele într-o rețea separată, de exemplu rețeaua pentru oaspeți a routerului.",
+            "Mută camerele într-o rețea separată, de exemplu rețeaua pentru oaspeți a routerului, dacă are una.",
         ],
     },
     "OUTDATED_SERVICE": {
         "harm": "Cineva poate folosi o unealtă gata făcută ca să intre în dispozitiv.",
         "text": "Un program de pe acest dispozitiv e o versiune veche, cu greșeli pe care atacatorii le știu deja. Pentru unele există unelte gata făcute care intră singure.",
         "steps": [
-            "Actualizează programul sau firmware-ul dispozitivului la ultima versiune.",
+            "Actualizează programul vechi (numele lui e la „Dovadă”) sau firmware-ul dispozitivului.",
             "Dacă nu mai are actualizări, oprește serviciul sau schimbă dispozitivul.",
             "Pornește actualizările automate, dacă există.",
         ],
@@ -81,15 +81,15 @@ TEMPLATES: dict[str, dict] = {
                 "în aceeași rețea le poate citi.",
         "steps": [
             "Oprește FTP dacă nu-l folosești.",
-            "Folosește în loc SFTP sau FTPS, care criptează parola și fișierele.",
+            "Folosește în locul lui SFTP sau FTPS, care criptează parola și fișierele.",
             "Oprește autentificarea anonimă (fără cont).",
             "Schimbă parola contului FTP, pentru că s-ar putea să fi fost deja văzută.",
         ],
     },
     "HTTP_ADMIN_CLEARTEXT": {
         "harm": "Cineva din rețea îți poate fura parola și poate schimba setările dispozitivului.",
-        "text": "Pagina de administrare a dispozitivului se deschide prin HTTP, fără criptare. Când te "
-                "autentifici, parola trece prin rețea la vedere și poate fi furată.",
+        "text": "Pagina de administrare a dispozitivului se deschide prin HTTP, fără criptare. Când îți scrii "
+                "parola acolo, ea trece prin rețea la vedere și poate fi furată.",
         "steps": [
             "Pornește HTTPS din setările dispozitivului și folosește doar adresa cu https.",
             "Schimbă parola din fabrică cu una lungă și unică.",
@@ -99,12 +99,12 @@ TEMPLATES: dict[str, dict] = {
     },
     "SMB_EXPOSED": {
         "harm": "Cineva poate ajunge la fișierele tale sau poate răspândi un virus care cere bani.",
-        "text": "Partajarea de fișiere Windows (SMB) e deschisă în rețea. Prin ea, atacatorii pot ajunge la fișiere, iar virușii care cer bani se pot muta între calculatoare.",
+        "text": "Partajarea de fișiere Windows (SMB) e deschisă în rețea. Prin ea, atacatorii pot ajunge la fișiere, iar virușii care cer bani trec de la un calculator la altul.",
         "steps": [
-            "Dacă nu împarți fișiere cu alții, oprește partajarea din setările de rețea.",
+            "Dacă nu împarți fișiere, oprește partajarea: Setări → Rețea și internet → Setări avansate de rețea → Setări avansate de partajare.",
             "Dacă împarți, cere parolă și dă acces doar celor care au nevoie.",
             "Oprește versiunea veche SMBv1 (din „Activare sau dezactivare caracteristici Windows”).",
-            "Instalează toate actualizările Windows.",
+            "Instalează toate actualizările sistemului.",
             "Pe Windows, alege „Public” pentru rețelele din cafenele sau hoteluri, ca partajarea să nu se vadă acolo.",
         ],
     },
@@ -112,10 +112,10 @@ TEMPLATES: dict[str, dict] = {
         "harm": "Cineva din rețea poate aprinde luminile sau poate da alte comenzi aparatelor tale smart.",
         "text": "MQTT e felul în care becurile, senzorii sau încuietorile smart își trimit mesaje. Fără parolă, oricine din rețea le poate citi mesajele sau le poate da comenzi.",
         "steps": [
-            "Cere nume și parolă de la toate aparatele (oprește accesul fără cont).",
-            "Pornește criptarea (TLS) pentru conexiuni.",
-            "Din firewall, lasă brokerul să primească doar aparatele tale.",
-            "Actualizează brokerul MQTT la ultima versiune.",
+            "În aplicația sau pagina centralei casei inteligente, cere nume și parolă de la toate aparatele.",
+            "Pornește tot acolo criptarea (TLS).",
+            "Din firewall, lasă poștașul mesajelor (brokerul) să primească doar aparatele tale.",
+            "Actualizează programul MQTT (brokerul) la ultima versiune.",
         ],
     },
     "UPNP_EXPOSED": {
@@ -124,7 +124,7 @@ TEMPLATES: dict[str, dict] = {
                 "Un virus de pe un dispozitiv poate folosi asta ca să deschidă rețeaua ta spre internet.",
         "steps": [
             "Oprește UPnP din setările dispozitivului (la router: din pagina de administrare).",
-            "Deschide manual în router doar porturile de care ai nevoie, și doar cât timp ai nevoie.",
+            "Deschide manual în router doar porturile (ușile) de care ai nevoie, și doar cât timp ai nevoie.",
             "Actualizează firmware-ul dispozitivului.",
         ],
     },
@@ -133,10 +133,10 @@ TEMPLATES: dict[str, dict] = {
         "text": "SNMP spune oricui întreabă multe detalii despre dispozitiv, cum ar fi modelul, setările "
                 "și rețeaua. Adesea folosește parola din fabrică „public”, pe care o știe toată lumea.",
         "steps": [
-            "Oprește SNMP dacă nu îl folosești.",
-            "Dacă îl folosești, schimbă parolele („community strings”) din fabrică.",
-            "Treci la SNMPv3, care are autentificare și criptare.",
-            "Lasă doar calculatorul de administrare să trimită cereri SNMP.",
+            "Oprește SNMP din pagina de administrare a dispozitivului (de obicei la „Administrare” sau „Servicii”), dacă nu îl folosești.",
+            "Dacă îl folosești, schimbă parola SNMP din fabrică („public”) cu una lungă.",
+            "Alege versiunea 3 a SNMP (SNMPv3), singura care cere parolă și criptează.",
+            "Actualizează firmware-ul dispozitivului.",
         ],
     },
     "PRINTER_RAW_EXPOSED": {
@@ -151,14 +151,14 @@ TEMPLATES: dict[str, dict] = {
     },
     "UNKNOWN_DEVICE": {
         "harm": "Un dispozitiv străin poate spiona ce se întâmplă în rețeaua ta.",
-        "text": "În rețea e un dispozitiv cu servicii deschise, căruia scanarea nu i-a putut afla numele sau producătorul. "
-                "E bine să știi ce e fiecare dispozitiv din rețeaua ta, pentru că unul străin poate spiona sau ataca.",
+        "text": "Scanarea nu a aflat nici numele, nici producătorul unui dispozitiv din rețea care acceptă conexiuni. "
+                "E bine să știi ce e fiecare dispozitiv, pentru că unul străin te poate spiona.",
         "steps": [
             "Caută dispozitivul în lista de dispozitive conectate din router.",
             "Verifică întâi dacă nu e un telefon sau un laptop de-al tău: cele noi își ascund adresa reală.",
             "Dacă nu e al tău, schimbă parola Wi-Fi.",
             "Dă-i un nume în router, ca să-l recunoști data viitoare.",
-            "Mută dispozitivele inteligente și pe cele necunoscute în rețeaua pentru oaspeți.",
+            "Mută dispozitivele inteligente și pe cele necunoscute în rețeaua pentru oaspeți, dacă routerul are una.",
         ],
     },
     "SSH_OPEN": {
@@ -166,7 +166,7 @@ TEMPLATES: dict[str, dict] = {
         "text": "SSH e o cale criptată de a controla un dispozitiv de la distanță, deci nu e o problemă în sine. Trebuie doar protejat bine, pentru că atacatorii încearcă des parole pe el.",
         "steps": [
             "Dacă nu folosești SSH, oprește-l.",
-            "Folosește chei SSH în loc de parole.",
+            "Folosește chei SSH (un fel de cheie digitală) în loc de parole.",
             "Nu permite autentificarea directă ca administrator (root).",
             "Ține serverul SSH actualizat.",
         ],

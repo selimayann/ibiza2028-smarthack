@@ -24,15 +24,26 @@ def lab_scans():
     return load(LAB / "scan_01_before.xml", LAB / "scan_02.xml", LAB / "scan_03_after.xml")
 
 
+def ref(scan):
+    """Scanarea din formular, după fișier (+ data), nu după poziția în listă."""
+    return {"file": scan.file, "started_at": scan.started_at}
+
+
+def fref(scan):
+    """Referința „după” a unei scanări din folder, ca în pagina (fișier + dată)."""
+    return f"f:{scan.file}|{scan.started_at}"
+
+
 def tick(client, app, scan, index=0):
     """Bifează primul pas („Am făcut asta”). În teste verificarea live spune „nu e rețeaua mea”: pasul rămâne doar bifat."""
     f = scan.findings[index]
-    return client.post("/action/done", data={"token": app.config["FORM_TOKEN"], "scan": 0, "device_id": f.device_id,
+    return client.post("/action/done", data={"token": app.config["FORM_TOKEN"], **ref(scan), "device_id": f.device_id,
                                             "port": "" if f.port is None else f.port, "code": f.code})
 
 
-def upload(client, app, data, name="scan_noua.xml", scan=0, **extra):
-    form = {"token": app.config["FORM_TOKEN"], "scan": scan, "scanfile": (io.BytesIO(data), name), **extra}
+def upload(client, app, data, name="scan_noua.xml", scan=None, **extra):
+    form = {"token": app.config["FORM_TOKEN"], **ref(scan or load(V6A)[0]), "scanfile": (io.BytesIO(data), name),
+            **extra}
     return client.post("/scan/upload", data=form, content_type="multipart/form-data")
 
 
@@ -136,7 +147,7 @@ def test_compare_shows_proof_v6a_to_v6b(tmp_path):
     scans = load(V6A, V6B)
     client, app = make_client(tmp_path, scans)
     tick(client, app, scans[0])
-    resp = client.post("/compare", data={"token": app.config["FORM_TOKEN"], "scan": 0, "after": "f1"})
+    resp = client.post("/compare", data={"token": app.config["FORM_TOKEN"], **ref(scans[0]), "after": fref(scans[1])})
     assert resp.status_code == 302
     after_id, before_id = ids(resp)
     assert [s.file for s in storage.list_scans(app.config["DB_PATH"])] == ["V6a_before.xml", "V6b_after.xml"]
@@ -145,9 +156,9 @@ def test_compare_shows_proof_v6a_to_v6b(tmp_path):
     nums = re.findall(r'<span class="proof-num mono">(\d+)</span>', page)
     assert nums == ["60", "100"]
     card = re.search(r'<section class="proof .*?</section>', page, re.S).group(0)   # doar cardul „Dovada”
-    assert "Rezolvate (3)" in card and "Au rămas (0)" in card and "Probleme noi" not in card
-    for name in ("Telnet deschis", "UPnP pornit", "Pagină de administrare necriptată"):
-        assert name in page
+    assert "Reparat și dovedit (3)" in card and "Încă acolo (0)" in card and "Probleme noi" not in card
+    for code in ("TELNET_OPEN", "UPNP_EXPOSED", "HTTP_ADMIN_CLEARTEXT"):   # numele simple, pe limba paginii
+        assert html.escape(i18n.code_name("ro", code), quote=True) in page
     assert "V6a_before.xml" in page and "V6b_after.xml" in page
 
 
@@ -157,31 +168,32 @@ def test_compare_shows_proof_for_the_lab_scans_0_to_30(tmp_path):
     tick(client, app, scans[0])
     # cea mai nouă scanare din folder: scan_03_after (index 2), nu scan_02
     assert "scan_03_after.xml" in client.get("/").get_data(as_text=True)
-    resp = client.post("/compare", data={"token": app.config["FORM_TOKEN"], "scan": 0, "after": "f2"})
+    resp = client.post("/compare", data={"token": app.config["FORM_TOKEN"], **ref(scans[0]), "after": fref(scans[2])})
     page = client.get(resp.headers["Location"]).get_data(as_text=True)
     assert re.findall(r'<span class="proof-num mono">(\d+)</span>', page) == ["0", "30"]
     assert text(page, "proof-line") == "Ai închis 2 uși. Scorul a urcat de la 0 la 30."
-    assert "Rezolvate (2)" in page and "Au rămas (8)" in page
-    assert "Bază de date expusă" in page and "Telnet deschis" in page
+    assert "Reparat și dovedit (2)" in page and "Încă acolo (8)" in page
+    assert all(html.escape(i18n.code_name("ro", c), quote=True) in page for c in ("DB_EXPOSED", "TELNET_OPEN"))
 
 
 def test_proof_in_english(tmp_path):
     scans = load(V6A, V6B)
     client, app = make_client(tmp_path, scans)
     tick(client, app, scans[0])
-    loc = client.post("/compare", data={"token": app.config["FORM_TOKEN"], "scan": 0, "after": "f1"}).headers["Location"]
+    loc = client.post("/compare", data={"token": app.config["FORM_TOKEN"], **ref(scans[0]), "after": fref(scans[1])}).headers["Location"]
     page = client.get(loc.split("#")[0] + "&lang=en").get_data(as_text=True)   # fără fragmentul #proof-h
     assert text(page, "proof-line") == "You closed 3 doors. The score went up from 60 to 100."
-    assert "Fixed (3)" in page and "Still open (0)" in page and "Proof: before and after" in page
+    assert "Fixed and proven (3)" in page and "Still there (0)" in page and "Proof: before and after" in page
 
 
 def test_compare_refuses_bad_requests(tmp_path):
     scans = load(V6A, V6B)
     client, app = make_client(tmp_path, scans)
-    ok = {"token": app.config["FORM_TOKEN"], "scan": 0, "after": "f1"}
+    ok = {"token": app.config["FORM_TOKEN"], **ref(scans[0]), "after": fref(scans[1])}
     assert client.post("/compare", data={**ok, "token": "gresit"}).status_code == 400
     assert client.post("/compare", data=ok, headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
-    for bad in ("", "f99", "h99", "x1", "f-1", "f1; DROP TABLE scans", "../../etc/passwd"):
+    for bad in ("", "f1", "f99", "h99", "x1", "f-1", "f1; DROP TABLE scans", "../../etc/passwd", "f:nu-exista.xml",
+                "f:V6b_after.xml|1"):
         assert client.post("/compare", data={**ok, "after": bad}).status_code == 400, bad
     assert storage.list_scans(app.config["DB_PATH"]) == []     # nimic salvat din cereri greșite
 
@@ -287,7 +299,7 @@ def test_upload_refuses_bad_token_and_cross_site(tmp_path):
     assert upload(client, app, V6B.read_bytes(), token="gresit").status_code == 400
     assert storage.list_scans(app.config["DB_PATH"]) == []
     cross = client.post("/scan/upload", headers={"Sec-Fetch-Site": "cross-site"},
-                        data={"token": app.config["FORM_TOKEN"], "scan": 0,
+                        data={"token": app.config["FORM_TOKEN"], **ref(scans[0]),
                               "scanfile": (io.BytesIO(V6B.read_bytes()), "x.xml")}, content_type="multipart/form-data")
     assert cross.status_code == 403
 
@@ -321,7 +333,7 @@ def test_proof_comes_before_the_summary_sentence(tmp_path):
     scans = load(V6A, V6B)
     client, app = make_client(tmp_path, scans)
     tick(client, app, scans[0])
-    loc = client.post("/compare", data={"token": app.config["FORM_TOKEN"], "scan": 0, "after": "f1"}).headers["Location"]
+    loc = client.post("/compare", data={"token": app.config["FORM_TOKEN"], **ref(scans[0]), "after": fref(scans[1])}).headers["Location"]
     page = client.get(loc).get_data(as_text=True)
     assert page.index('id="proof"') < page.index('id="summary"')
     assert "Nu am găsit probleme. Rețeaua ta arată bine." in page   # după reparații: V6b nu mai are nicio problemă
@@ -332,5 +344,5 @@ def test_names_given_by_the_user_show_in_the_proof(tmp_path):
     client, app = make_client(tmp_path, scans)
     storage.set_device_name(scans[0].findings[0].device_id, "Routerul din hol", app.config["DB_PATH"])
     tick(client, app, scans[0])
-    loc = client.post("/compare", data={"token": app.config["FORM_TOKEN"], "scan": 0, "after": "f1"}).headers["Location"]
+    loc = client.post("/compare", data={"token": app.config["FORM_TOKEN"], **ref(scans[0]), "after": fref(scans[1])}).headers["Location"]
     assert "Routerul din hol" in client.get(loc).get_data(as_text=True)

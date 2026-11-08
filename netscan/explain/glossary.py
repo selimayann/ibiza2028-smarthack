@@ -1,9 +1,12 @@
 """Glosar RO/EN pentru termenii tehnici care apar în UI și în explicații (Oneata).
 
 get_glossary(lang) -> [{"term": str, "definition": str}, ...], ordonat alfabetic după termen.
+get_glossary_terms_for(text, lang) -> aceeași formă, doar termenii care apar în `text` (pentru „Cuvinte noi” din UI).
 """
 
 from __future__ import annotations
+
+import re
 
 # (termen RO, definiție RO, termen EN, definiție EN)
 _ENTRIES: list[tuple[str, str, str, str]] = [
@@ -43,8 +46,12 @@ _ENTRIES: list[tuple[str, str, str, str]] = [
      "MQTT broker", "The \"mail carrier\" for smart devices: it receives messages and passes them to subscribers."),
     ("Scor standard", "Nota rețelei, de la 0 la 100: pornește de la 100 și scade cu punctele fiecărei probleme găsite.",
      "Standard score", "Your network's grade from 0 to 100: it starts at 100 and drops by each problem's points."),
-    ("Severitate", "Cât de gravă e o problemă: ridicată, medie, scăzută sau doar informativă.",
-     "Severity", "How serious a problem is: high, medium, low or just informational."),
+    ("Severitate", "Cât de periculoasă e o problemă: risc ridicat, risc mediu, risc scăzut sau doar de știut.",
+     "Severity", "How dangerous a problem is: high risk, medium risk, low risk or just so you know."),
+    ("MQTT", "Felul în care aparatele smart (becuri, senzori, încuietori) își trimit mesaje între ele.",
+     "MQTT", "How smart devices (bulbs, sensors, locks) send messages to each other."),
+    ("Bază de date", "Locul în care un program își ține informațiile, ca un dulap cu dosare.",
+     "Database", "The place where a program keeps its information, like a filing cabinet."),
     ("Server", "Un calculator sau un program care oferă ceva altor dispozitive, de exemplu fișiere sau o pagină web.",
      "Server", "A computer or program that gives something to other devices, like files or a web page."),
     ("Autentificare", "Pasul în care dovedești cine ești, de obicei cu nume și parolă.",
@@ -82,3 +89,60 @@ def get_glossary(lang: str = "ro") -> list[dict]:
     en = (lang or "").lower() == "en"
     items = [{"term": e[2], "definition": e[3]} if en else {"term": e[0], "definition": e[1]} for e in _ENTRIES]
     return sorted(items, key=lambda d: d["term"].lower())
+
+
+# Cuvinte din text care trimit la un termen din glosar, în afară de numele lui (după termenul în română).
+_ALIASES: dict[str, tuple[str, ...]] = {
+    "Adresă IP": ("ip",),
+    "Adresă MAC": ("mac",),
+    "Bază de date": ("baza de date", "baze de date", "bazei de date", "database", "databases"),
+    "Broker MQTT": ("broker",),
+    "Criptare": ("cript", "encrypt"),
+    "Necriptat": ("necript", "unencrypt"),
+    "Pagină de administrare": ("pagina de administrare", "admin page"),
+    "Parolă din fabrică": ("parola din fabrica", "factory password", "factory default"),
+    "Rețea pentru oaspeți": ("reteaua pentru oaspeti", "guest network"),
+    "Remote Desktop (RDP)": ("remote desktop", "desktop la distanta", "rdp"),
+    "Autentificare": ("autentific", "authenticat"),
+    "Community string": ("community string",),
+    "Printare directă (RAW / JetDirect)": ("raw", "jetdirect", "direct printing", "printare directa"),
+    "Serviciu": ("serviciu", "servicii", "service"),
+    "NLA (Network Level Authentication)": ("nla", "network level authentication"),
+}
+
+
+def _stems(term: str) -> set[str]:
+    """Numele termenului, pe bucăți: „FTP / SFTP / FTPS” -> {ftp, sftp, ftps}; „NLA (Network …)” -> {nla, network …}."""
+    from netscan.explain.plain import _fold
+    return {p for p in (_fold(x).strip() for x in re.split(r"\s*/\s*|\s*\(\s*|\s*\)\s*", term)) if p}
+
+
+def get_glossary_terms_for(text: str, lang: str = "ro") -> list[dict]:
+    """Termenii din glosar care apar în `text` (explicație, pași), ca UI-ul să-i arate sub „Cuvinte noi”.
+
+    Potrivirea folosește aceleași rădăcini ca testul de limbaj simplu (plain.JARGON), plus numele termenilor și
+    câteva sinonime: fără diferență de litere mari/mici sau diacritice. Rădăcinile scurte (cel mult 3 litere,
+    ex. „ip”, „tls”) trebuie să fie cuvinte întregi. Ordinea e cea din get_glossary(lang); fără dubluri."""
+    from netscan.explain.plain import JARGON, _fold
+
+    en = (lang or "").lower() == "en"
+    folded = _fold(text or "")
+    if not folded.strip():
+        return []
+    jargon = JARGON["en" if en else "ro"]
+    out = []
+    for ro_term, ro_def, en_term, en_def in _ENTRIES:
+        term, definition = (en_term, en_def) if en else (ro_term, ro_def)
+        names = _stems(term)
+        stems = names | set(_ALIASES.get(ro_term, ()))
+        # rădăcinile din JARGON a căror etichetă e chiar numele termenului (ex. „cript” -> „criptare”)
+        stems |= {stem for stem, label in jargon.items() if _fold(label) in names}
+        if any(_mentions(folded, s) for s in stems):
+            out.append({"term": term, "definition": definition})
+    return sorted(out, key=lambda d: d["term"].lower())
+
+
+def _mentions(folded: str, stem: str) -> bool:
+    if len(stem) <= 3:
+        return re.search(r"(?<![a-z0-9])" + re.escape(stem) + r"(?![a-z0-9])", folded) is not None
+    return re.search(r"(?<![a-z0-9])" + re.escape(stem), folded) is not None

@@ -3,8 +3,15 @@ doar după acordul utilizatorului.
 
 - `scan`: o scanare completă, exact comanda de la `scan --confirm` (plus `-v --stats-every 5s`, doar pentru
   afișarea progresului), cu aceleași verificări: hotspotul echipei, o singură rețea, guardrail.
-- `auto`: la fel, apoi din nou la fiecare AUTO_EVERY_MIN minute, până o opresc din aplicație (fișierul de oprire)
-  sau laptopul pleacă de pe hotspot (atunci ciclul se sare, fără scanare).
+- `auto`: la fel, apoi din nou la fiecare AUTO_EVERY_MIN minute, până o opresc din aplicație (fișierul de oprire),
+  laptopul pleacă de pe hotspot (atunci ciclul se sare, fără scanare) sau aplicația se închide (nu mai atinge
+  scans/.app.alive de APP_ALIVE_MAX_AGE_S secunde): scanarea automată nu trăiește după aplicație.
+
+Reguli de siguranță, în plus față de `scan --confirm`:
+- numele Wi-Fi TREBUIE citit (NETSCAN_REQUIRE_SSID=1 implicit aici): subnetul singur nu dovedește că e hotspotul
+  nostru (orice hotspot de iPhone e 172.20.10.0/28);
+- în timpul scanării verificăm rețeaua din nou la fiecare NETWORK_RECHECK_S secunde; dacă ai ieșit de pe hotspot
+  (alt IP, alt subnet, alt Wi-Fi sau numele nu se mai poate citi), oprim nmap pe loc (NETWORK_CHANGED).
 
 NFR-04: procesul de admin scrie DOAR în scans/: XML-ul nmap, copia bazei de sonde, progresul
 (.scan_progress.json) și blocarea (.scan.lock). Nu atinge istoricul și nici data/: scanarea o aduce în istoric
@@ -16,11 +23,12 @@ import ipaddress
 import json
 import os
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Callable, Optional
 
-from netscan.scan import runner
+from netscan.scan import network, runner
 
 ROOT = Path(__file__).resolve().parents[2]
 SCANS_DIR = ROOT / "scans"
@@ -28,8 +36,24 @@ PROGRESS_FILE = ".scan_progress.json"
 LOCK_FILE = ".scan.lock"
 STOP_FILE = ".scan.stop"
 PART_SUFFIX = ".part"                  # XML-ul în lucru: scan_<dată>.xml.part
+NOW_FILE = ".scan.now"                 # aplicația cere o scanare mai devreme (dispozitiv sau port riscant nou)
+MIN_GAP_MIN = 10                       # dar nu mai des de o dată la 10 minute (ca `watch`)
 WATCH_LOCK_FILE = ".watch.lock"        # monitorul din terminal (`watch`): nu scanăm de două ori odată
 AUTO_EVERY_MIN = 15
+APP_ALIVE_FILE = ".app.alive"          # atins de aplicație la ~10 s cât rulează scanarea automată (live.py)
+APP_ALIVE_MAX_AGE_S = 120              # mai vechi de atât = aplicația s-a închis: oprim scanarea automată
+NETWORK_RECHECK_S = 5                  # cât de des verificăm rețeaua în timpul scanării
+NETWORK_CHANGED = "NETWORK_CHANGED"
+APP_CLOSED = "APP_CLOSED"
+BUSY = "BUSY"
+MESSAGES = {
+    NETWORK_CHANGED: ("Ai ieșit de pe hotspot, așa că am oprit scanarea.",
+                      "You left the hotspot, so I stopped the scan."),
+    APP_CLOSED: ("Am oprit scanarea automată: aplicația s-a închis.",
+                 "I stopped automatic scanning: the app was closed."),
+    BUSY: ("Rulează deja o scanare (sau monitorul din terminal). Încearcă din nou după ce se termină.",
+           "A scan (or the terminal monitor) is already running. Try again when it finishes."),
+}
 MAX_DISCOVERED = 300
 MAX_PROGRESS_BYTES = 64 * 1024
 
@@ -230,26 +254,103 @@ def _pid_alive(pid: int) -> bool:
         return False
 
 
+def _create_time(pid: int) -> Optional[float]:
+    try:
+        import psutil
+        return psutil.Process(pid).create_time()
+    except Exception:
+        return None
+
+
+def _read_lock(path: Path) -> Optional[tuple[int, Optional[float]]]:
+    """(pid, momentul pornirii procesului) din fișierul de blocare: JSON nou sau doar PID-ul (format vechi)."""
+    try:
+        text = path.read_text().strip()
+    except OSError:
+        return None
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return None
+    if isinstance(data, int) and not isinstance(data, bool):
+        return data, None
+    if isinstance(data, dict) and isinstance(data.get("pid"), int):
+        created = data.get("created")
+        return data["pid"], float(created) if isinstance(created, (int, float)) else None
+    return None
+
+
+def _holder_alive(pid: int, created: Optional[float]) -> bool:
+    """Procesul din blocare încă rulează? Cu momentul pornirii, un PID refolosit de alt program nu păcălește."""
+    if not _pid_alive(pid):
+        return False
+    if created is None:
+        return True
+    now_created = _create_time(pid)
+    return now_created is None or abs(now_created - created) < 1.0
+
+
+def write_lock(scans_dir: Path) -> None:
+    pid = os.getpid()
+    (Path(scans_dir) / LOCK_FILE).write_text(json.dumps({"pid": pid, "created": _create_time(pid)}))
+
+
 def lock_holder(scans_dir: Path) -> Optional[int]:
     """PID-ul scanării (din aplicație sau a monitorului din terminal) care rulează acum, altfel None."""
     for name in (LOCK_FILE, WATCH_LOCK_FILE):
-        try:
-            pid = int((Path(scans_dir) / name).read_text().strip())
-        except (OSError, ValueError):
+        held = _read_lock(Path(scans_dir) / name)
+        if held is None:
             continue
-        if pid != os.getpid() and _pid_alive(pid):
+        pid, created = held
+        if pid != os.getpid() and _holder_alive(pid, created):
             return pid
     return None
+
+
+def clear_stale_lock(scans_dir: Path, log: Optional[Callable[[str], None]] = None) -> bool:
+    """Șterge .scan.lock rămas de la o scanare al cărei proces nu mai rulează (închis brusc) și spune asta."""
+    path = Path(scans_dir) / LOCK_FILE
+    if not path.exists():
+        return False
+    held = _read_lock(path)
+    if held is not None and (held[0] == os.getpid() or _holder_alive(*held)):
+        return False
+    try:
+        path.unlink()
+    except OSError:
+        return False
+    pid = held[0] if held else "?"
+    (log or (lambda m: print(m, file=sys.stderr)))(
+        f"netscan: am șters o blocare veche ({LOCK_FILE}: procesul {pid} nu mai rulează). / "
+        f"removed a stale lock ({LOCK_FILE}: process {pid} is not running).")
+    return True
 
 
 def stop_requested(scans_dir: Path) -> bool:
     return (Path(scans_dir) / STOP_FILE).exists()
 
 
+def app_alive(scans_dir: Path, now: Callable[[], float] = time.time) -> bool:
+    """Aplicația încă trăiește? (a atins scans/.app.alive în ultimele APP_ALIVE_MAX_AGE_S secunde)."""
+    try:
+        mtime = (Path(scans_dir) / APP_ALIVE_FILE).stat().st_mtime
+    except OSError:
+        return False
+    return now() - mtime <= APP_ALIVE_MAX_AGE_S
+
+
+def same_network(planned, current) -> bool:
+    """Aceeași rețea ca la pornirea scanării: tot permisă, numele Wi-Fi citit și același (IP, subnet, Wi-Fi)."""
+    if planned is None or current is None or not current.scan_allowed or not current.ssid:
+        return False
+    return (current.ip, current.cidr, current.ssid) == (planned.ip, planned.cidr, planned.ssid)
+
+
 # --- rularea ------------------------------------------------------------------------------------------
 
 def run_once(scans_dir: Path, job: str, writer: ProgressWriter, prepare: Callable = runner.prepare_scan,
-             execute: Callable = runner.execute_streaming, now: Callable[[], float] = time.time) -> int:
+             execute: Callable = runner.execute_streaming, now: Callable[[], float] = time.time,
+             detect: Optional[Callable] = None) -> int:
     progress = Progress(job, now)
     # nmap scrie XML-ul în timp ce scanează: îl ține sub numele .part (aplicația citește doar *.xml) și îl
     # redenumește doar când e complet, ca un fișier pe jumătate scris să nu apară niciodată ca scanare.
@@ -266,8 +367,32 @@ def run_once(scans_dir: Path, job: str, writer: ProgressWriter, prepare: Callabl
         if progress.feed(line):
             writer.write(progress.data)
 
-    result = execute(plan, on_line, should_stop=lambda: stop_requested(scans_dir))
-    if result.ok:
+    # Rețeaua, verificată din nou cât rulează nmap (la NETWORK_RECHECK_S secunde): ai ieșit de pe hotspot -> stop.
+    detect = detect or network.detect_network
+    planned = getattr(plan, "network", None)
+    left = {"flag": False, "checked": now()}
+
+    def should_stop() -> bool:
+        if left["flag"] or stop_requested(scans_dir):
+            return True
+        if now() - left["checked"] >= NETWORK_RECHECK_S:
+            left["checked"] = now()
+            try:
+                current = detect()
+            except Exception:
+                current = None
+            left["flag"] = not same_network(planned, current)
+        return left["flag"]
+
+    result = execute(plan, on_line, should_stop=should_stop)
+    if left["flag"]:
+        # chiar dacă nmap a apucat să termine, nu păstrăm o scanare din timpul căreia am plecat de pe hotspot
+        ro, en = MESSAGES[NETWORK_CHANGED]
+        progress.finish("stopped", code=NETWORK_CHANGED, msg_ro=ro, msg_en=en)
+        rc = 1
+        if result.ok:
+            result = runner._refuse(NETWORK_CHANGED, ro=ro, en=en)
+    elif result.ok:
         os.replace(out_path, final)
         progress.finish("done", file=final.name)
         rc = 0
@@ -295,32 +420,57 @@ def main(argv: list[str], scans_dir: Path = SCANS_DIR, run: Callable = run_once,
     if load_env:
         from netscan.cli import load_env_file
         load_env_file(ROOT / ".env")        # NETSCAN_EXPECTED_SSID etc., exact ca la `scan --confirm`
+    # Scanarea din aplicație atinge rețeaua: fără numele Wi-Fi citit nu scanăm (fail-closed). Gol sau lipsă = 1;
+    # doar un „0” scris explicit (pentru dezvoltare) îl dezactivează.
+    if not (os.environ.get("NETSCAN_REQUIRE_SSID") or "").strip():
+        os.environ["NETSCAN_REQUIRE_SSID"] = "1"
     scans_dir = Path(scans_dir)
     scans_dir.mkdir(parents=True, exist_ok=True)
     writer = ProgressWriter(scans_dir, now)
+    clear_stale_lock(scans_dir)
     if lock_holder(scans_dir) is not None:
+        prog = read_progress(scans_dir)
+        if prog is None or prog["state"] not in ("running", "waiting_next"):
+            # monitorul din terminal (fără progres propriu): aplicația află de ce nu pornim, în loc să aștepte
+            ro, en = MESSAGES[BUSY]
+            writer.write({"v": 1, "job": job, "state": "refused", "pid": os.getpid(), "started": now(),
+                          "code": BUSY, "msg_ro": ro, "msg_en": en, "file": None, "next_at": None}, force=True)
         return 3                            # rulează deja o scanare; aplicația afișează progresul ei
-    lock = scans_dir / LOCK_FILE
-    lock.write_text(str(os.getpid()))
+    write_lock(scans_dir)
     try:
+        last_start = now()
         rc = run(scans_dir, job, writer)
+        app_closed = False
         while job == "auto" and not stop_requested(scans_dir):
-            next_at = now() + AUTO_EVERY_MIN * 60
+            next_at = last_start + AUTO_EVERY_MIN * 60
             data = (read_progress(scans_dir) or {}) | {"v": 1, "job": job, "state": "waiting_next",
                                                          "pid": os.getpid(), "next_at": next_at}
             writer.write(data, force=True)
             while now() < next_at and not stop_requested(scans_dir):
+                if not app_alive(scans_dir, now):
+                    app_closed = True          # aplicația s-a închis: scanarea automată nu continuă fără ea
+                    break
+                if (scans_dir / NOW_FILE).exists() and now() - last_start >= MIN_GAP_MIN * 60:
+                    break                      # risc nou văzut live: scanăm acum (dar nu mai des de 10 min)
                 sleep(1.0)
-            if stop_requested(scans_dir):
+            if app_closed or stop_requested(scans_dir):
                 break
+            try:
+                (scans_dir / NOW_FILE).unlink()
+            except OSError:
+                pass
+            last_start = now()
             rc = run(scans_dir, job, writer)
         if job == "auto":
             data = (read_progress(scans_dir) or {}) | {"v": 1, "job": job, "state": "stopped", "pid": os.getpid(),
                                                          "next_at": None}
+            if app_closed:
+                ro, en = MESSAGES[APP_CLOSED]
+                data |= {"code": APP_CLOSED, "msg_ro": ro, "msg_en": en}
             writer.write(data, force=True)
         return rc
     finally:
-        for name in (LOCK_FILE, STOP_FILE):
+        for name in (LOCK_FILE, STOP_FILE, NOW_FILE):
             try:
                 (scans_dir / name).unlink()
             except OSError:

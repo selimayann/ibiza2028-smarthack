@@ -18,6 +18,14 @@ def sample() -> Scan:
     return Scan.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
 
 
+def ref(scan: Scan) -> dict:
+    """Identitatea scanării în formulare: fișierul + data (niciodată poziția în listă)."""
+    out = {"file": scan.file}
+    if scan.started_at is not None:
+        out["started_at"] = scan.started_at
+    return out
+
+
 def make_client(tmp_path, scans):
     # testele nu ating rețeaua: verificarea live a pașilor spune „nu e rețeaua mea”
     app = create_app({"SCAN_LOADER": lambda: scans, "DB_PATH": tmp_path / "h.db", "TESTING": True,
@@ -48,7 +56,7 @@ def test_ranking_tie_breaks_by_severity_then_ip():
 def test_overview_shows_score_and_worst(tmp_path):
     client, _ = make_client(tmp_path, [sample()])
     html = client.get("/").get_data(as_text=True)
-    assert "Scor standard" in html
+    assert "Scorul rețelei (standard)" in html
     assert ">40<" in html
     assert "Risc mare" in html
     assert "Cel mai periculos dispozitiv" in html
@@ -59,7 +67,7 @@ def test_overview_shows_score_and_worst(tmp_path):
 def test_english(tmp_path):
     client, _ = make_client(tmp_path, [sample()])
     html = client.get("/?lang=en").get_data(as_text=True)
-    assert "Standard score" in html and "Most dangerous device" in html
+    assert "Network score (standard)" in html and "Most dangerous device" in html
 
 
 def test_error_scan_friendly_message(tmp_path):
@@ -117,7 +125,7 @@ def test_history_and_compare(tmp_path):
     assert "V2_smart_home.xml" in client.get("/history").get_data(as_text=True)
     html = client.get(f"/scan/{after_id}").get_data(as_text=True)
     assert "40 → 60" in html
-    assert "Probleme rezolvate (1)" in html
+    assert "Reparat și dovedit (1)" in html
 
 
 def test_delete_history_needs_token(tmp_path):
@@ -164,7 +172,7 @@ def test_history_v6a_to_v6b(tmp_path):
     assert (d.score_before, d.score_after) == (60, 100)
     client, _ = make_client(tmp_path, [])
     html = client.get(f"/scan/{b_id}").get_data(as_text=True)
-    assert "60 → 100" in html and "Probleme rezolvate (3)" in html
+    assert "60 → 100" in html and "Reparat și dovedit (3)" in html
 
 
 def test_save_to_history_from_ui(tmp_path):
@@ -175,14 +183,15 @@ def test_save_to_history_from_ui(tmp_path):
     i_b = next(i for i, s in enumerate(scans) if s.file == "V6b_after.xml")
     client, app = make_client(tmp_path, scans)
     token = app.config["FORM_TOKEN"]
+    ref_a, ref_b = ref(scans[i_a]), ref(scans[i_b])
     assert "Salvează în istoric" in client.get(f"/?scan={i_a}").get_data(as_text=True)
-    assert client.post("/history/save", data={"token": "gresit", "scan": i_a}).status_code == 400
-    client.post("/history/save", data={"token": token, "scan": i_a})
-    resp = client.post("/history/save", data={"token": token, "scan": i_b})
+    assert client.post("/history/save", data={"token": "gresit", **ref_a}).status_code == 400
+    client.post("/history/save", data={"token": token, **ref_a})
+    resp = client.post("/history/save", data={"token": token, **ref_b})
     html = client.get(resp.headers["Location"]).get_data(as_text=True)
-    assert "60 → 100" in html and "Probleme rezolvate (3)" in html
+    assert "60 → 100" in html and "Reparat și dovedit (3)" in html
     # a doua salvare a aceleiași scanări nu o dublează
-    client.post("/history/save", data={"token": token, "scan": i_a})
+    client.post("/history/save", data={"token": token, **ref_a})
     assert len(storage.list_scans(app.config["DB_PATH"])) == 2
     assert "Salvată în istoric" in client.get(f"/?scan={i_a}").get_data(as_text=True)
 
@@ -297,12 +306,12 @@ def test_ask_on_history_scan_knows_previous(tmp_path):
 
 def test_report_page(tmp_path):
     client, _ = make_client(tmp_path, [sample()])
-    assert "Raport pentru furnizorul IT" in client.get("/").get_data(as_text=True)
+    assert "Raport de dat cuiva care te ajută" in client.get("/").get_data(as_text=True)
     resp = client.get("/report?scan=0")
     html = resp.get_data(as_text=True)
     assert resp.status_code == 200
     assert "Raport de securitate a rețelei" in html and ">40<" in html and "Risc mare" in html
-    assert "Imaginea camerei expusă" in html and "CAMERA_STREAM_EXPOSED" in html
+    assert "Imaginea camerei se vede din rețea" in html and "CAMERA_STREAM_EXPOSED" in html
     assert "DD:EE:FF:XX:XX:XX" in html                         # doar MAC mascat
     assert "<style>" not in html                              # pagina servită respectă CSP (fără stil inline)
     assert 'src="/static/report.js"' in html
@@ -334,7 +343,7 @@ def test_inventory_lists_all_devices_by_ip(tmp_path):
     client, _ = make_client(tmp_path, [sample()])
     html = client.get("/devices").get_data(as_text=True)
     assert "Ce e conectat la mine?" in html
-    assert "3 dispozitive: 3 cu probleme, 0 fără probleme." in html
+    assert "Dispozitive: 3 (cu probleme: 3, fără probleme: 0)." in html
     assert html.index("192.168.1.1<") < html.index("192.168.1.40") < html.index("192.168.1.41")
     assert "1883/tcp" in html and "DD:EE:FF:XX:XX:XX" in html
 
@@ -353,8 +362,8 @@ def test_inventory_includes_devices_without_problems(tmp_path):
 
 # ---------- D5: o singură acțiune pe rând, cu bifă ----------
 
-def _done(client, app, f, scan_idx=0):
-    return client.post("/action/done", data={"token": app.config["FORM_TOKEN"], "scan": scan_idx,
+def _done(client, app, f, scan=None):
+    return client.post("/action/done", data={"token": app.config["FORM_TOKEN"], **ref(scan or sample()),
                                              "device_id": f.device_id, "port": "" if f.port is None else f.port,
                                              "code": f.code})
 
@@ -376,7 +385,7 @@ def test_one_step_at_a_time(tmp_path):
         _done(client, app, f)
     html = client.get("/").get_data(as_text=True)
     assert "Ai trecut prin toți pașii" in html and "scanare nouă" in html
-    client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], "scan": 0})
+    client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], **ref(s)})
     assert "Pasul 1 din 5" in client.get("/").get_data(as_text=True)
 
 
@@ -384,7 +393,7 @@ def test_step_tick_rejects_bad_token_and_unknown_problem(tmp_path):
     s = sample()
     client, app = make_client(tmp_path, [s])
     f = s.findings[0]
-    assert client.post("/action/done", data={"token": "x", "scan": 0, "device_id": f.device_id,
+    assert client.post("/action/done", data={"token": "x", **ref(s), "device_id": f.device_id,
                                              "port": f.port, "code": f.code}).status_code == 400
     bad = Finding(file=f.file, ip=f.ip, device_id=f.device_id, port=9999, code="TELNET_OPEN",
                   severity="high", points=20, evidence="e")
@@ -417,10 +426,11 @@ def test_pages_use_local_js_and_enhanced_forms(tmp_path):
 
 def test_save_via_fetch_stays_on_overview(tmp_path):
     client, app = make_client(tmp_path, [sample()])
-    resp = client.post("/history/save", data={"token": app.config["FORM_TOKEN"], "scan": 0},
+    resp = client.post("/history/save", data={"token": app.config["FORM_TOKEN"], **ref(sample())},
                        headers={"X-Requested-With": "fetch"})
-    assert resp.status_code == 302 and resp.headers["Location"].endswith("/?scan=0")
-    resp = client.post("/history/save", data={"token": app.config["FORM_TOKEN"], "scan": 0})
+    assert resp.status_code == 302 and resp.headers["Location"].endswith(
+        "/?file=V2_smart_home.xml&started_at=1762500000")
+    resp = client.post("/history/save", data={"token": app.config["FORM_TOKEN"], **ref(sample())})
     assert "/scan/" in resp.headers["Location"]                 # fără JS: duce la istoric, ca înainte
 
 

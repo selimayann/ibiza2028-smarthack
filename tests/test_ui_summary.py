@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 from netscan.model import Finding, Host, Scan
-from netscan.ui import extras, i18n
+from netscan.ui import i18n
 from netscan.ui.view import Summary, most_dangerous, summary_of
 from tests.test_ui_app import XSS, make_client, sample
 
@@ -59,7 +59,7 @@ def test_only_ssh_open_is_not_a_problem(tmp_path):
     client, _ = make_client(tmp_path, [only_ssh])
     s = text_of(client.get("/").get_data(as_text=True))
     assert s.startswith("Nu am găsit probleme. Rețeaua ta arată bine.")
-    assert "SSH deschis" in s and "nu scade scorul" in s
+    assert "(SSH)" in s and "nu scade scorul" in s   # numele simplu al lui SSH_OPEN
     assert "Începe cu" not in s and "probleme grave" not in s
 
 
@@ -143,10 +143,11 @@ def test_step_without_final_punctuation_gets_a_full_stop():
 
 # ---------- text nesigur ----------
 
-def test_untrusted_device_name_is_escaped_in_the_sentence(tmp_path, monkeypatch):
-    monkeypatch.setattr(extras, "announced_names",
-                        lambda: {"192.168.1.40": {"name": XSS, "service": None}})
-    client, _ = make_client(tmp_path, [sample()])
+def test_untrusted_device_name_is_escaped_in_the_sentence(tmp_path):
+    # numele anunțate apar doar lângă cea mai nouă scanare a noastră; numele dat de utilizator e tot text nesigur
+    from netscan.ui import storage
+    client, app = make_client(tmp_path, [sample()])
+    storage.set_device_name("e1f2a3b4c5d6", XSS, app.config["DB_PATH"])   # camera (192.168.1.40)
     page = client.get("/").get_data(as_text=True)
     assert XSS not in page                                   # nicăieri neescapat
     assert text_of(page).startswith(f"Rețeaua ta are o problemă gravă și 4 mai mici. Începe cu {XSS}: ")

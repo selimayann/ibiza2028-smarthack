@@ -10,18 +10,20 @@ from netscan.ui.view import action_plan, steps_view, verified_by_newer
 from tests.test_ui_app import sample
 
 
-def client_for(tmp_path, scans, probe=None, net=True):
+def client_for(tmp_path, scans, probe=None, net=True, own=True):
+    """own=True: scanarea afișată e „cea mai nouă scanare a noastră” (singura pe care verificarea o atinge)."""
     cfg = {"SCAN_LOADER": lambda: scans, "DB_PATH": tmp_path / "h.db", "TESTING": True,
-           "NET_CHECK": (lambda ip: net)}
+           "NET_CHECK": (lambda ip: net), "OWN_SCAN_CHECK": (lambda s: own)}
     if probe is not None:
         cfg["PORT_PROBE"] = probe
     app = create_app(cfg)
     return app.test_client(), app
 
 
-def tick(client, app, f, **headers):
+def tick(client, app, f, scan=None, **headers):
+    s = scan or sample()
     return client.post("/action/done", headers=headers, data={
-        "token": app.config["FORM_TOKEN"], "scan": 0, "device_id": f.device_id,
+        "token": app.config["FORM_TOKEN"], "file": s.file, "started_at": s.started_at, "device_id": f.device_id,
         "port": "" if f.port is None else f.port, "code": f.code})
 
 
@@ -82,8 +84,10 @@ def test_closed_port_is_verified_and_engine_rescores(tmp_path):
     assert storage.verified_keys(s, app.config["DB_PATH"]) == same_port
     html = client.get(resp.headers["Location"]).get_data(as_text=True)
     expected = compute_score(f for f in s.findings if f.key() not in same_port)
-    assert expected > s.score and f">{expected}<" in html
-    assert "Verificat: portul 554" in html
+    # scorul mare rămâne cel standard (al motorului, ca în scores.csv); cel recalculat apare separat
+    assert expected > s.score and f'<span class="score-num">{s.score}</span>' in html
+    assert f"ar fi ~{expected}" in html
+    assert "am bătut o singură dată la ușa 554" in html
     # cifra mare rămâne scorul standard al scanării (ca în scores.csv); scorul după reparații e dedesubt
     assert f'<span class="score-num">{s.score}</span>' in html
     assert "Progres după reparațiile confirmate (1)" in html and f'<strong class="mono">{expected}</strong>' in html
@@ -129,7 +133,7 @@ def test_prev_next_only_browse(tmp_path):
     s = sample()
     client, app = client_for(tmp_path, [s])
     html = client.get("/").get_data(as_text=True)
-    assert "Pasul 1 din 5" in html and 'rel="prev"' not in html and "step=2" in html and "Pasul următor" in html
+    assert "Pasul 1 din 5" in html and 'rel="prev"' not in html and "step=2" in html and "Sar peste acum" in html
     html = client.get("/?step=3").get_data(as_text=True)
     assert "Pasul 3 din 5" in html and "step=2" in html and "step=4" in html and "Pasul anterior" in html
     html = client.get("/?step=5").get_data(as_text=True)
@@ -144,7 +148,7 @@ def test_reset_clears_verified(tmp_path):
     s = sample()
     client, app = client_for(tmp_path, [s], probe=lambda ip, port: "closed")
     tick(client, app, action_plan(s)[0])
-    client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], "scan": 0})
+    client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], "file": s.file, "started_at": s.started_at})
     assert storage.verified_keys(s, app.config["DB_PATH"]) == set()
     assert ">40<" in client.get("/").get_data(as_text=True)
 
@@ -196,13 +200,14 @@ def test_all_verified_shows_fixed_card_with_steps(tmp_path):
     html = client.get("/?scan=0").get_data(as_text=True)
     card = _worst_card(html)
     assert "Toate problemele au fost verificate ca rezolvate" in card and "Revezi pașii" in card
-    assert '<span class="score-num">40</span>' in html     # scorul scanării vechi nu se schimbă
+    assert '<span class="score-num">40</span>' in html and "ar fi ~100" in html
     assert '<strong class="mono">100</strong>' in html    # scorul după reparațiile confirmate
     assert 'class="score-after after-good"' in html and "Acum: Bun" in html and "de rezolvat" not in html
     # reparațiile au fost confirmate de after.xml: link spre scanarea mai nouă
     assert "Vezi scanarea nouă →" in html
     assert 'title="Scanarea mai nouă a acestei rețele: after.xml (scor 100)"' in html
-    assert 'href="/?scan=1"' in html
+    # linkul spre scanarea mai nouă o numește după fișier (+ dată), nu după poziția în listă
+    assert 'href="/?file=after.xml&amp;started_at=' in html
     assert "Pasul 1 din 5" in _worst_card(client.get("/?scan=0&step=1").get_data(as_text=True))
     # o scanare care chiar nu a găsit nimic își păstrează textul obișnuit
     assert "Nicio problemă găsită" in _worst_card(client.get("/?scan=1").get_data(as_text=True))

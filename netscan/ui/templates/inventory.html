@@ -18,10 +18,10 @@
       <form class="picker" method="get" action="{{ url_for('inventory') }}" data-swap="#main, .top-right, #chat, .ai-fab" data-focus="#scan">
         <label for="scan">{{ T('shown_scan') }}</label>
         <div class="picker-row">
-          <select id="scan" name="scan" data-autosubmit>
-            {% for s in scan_list %}<option value="{{ loop.index0 }}"{% if loop.index0 == selected %} selected{% endif %}>{{ s.file }}</option>{% endfor %}
+          <select id="scan" name="file" data-autosubmit>
+            {% for s in scan_list %}<option value="{{ s.file }}" title="{{ s.file }}"{% if loop.index0 == selected %} selected{% endif %}>{{ T('scan_option')|format(fmt_time(s.started_at), s.score) if s.status == 'ok' else T('scan_option_error')|format(fmt_time(s.started_at)) }}</option>{% endfor %}
           </select>
-          <button type="submit">{{ T('show') }}</button>
+          <button type="submit" class="button-secondary">{{ T('show') }}</button>
         </div>
       </form>
     {% endif %}
@@ -48,7 +48,7 @@
       {% for d in devices %}
         {% set open_ports = d.host.ports|selectattr('state', 'equalto', 'open')|list %}
         <tr>
-          <td class="rt-main"><span class="rt-name"><a href="{{ url_for('device', device_id=d.host.device_id, scan=selected, **{'from': 'devices'}) }}">{{ device_title(d.host) }}</a></span>{% if announced(d.host.ip) or custom_name(d.host.device_id) %}<br>{{ announced_sub(d.host) }}{% endif %}{% if d.host.hostname %}<br><span class="muted">{{ d.host.hostname }}</span>{% endif %}</td>
+          <td class="rt-main"><span class="rt-name"><a href="{{ url_for('device', device_id=d.host.device_id, **dev_ref) }}">{{ device_title(d.host) }}</a></span>{% if announced(d.host.ip) or custom_name(d.host.device_id) %}<br>{{ announced_sub(d.host) }}{% endif %}{% if d.host.hostname %}<br><span class="muted">{{ d.host.hostname }}</span>{% endif %}</td>
           <td data-label="{{ T('ip') }}"><div><span class="mono" translate="no">{{ d.host.ip }}</span></div></td>
           <td data-label="{{ T('vendor') }}"><div>{% if d.host.vendor %}{{ d.host.vendor }}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}<span class="muted">{{ T('unknown') }}</span>{% endif %}</div></td>
           <td data-label="{{ T('mac') }}"><div><span class="mono" translate="no">{{ d.host.mac_masked or T('unknown') }}</span></div></td>

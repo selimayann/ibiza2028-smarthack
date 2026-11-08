@@ -85,6 +85,17 @@ def test_starting_points_from_the_guide():
     assert MAPPING["UNKNOWN_DEVICE"]["cis"][0] == "1.1"
 
 
+def test_password_logins_map_to_owasp_i1_after_i2():
+    """RDP, VNC și SMB: logare cu parolă pe care atacatorii o încearcă/ghicesc → I2 (serviciul), apoi I1 (parola)."""
+    assert MAPPING["RDP_EXPOSED"]["owasp_iot"] == ["I2", "I1"]
+    assert MAPPING["SMB_EXPOSED"]["owasp_iot"] == ["I2", "I1"]
+    assert MAPPING["VNC_EXPOSED"]["owasp_iot"] == ["I2", "I1"]
+    assert get_standards("RDP_EXPOSED", "en")["owasp_iot"][1] == {"id": "I1", "title": OFFICIAL_OWASP_2018["I1"]}
+    assert get_standards("SMB_EXPOSED", "ro")["owasp_iot"][1]["title"] == OWASP_IOT["I1"]["ro"]
+    assert MAPPING["RDP_EXPOSED"]["cis"] == ["4.8", "4.5", "5.2"]            # CIS neschimbat
+    assert MAPPING["SMB_EXPOSED"]["cis"] == ["4.8", "4.5", "7.3"]
+
+
 def test_unknown_code_and_lang():
     assert get_standards("NOT_A_CODE") == {"cis": [], "owasp_iot": []}
     assert get_standards("TELNET_OPEN", "de") == get_standards("TELNET_OPEN", "ro")

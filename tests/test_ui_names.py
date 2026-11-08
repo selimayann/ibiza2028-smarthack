@@ -13,7 +13,8 @@ NAME = "Camera din sufragerie"
 
 
 def save(client, app, name, device_id=CAM, **extra):
-    data = {"token": app.config["FORM_TOKEN"], "scan": 0, "name": name, **extra}
+    s = sample()   # formularul numește scanarea după fișier (+ dată), nu după poziția în listă
+    data = {"token": app.config["FORM_TOKEN"], "file": s.file, "started_at": s.started_at, "name": name, **extra}
     return client.post(f"/device/{device_id}/name", data=data)
 
 

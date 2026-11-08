@@ -31,7 +31,7 @@ def test_device_from_devices_keeps_devices_tab(tmp_path):
     html = client.get("/device/" + href).get_data(as_text=True)
     assert _current(html) == "Dispozitive" and "Înapoi la Dispozitive" in html
     plain = client.get("/device/" + href.split("?", 1)[0] + "?scan=0").get_data(as_text=True)
-    assert _current(plain) == "Dashboard" and "Înapoi la Dashboard" in plain
+    assert _current(plain) == "Acasă" and "Înapoi la pagina Acasă" in plain
 
 
 def test_journal_comparison_keeps_journal_tab_and_shows_comparison_first(tmp_path):
@@ -39,11 +39,11 @@ def test_journal_comparison_keeps_journal_tab_and_shows_comparison_first(tmp_pat
     journal = client.get("/journal").get_data(as_text=True)
     assert f"/scan/{ids[-1]}?from=journal" in journal
     html = client.get(f"/scan/{ids[-1]}?from=journal").get_data(as_text=True)
-    assert _current(html) == "Jurnal" and "Înapoi la Jurnal" in html
+    assert _current(html) == "Alerte" and "Înapoi la Alerte" in html
     assert html.index('id="cmp-h"') < html.index('id="score-h"')          # comparația înaintea scorului
     assert "altă rețea" not in html                                         # aceeași rețea (lab)
     html = client.get(f"/scan/{ids[-1]}").get_data(as_text=True)
-    assert _current(html) == "Istoric" and "Înapoi la Istoric" in html
+    assert _current(html) == "Progres" and "Înapoi la Progres" in html
 
 
 def test_comparison_with_another_network_says_so(tmp_path):
@@ -56,8 +56,8 @@ def test_new_problem_alerts_show_their_severity(tmp_path):
     client, _ = _client(tmp_path, [("validation", "V1_home_basic.xml"), ("lab", "scan_01_before.xml")])
     html = client.get("/journal").get_data(as_text=True)
     assert 'alert-sev-high' in html and '#i-high' in html                  # Telnet / baza de date: Ridicat
-    assert '<strong class="alert-sev">Ridicat</strong> · Problemă nouă' in html
-    assert '<strong class="alert-sev">Scăzut</strong>' in html             # dispozitiv necunoscut
+    assert '<strong class="alert-sev">Risc ridicat</strong> · Problemă nouă' in html
+    assert '<strong class="alert-sev">Risc scăzut</strong>' in html        # dispozitiv necunoscut
 
 
 def test_harm_line_on_device_page_and_dashboard(tmp_path):
