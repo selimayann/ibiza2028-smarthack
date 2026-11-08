@@ -107,7 +107,8 @@ def test_save_from_the_device_page_and_show_everywhere(tmp_path):
 
     overview = page(client, "/")
     worst = re.search(r'class="worst-device">(.*?)</h2>', overview, re.S).group(1)
-    assert NAME in worst and '<p class="worst-ip mono" translate="no">192.168.1.40' in overview                     # cardul „cel mai periculos”: nume + IP mic
+    meta = re.search(r'<p class="device-meta">(.*?)</p>', overview, re.S).group(1)
+    assert NAME in worst and "Cameră" in meta and '<span class="worst-ip" translate="no">192.168.1.40' in meta  # cardul „cel mai periculos”: nume, dedesubt „Tip · IP:port”
     rows = re.findall(r'<p class="dev-name">(.*?)</p>', overview, re.S)
     assert any(NAME in r for r in rows)                                  # lista dispozitivelor
     assert "Cameră" in overview                                          # tipul rămâne ca sub-titlu
@@ -118,7 +119,9 @@ def test_save_from_the_device_page_and_show_everywhere(tmp_path):
 def test_name_is_in_the_summary_sentence(tmp_path):
     client, app = make_client(tmp_path, [sample()])
     save(client, app, NAME)
-    s = html.unescape(re.search(r'<p class="summary-text">(.*?)</p>', page(client, "/"), re.S).group(1))
+    s = re.search(r'<p class="summary-text">(.*?)</p>', page(client, "/"), re.S).group(1)
+    assert f'<strong class="summary-device">{html.escape(NAME)}</strong>' in s     # numele iese în evidență
+    s = html.unescape(re.sub(r"<[^>]+>", "", s))
     assert s.startswith(f"Începe cu {NAME}: ")
 
 

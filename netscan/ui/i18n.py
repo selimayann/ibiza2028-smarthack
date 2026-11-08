@@ -1,5 +1,6 @@
 """Toate textele UI, în RO și EN, într-un singur loc (nu împrăștiate prin template-uri)."""
 from __future__ import annotations
+from typing import NamedTuple
 
 LANGS = ("ro", "en")
 DEFAULT_LANG = "ro"
@@ -1047,19 +1048,36 @@ def _sentence_end(text: str) -> str:
     return text if text.endswith((".", "!", "?")) else text + "."
 
 
-def summary_sentence(lang: str, summary, device_label: str | None = None, step: str | None = None,
-                     error_text: str | None = None, with_counts: bool = True) -> str:
-    """Fraza mare din capul paginii. Rezultatul e text simplu: numele dispozitivului poate fi nesigur și se
-    escapează în template (niciodată |safe)."""
+class SummaryParts(NamedTuple):
+    """Fraza-rezumat pe bucăți, ca template-ul să poată scoate în evidență numele dispozitivului (<strong>)
+    fără |safe: fiecare bucată e text simplu și se escapează separat. `device` e "" când fraza nu are dispozitiv."""
+    before: str
+    device: str
+    after: str
+
+    def __str__(self) -> str:
+        return f"{self.before}{self.device}{self.after}"
+
+
+def _with_device(template: str, device: str, **kw: str) -> tuple[str, str, str]:
+    """Împarte un text cu {device} în (înainte, nume, după); celelalte câmpuri se completează în fiecare parte."""
+    head, tail = template.split("{device}", 1)
+    return head.format(**kw), device, tail.format(**kw)
+
+
+def summary_parts(lang: str, summary, device_label: str | None = None, step: str | None = None,
+                  error_text: str | None = None, with_counts: bool = True) -> SummaryParts:
+    """Fraza mare din capul paginii, pe bucăți (înainte, numele dispozitivului, după). Toate sunt text simplu:
+    numele dispozitivului poate fi nesigur și se escapează în template (niciodată |safe)."""
     lang = normalize_lang(lang)
     tx = SUMMARY_TEXTS[lang]
     kind = summary.kind
     if kind == "error":
-        return tx["error"].format(message=error_text or error_message(lang, summary.error_code))
+        return SummaryParts(tx["error"].format(message=error_text or error_message(lang, summary.error_code)), "", "")
     if kind == "info":
-        return tx["info"].format(name=code_name(lang, summary.finding.code if summary.finding else None))
+        return SummaryParts(tx["info"].format(name=code_name(lang, summary.finding.code if summary.finding else None)), "", "")
     if kind in ("clean", "fixed"):
-        return tx[kind]
+        return SummaryParts(tx[kind], "", "")
     serious, minor = summary.serious, summary.minor
     if serious and minor:
         counts = tx["both"].format(serious=_count(lang, serious, tx["serious_one"], tx["serious_many"]),
@@ -1070,14 +1088,21 @@ def summary_sentence(lang: str, summary, device_label: str | None = None, step: 
         counts = _count(lang, minor, tx["minor_only_one"], tx["minor_only_many"])
     sentence = tx["has"].format(counts=counts)
     if not device_label:
-        return sentence
-    # Pe Acasă cifrele stau deja în etichetele de sub verdict: fraza spune doar cu ce începi.
-    if not with_counts:
-        return tx["start"].format(device=device_label, step=_sentence_end(step)) if step \
-            else tx["start_no_step"].format(device=device_label)
+        return SummaryParts(sentence, "", "")
     if step:
-        return f"{sentence} " + tx["start"].format(device=device_label, step=_sentence_end(step))
-    return f"{sentence} " + tx["start_no_step"].format(device=device_label)
+        head, dev, tail = _with_device(tx["start"], device_label, step=_sentence_end(step))
+    else:
+        head, dev, tail = _with_device(tx["start_no_step"], device_label)
+    # Pe Acasă cifrele stau deja în etichetele de sub verdict: fraza spune doar cu ce începi.
+    if with_counts:
+        head = f"{sentence} {head}"
+    return SummaryParts(head, dev, tail)
+
+
+def summary_sentence(lang: str, summary, device_label: str | None = None, step: str | None = None,
+                     error_text: str | None = None, with_counts: bool = True) -> str:
+    """Fraza mare din capul paginii, ca un singur text simplu (vezi summary_parts)."""
+    return str(summary_parts(lang, summary, device_label, step, error_text, with_counts))
 
 
 def alert_text(lang: str, alert, names: dict[str, str] | None = None, short: bool = False) -> str:
