@@ -1465,3 +1465,10 @@ h2.worst-device .worst-label { display: block; font-family: inherit; font-size: 
 .delta-good { color: var(--good); font-weight: 700; }
 .delta-fair { color: var(--medium); font-weight: 700; }
 .delta-poor { color: var(--high); font-weight: 700; }
+/* Butoanele-pastilă care deschid ceva („Raport și istoric”, „Încă acolo” din dovadă): fără subliniere și fără albastru
+   de link la hover; doar conturul se întărește. */
+.about-menu > summary:hover { text-decoration: none; }
+details.proof-still > summary { align-self: start; width: fit-content; gap: .4rem; padding: .45rem 1rem; border: 1px solid var(--line-strong);
+  border-radius: 999px; background: var(--surface); color: var(--ink); }
+details.proof-still > summary:hover { text-decoration: none; border-color: var(--muted); }
+details.proof-still > summary h3 { text-decoration: none; color: var(--ink); font-size: 1rem; margin: 0; padding: 0; border: 0; }
