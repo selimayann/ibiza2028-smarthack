@@ -414,7 +414,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .score-pill .num { font-variant-numeric: tabular-nums; }
 
 .delta { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.delta-up { color: var(--good); font-weight: 700; } .delta-down { color: var(--high); font-weight: 700; } .delta-same { color: var(--muted); }
+.delta-same { color: var(--muted); }
 .row-links { display: flex; flex-wrap: wrap; gap: 0 1.5rem; }
 .row-links a, .rt-name a, .scan-line a, .link-target, .row-main-link, .journal-link a, .dev-problems a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .danger-zone { margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem 1.5rem; }
@@ -1449,3 +1449,12 @@ h2.worst-device .worst-label { display: block; font-family: inherit; font-size: 
 @media (prefers-reduced-motion: no-preference) {
   .home-top > .score { animation: kk-rise .45s cubic-bezier(.2, .7, .2, 1) .06s both; }
 }
+
+/* Pagina „Progres”: scorul ca etichetă cu contur (ca riscurile din „Dispozitive”), numărul cu cifre egale.
+   Schimbarea față de scanarea anterioară ia culoarea benzii noului scor (verde doar la creștere în zona sigură). */
+.score-tag { gap: .35rem; }
+.score-tag .num { font-variant-numeric: tabular-nums; }
+.trend-aside .score-tag { font-size: 1rem; }
+.delta-good { color: var(--good); font-weight: 700; }
+.delta-fair { color: var(--medium); font-weight: 700; }
+.delta-poor { color: var(--high); font-weight: 700; }

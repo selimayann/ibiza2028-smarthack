@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import score_pill, empty_state with context %}
+{% from "_macros.html" import score_tag, empty_state with context %}
 {% block title %}{{ T('history_title') }} · SafeEel{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -36,13 +36,19 @@
         {% set s = r.item %}
         <tr>
           <td class="rt-main"><a class="row-main-link" href="{{ url_for('history_scan', scan_id=s.id) }}" title="{{ s.file }}">{{ fmt_time(s.started_at) }}<span class="sr-only"> ({{ s.file }})</span></a></td>
-          <td data-label="{{ T('score_label') }}"><div>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_pill(s.score) }}{% endif %}</div></td>
+          <td data-label="{{ T('score_label') }}"><div>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_tag(s.score) }}{% endif %}</div></td>
           <td data-label="{{ T('hist_change') }}"><div>
             {% if s.status == 'error' %}<span class="muted">{{ error_message(s.error_code) }}</span>
             {% elif r.prev is none %}<span class="delta delta-same">{{ T('hist_first') }}</span>
-            {% elif s.score > r.prev %}<span class="delta delta-up"><span aria-hidden="true">▲</span> {{ T('hist_up') }}: {{ r.prev }} → {{ s.score }}</span>
-            {% elif s.score < r.prev %}<span class="delta delta-down"><span aria-hidden="true">▼</span> {{ T('hist_down') }}: {{ r.prev }} → {{ s.score }}</span>
-            {% else %}<span class="delta delta-same">{{ T('hist_same') }}: {{ s.score }}</span>{% endif %}
+            {% else %}
+              {# Culoarea schimbării: verde DOAR dacă scorul a crescut și a ajuns în zona sigură (Bun, de la 80);
+                 altfel culoarea benzii noului scor (roșu = risc mare, portocaliu = de îmbunătățit), ca etichetele.
+                 O scădere nu e niciodată verde: în zona sigură e neutră, altfel ia culoarea benzii. Neschimbat = neutru. #}
+              {% set nb = score_band(s.score) %}
+              {% if s.score > r.prev %}<span class="delta delta-{{ nb }}"><span aria-hidden="true">▲</span> {{ T('hist_up') }}: {{ r.prev }} → {{ s.score }}</span>
+              {% elif s.score < r.prev %}<span class="delta delta-{{ 'same' if nb == 'good' else nb }}"><span aria-hidden="true">▼</span> {{ T('hist_down') }}: {{ r.prev }} → {{ s.score }}</span>
+              {% else %}<span class="delta delta-same">{{ T('hist_same') }}: {{ s.score }}</span>{% endif %}
+            {% endif %}
           </div></td>
           <td class="rt-links"><span class="row-links">
             {% if s.status == 'ok' and r.prev is not none %}<a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('see_proof') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
@@ -80,9 +86,9 @@
       {% set ok_items = items|selectattr('status', 'equalto', 'ok')|list %}
       {% set best = ok_items|sort(attribute='score')|last %}
       <dl class="trend-aside">
-        <div class="stat"><dt>{{ T('stat_last') }}</dt><dd>{{ score_pill(trend.last.score) }}<br><span class="muted">{{ fmt_time(trend.last.started_at) }}</span></dd></div>
+        <div class="stat"><dt>{{ T('stat_last') }}</dt><dd>{{ score_tag(trend.last.score) }}<br><span class="muted">{{ fmt_time(trend.last.started_at) }}</span></dd></div>
         {% if best.score != trend.last.score %}
-        <div class="stat"><dt>{{ T('stat_best') }}</dt><dd>{{ score_pill(best.score) }}<br><span class="muted">{{ fmt_time(best.started_at) }}</span></dd></div>
+        <div class="stat"><dt>{{ T('stat_best') }}</dt><dd>{{ score_tag(best.score) }}<br><span class="muted">{{ fmt_time(best.started_at) }}</span></dd></div>
         {% endif %}
         <div class="stat"><dt>{{ T('stat_saved') }}</dt><dd><strong>{{ items|length }}</strong></dd></div>
       </dl>
