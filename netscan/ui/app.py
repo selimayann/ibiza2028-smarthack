@@ -625,6 +625,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         idx = _find(scan_list, name, request.form.get("started_at", "")[:20] or None)
         if idx is None:
             raise ScanGone()
+        g.form_scans = scan_list   # pentru pasul următor după „Am făcut asta” (fără o a doua analiză a folderului)
         return scan_list[idx], idx
 
     def _form_key() -> tuple:
@@ -657,7 +658,18 @@ def create_app(test_config: dict | None = None) -> Flask:
         elif result.result not in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION):
             storage.mark_done(scan, key, db)
         number = [f.key() for f in action_plan(scan)].index(key) + 1
-        stay = {"step": number} if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION) else {}
+        if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION):
+            stay = {"step": number}
+        else:
+            # Mergem ÎNAINTE: primul pas încă de făcut DUPĂ cel bifat (apoi, circular, unul sărit mai devreme).
+            # Înainte, pagina sărea înapoi la primul pas sărit, deși mesajul era despre pasul tocmai bifat.
+            # Fără niciun pas rămas: fără `step`, ca pagina să arate „Ai trecut prin toți pașii”.
+            sv = steps_view(scan, storage.done_keys(scan, db), storage.verified_keys(scan, db),
+                            verified_by_newer(scan, newer_scans(scan, g.get("form_scans") or [scan])),
+                            accepted=storage.accepted_keys(scan, db))
+            todo = [s.number for s in sv.steps if s.status == "todo"] if sv else []
+            nxt = next((n for n in todo if n > number), todo[0] if todo else None)
+            stay = {"step": nxt} if nxt else {}
         return redirect(url_for("overview", **scan_ref(scan), checked=number, check=result.result, **stay)
                         + "#worst-h")
 

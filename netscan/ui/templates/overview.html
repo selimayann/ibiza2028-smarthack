@@ -449,9 +449,13 @@
 {# Ghidul „Începe depanarea” pentru pasul curent: o fereastră (dialog) în afara drumului principal al paginii.
    Se deschide doar din butonul „Începe depanarea” (fără JavaScript, butonul duce la pagina dispozitivului). #}
 {% block dialogs %}
+{# #guide-slot e mereu în pagină: după o actualizare parțială a lui #worst (pasul următor, „Am făcut asta”), app.js
+   înlocuiește și conținutul lui, ca ghidul să fie al pasului afișat acum (sau să apară, dacă înainte nu era). #}
+<div id="guide-slot">
 {% if history_id is none and scan is not none and scan.status == 'ok' and steps and show_steps and steps.current.status != 'verified' %}
   {% set st = steps.current %}
   {% set hidden %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="file" value="{{ scan_ref.file }}">{% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}{% endset %}
   {{ guide_dialog(st, hidden, guide_icon(st.device.device_type)) }}
 {% endif %}
+</div>
 {% endblock %}
