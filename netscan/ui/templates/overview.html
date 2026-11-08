@@ -37,7 +37,7 @@
             <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .verify-msg, #step-now">
               {{ hidden }}{{ key_fields }}
               {# Laptopul nu e în hotspotul echipei: nu se poate verifica, deci butonul e dezactivat și spune de ce #}
-              <button type="submit" class="button-primary"{% if verify_block %} disabled aria-describedby="verify-block"{% endif %}><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</button>
+              <button type="submit" class="button-primary" data-busy="{{ T('step_checking') }}"{% if verify_block %} disabled aria-describedby="verify-block"{% endif %}><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg><span>{{ T('step_done_btn') if st.status in ('todo', 'accepted') else T('step_recheck') }}</span></button>
             </form>
             {# Ghidul animat pas cu pas (dialog). Fără JavaScript, linkul duce la pagina dispozitivului (aceeași scanare). #}
             <a class="button button-secondary guide-open" href="{{ url_for('device', device_id=st.finding.device_id, **scan_ref) }}" data-guide-open><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('g_start') }}</a>
@@ -231,7 +231,7 @@
     {# Titlul spune doar CE se compară; vestea (cifrele și propoziția cu „uși”) e o singură dată, în cardul dovezii #}
     <h1 id="verdict-h" class="verdict-title proof-title">{{ T('proof_h1')|format(pa, pb) }}</h1>
   {% else %}
-    <h1 id="verdict-h" class="verdict-title">{{ T('verdict_clean') if verdict.clean else T('verdict_' ~ band) }}</h1>
+    <h1 id="verdict-h" class="verdict-title">{{ T(verdict.verdict_key) if verdict.verdict_key else (T('verdict_clean') if verdict.clean else T('verdict_' ~ band)) }}</h1>
   {% endif %}
   {% if history_id is none %}{{ summary_block() }}{% endif %}
 </section>

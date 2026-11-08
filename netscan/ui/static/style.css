@@ -843,7 +843,7 @@ details > summary:hover { text-decoration: underline; text-underline-offset: .18
 .live-off-line { max-width: 62ch; }
 .consent-form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
 .consent { display: flex; align-items: flex-start; gap: .6rem; max-width: 62ch; cursor: pointer; min-height: 2.75rem; }
-.consent input { flex: none; width: 1.35rem; height: 1.35rem; margin: .15rem 0 0; accent-color: var(--brand); cursor: pointer; }
+.consent input { flex: none; width: 1.6rem; height: 1.6rem; margin: 0; accent-color: var(--brand); cursor: pointer; }
 .live-more { border-top: 1px solid var(--line); }
 .live-more .live-scan { border-top: 1px solid var(--line); padding-top: var(--s-3); }
 .approve { margin-top: var(--s-2); display: flex; flex-direction: column; gap: var(--s-1); }
@@ -1360,3 +1360,8 @@ form[aria-busy="true"] .button-primary:disabled { background: var(--brand); bord
 form[aria-busy="true"] .button-primary::after { content: ""; width: 1em; height: 1em; margin-left: .5rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: kk-spin .7s linear infinite; }
 @keyframes kk-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { form[aria-busy="true"] .button-primary::after { animation: none; border-right-color: currentColor; opacity: .6; } }
+/* Zone de click mai mari pentru linkurile de sine stătătoare (Fitts, WCAG 2.5.8): aceeași poziție vizuală,
+   dar se pot apăsa ușor și cu degetul. Linkurile din mijlocul frazelor rămân neschimbate. */
+.back a, .foot a, .section-head p > a, .checks > p:last-child > a, .notice > a, .worst-links a {
+  display: inline-block; padding-block: .6rem; margin-block: -.6rem;
+}
