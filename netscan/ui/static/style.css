@@ -1409,9 +1409,16 @@ form[aria-busy="true"] .button-primary::after { content: ""; width: 1em; height:
 .home-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); margin-bottom: var(--s-5); }
 .home-top > .verdict-head { max-width: none; padding-bottom: 0; }
 @media (min-width: 56rem) {
-  .home-top.has-score { grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem); gap: var(--s-6); align-items: center;
+  .home-top.has-score { grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem); gap: var(--s-6); align-items: start;
     margin-top: var(--s-5); }
-  .home-top.has-score > .verdict-head { margin-top: 0; padding-top: 0; }
+  .home-top.has-score > .verdict-head { margin-top: 0; padding-top: var(--s-4); }
+  /* „Detalii despre scor” se deschide ca un panou PESTE pagină, sub card: cardul nu crește, verdictul nu se mută,
+     nu apare spațiu gol în stânga (ca meniul „Raport și istoric”). */
+  .home-top.has-score { position: relative; z-index: 5; }   /* panoul de detalii trece peste cardul de dedesubt */
+  .home-top.has-score > .score { position: relative; }
+  .home-top.has-score > .score .how-score[open] > .fold-body { position: absolute; left: 0; right: 0; top: calc(100% + .4rem); z-index: 20;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-1);
+    padding: var(--s-4) var(--s-5); }
 }
 .home-top > .score { position: static; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--s-4); row-gap: .35rem;
   align-items: center; text-align: left; padding: var(--s-4) var(--s-5); }
