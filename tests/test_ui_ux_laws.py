@@ -44,3 +44,12 @@ def test_verify_button_has_a_busy_label(tmp_path):
     client, _ = make_client(tmp_path, [sample()])
     html = client.get("/").get_data(as_text=True)
     assert 'data-busy="Verific… (câteva secunde)"' in html
+
+
+def test_a_confirmed_fix_removes_the_serious_problem_from_the_sentence():
+    db = _f("DB_EXPOSED", "high", 6379, 20)
+    mq = _f("MQTT_EXPOSED", "medium", 1883, 10)
+    scan = _scan([db, mq], 70)
+    assert verdict_view(scan)["verdict_key"] == "verdict_fair_high_1"
+    after = verdict_view(scan, fixed_keys={db.key()})
+    assert after["verdict_key"] == "verdict_fair" and after["score"] == 70     # scorul oficial nu se schimbă

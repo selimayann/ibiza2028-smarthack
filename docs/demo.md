@@ -40,6 +40,8 @@
 6. **Progres** → **„Vezi dovada”** la scanarea nouă: ce s-a reparat, ce a rămas, ce e nou.
 7. (Opțional) asistentul: „Cum scot un dispozitiv din rețea?” → pașii siguri (parola hotspotului: iPhone Setări → Hotspot personal → Parolă Wi-Fi; Android Setări → Conexiuni → Hotspot mobil) și „SafeEel nu deconectează niciodată singur un dispozitiv”.
 
+**Demo-ul cerut de mentor (doar 2 probleme, ușor de verificat):** pașii sunt în [fixtures/verify/README.md](../fixtures/verify/README.md): pe laptopul-țintă doar redis și mosquitto, „Scanează acum”, apoi oprești pe rând cele 2 containere și apeși „Am făcut asta, verifică” (scor 65 → 95).
+
 ## 3b. „Am făcut asta” și scorul (de ce la unii se schimbă, la alții nu)
 
 Butonul nu crede utilizatorul pe cuvânt (`netscan/ui/verify.py`): încearcă **o singură conexiune TCP** la portul problemei. Cifra mare rămâne **scorul standard al scanării** (ca în `scores.csv`); dedesubt apare „După reparațiile confirmate (N): X din 100”, recalculat de motor, **doar** pentru pașii confirmați. Altfel pasul e „bifat, neconfirmat” și scorul rămâne, intenționat.
