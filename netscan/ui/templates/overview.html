@@ -29,6 +29,8 @@
               {% if st.number < steps.total %}<a class="pager-btn pager-next" href="{{ url_for('overview', step=st.number + 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now" rel="next">{{ T('step_skip') if st.status == 'todo' else T('step_next') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>{% endif %}
             </nav>
           </div>
+          {# Numărul pasului mare în stânga (ca la o rețetă): „asta e primul lucru”; textul și butoanele stau aliniate lângă el #}
+          <div class="step-main"><span class="step-num" aria-hidden="true">{{ st.number }}</span><div class="step-body">
           {% if st.status != 'todo' %}<p class="step-status step-status-{{ st.status }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ {'declared': 'info', 'verified': 'good', 'accepted': 'info'}[st.status] }}"/></svg>{% if st.status == 'verified' %}{{ T('step_verified_live') if st.verified_by == 'live' else T('step_verified_scan')|format(st.verified_by) }}{% else %}{{ T('step_status_' ~ st.status) }}{% endif %}</p>{% endif %}
           <p class="do-first-step" id="step-now" tabindex="-1">{{ sx.steps[0] }}</p>
           {# „Pentru: …” doar când pasul e pe altă problemă decât cea din titlul cardului #}
@@ -52,6 +54,7 @@
             {% endif %}
           </div>
           {% if verify_block and st.status != 'verified' %}<p class="verify-block" id="verify-block"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{% if verify_block.file %}{{ T('verify_blocked_file') }}{% elif verify_block.ssid %}{{ T('verify_blocked')|format(expected_ssid, verify_block.ssid) }}{% else %}{{ T('verify_blocked_nossid')|format(expected_ssid) }}{% endif %}</span></p>{% endif %}
+          </div></div>
           <details class="more-options">
             <summary>{{ T('more_options') }}</summary>
             <div class="more-body">

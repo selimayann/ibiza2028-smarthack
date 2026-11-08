@@ -1502,3 +1502,16 @@ details > summary *, details > summary:hover * { text-decoration: none !importan
 .pager-prev { padding: 0; }
 @media (max-width: 40rem) { .do-first-head { flex-direction: column; align-items: flex-start; }
   .step-pager { flex-wrap: wrap; gap: .4rem; max-width: 100%; } .pager-btn { padding: 0 .75rem; } }
+/* „Fă asta întâi”: numărul pasului ca un cerc mare în stânga; eticheta puțin mai mare */
+.step-main { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 1rem; align-items: start; }
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; border-radius: 50%;
+  background: var(--brand); color: var(--brand-ink); font-family: var(--head); font-weight: 700; font-size: 1.35rem; margin-top: .1rem;
+  font-variant-numeric: tabular-nums; }
+.step-body { display: flex; flex-direction: column; gap: var(--s-3, .75rem); min-width: 0; }
+.step-body > p { margin: 0; }
+.do-first-head .do-first-label { font-size: 1.0625rem; }
+/* „Mai multe opțiuni”: discret (gri, normal), cu același spațiu deasupra și dedesubt */
+.more-options { margin-top: var(--s-3); padding-top: .25rem; }
+.more-options > summary { color: var(--muted); font-weight: 400; min-height: 2.75rem; margin-bottom: -.4rem; }
+.more-options > summary:hover { color: var(--ink); }
+.more-options[open] > summary { color: var(--ink); margin-bottom: 0; }
