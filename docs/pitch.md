@@ -1,8 +1,8 @@
 # Pitch · SafeEel (Ibiza2028) · 7 minutes
 
 > The pitch is in English; all four of us speak. Each part lists **what to say**, **how long**, and **what is on screen**.
-> About 140 spoken words per minute. Every figure below comes from the repo (see [technical.md](technical.md), "Cifre") and was re-checked on 7 Nov 2026.
-> Plan B screenshots are in [`docs/pitch/`](pitch/).
+> About 140 spoken words per minute. Every figure below comes from the repo (see [technical.md](technical.md), "Cifre") and was re-checked on 8 Nov 2026.
+> The app menu is **Home · Checks · Devices · Alerts · Progress**. Plan B screenshots are in [`docs/pitch/`](pitch/).
 
 | Time | Part | Speaker |
 |---|---|---|
@@ -16,7 +16,7 @@
 
 ## 0:00–1:00 · The problem (RBRT, 60 s)
 
-**On screen:** the SafeEel overview page, already open (score card + "Most dangerous device"). No slides.
+**On screen:** SafeEel **Home**, already open in English: "Your network needs attention." No slides.
 
 **Say:**
 > Quick question: how many devices are connected to your home Wi-Fi right now? Most people guess five. The real number is usually closer to twenty: phones, the TV, a camera, a printer, a smart plug someone installed and forgot.
@@ -25,24 +25,26 @@
 >
 > Tools exist to find this, like Wazuh. They are built for experts and companies: you need a server, agents on every machine, and an analyst to read the alerts. Families have nothing like that.
 >
-> So we built SafeEel. It scans your own network, tells you in plain words what is wrong, and gives you one fix at a time. It runs on your laptop, with no account and no cloud. Radu will show you.
+> So we built SafeEel. It checks your own network, tells you in plain words what is wrong, and gives you one fix at a time. It runs on your laptop, with no account and no cloud. Radu will show you.
 
 ---
 
 ## 1:00–3:30 · Live demo (Radu, 2 min 30 s)
 
-**On screen:** `python -m netscan ui` on `127.0.0.1:5000`, with `NETSCAN_SCANS_DIR=fixtures/lab` (our lab: a hotspot, one scanner, one target laptop).
+**On screen:** `python -m netscan ui` on `127.0.0.1:5000`, with `NETSCAN_SCANS_DIR=fixtures/lab` (our lab: one hotspot, one scanner laptop, one target laptop with Docker). The demo laptop is on the hotspot, with `NETSCAN_EXPECTED_SSID` in `.env`. Before the session the lab is **running**, so the problems really exist. Full checklist: [demo.md](demo.md).
 
 | Time | Click | Say |
 |---|---|---|
-| 1:00 | Overview of `scan_01_before.xml` | "This is our lab network, scanned with the tool. Score: zero out of a hundred. The page answers one question first: what is the most dangerous device?" |
-| 1:20 | Point at the "Most dangerous device" card | "It is this smart device. In red, with a triangle, not just colour: high risk. One sentence says what is wrong, in words a twelve-year-old understands." |
-| 1:40 | Point at "Do this first" + "What could an attacker do" (if shown) | "And here is the one thing to do first. Not a list of forty. One step." |
-| 2:00 | Click **"I did this, check it"** | "When I say I fixed it, the app does not just believe me. It checks the real device, only on our own network, and the score only moves for confirmed steps." |
-| 2:20 | Click **Next step** twice | "I can walk through the steps, in order of risk." |
-| 2:40 | **History** tab: trend chart | "After we turned off the database and the old Telnet service on the target, we scanned again." |
-| 2:55 | Open `scan_03_after.xml` → "Compared with the previous scan" | "Before and after: score zero to thirty. Two problems fixed, two doors closed, and the eight that remain are still listed. Nothing hidden." |
-| 3:15 | Click **Ask the AI assistant** → "What should I do first?" | "And if you are not sure, you just ask. The answer is built from your scan. Ayan will explain why you can trust it." |
+| 1:00 | **Home**, scan `scan_01_before.xml` | "This is our lab network, scanned with the tool. The first thing you read is the verdict: your network needs attention. Score: zero out of a hundred." |
+| 1:15 | Point at the sentence under the verdict | "And right under it, the answer to the only question that matters: start with this device, do this." |
+| 1:30 | Point at **Most dangerous device** | "It is this smart device. High risk, shown with a triangle and a word, not just a colour. One sentence says what is wrong, in words a twelve-year-old understands, and one line says what an attacker could do." |
+| 1:50 | Point at **Do this first** | "One step, not a list of forty. And it tells you where to do it." |
+| 2:00 | On the target laptop: `docker compose -f lab/docker-compose.yml stop redis`. Back in SafeEel, on the database step: **I did this, check it** | "We just turned off the exposed database. Now, when I say I fixed it, SafeEel does not take my word for it: it knocks once on that port, only on our own hotspot. Nobody answers, so the step is confirmed, and the engine recalculates the score." |
+| 2:35 | **Progress** tab: score over time | "Every scan is saved on this laptop. Here is the score over time." |
+| 2:50 | **See the proof** on `scan_03_after.xml` | "Before and after: zero to thirty. Two problems fixed, two doors closed, and what is still open is still listed. Nothing hidden." |
+| 3:10 | **Ask the AI assistant** → "What should I do first?" | "And if you are not sure, you just ask. The answer is built from your scan. Ayan will explain why you can trust it." |
+
+If the target laptop is not reachable: skip the 2:00 row and say "on our hotspot this step is confirmed with a single connection; here the laptop is not on the network, so SafeEel refuses to touch it". That refusal is also the guardrail working.
 
 ---
 
@@ -55,7 +57,7 @@
 >
 > The findings, severities and score come only from deterministic code: the fifteen rules of the official catalog. No AI decides anything. Run it twice, you get the same file byte for byte.
 >
-> The live scan has a guardrail. It only scans the hotspot we are connected to. Public IPs, bigger ranges, the venue network: refused before nmap even starts.
+> The live scan has a guardrail. It only scans the hotspot we are connected to. Public IPs, bigger ranges, the venue network, a VPN: refused before nmap even starts.
 >
 > Everything is local-first. No account, no cloud, nothing leaves the network. The optional AI is a small model on this laptop, and it only rewords text that the code already wrote.
 >
@@ -78,7 +80,7 @@ Expected: `Validator: text REJECTED, the predefined answer would be shown. Reaso
 **Say:**
 > On the official Validation Set we match the answer key exactly: **24 of 24** finding rows and **8 of 8** scores, including the broken file reported as an error instead of crashing.
 >
-> We have **1,007 automated tests**. Two runs of the analysis give byte-identical files.
+> On top of that we wrote **24 trap files** of our own, and we have **1,591 automated tests**. Two runs of the analysis give identical files.
 >
 > In our own lab, the score went from **0 to 30** after we fixed two problems.
 >
@@ -88,19 +90,20 @@ Expected: `Validator: text REJECTED, the predefined answer would be shown. Reaso
 
 | Figure | Where it comes from |
 |---|---|
-| 24/24 rows, 8/8 scores | `tests/test_validation_set.py`, `fixtures/validation/expected_*.csv` |
-| 1,007 tests | `pytest` on branch `explain-plain` (1,007 passed, 1 skipped); **re-check on the `final` tag** |
+| 24/24 rows, 8/8 scores | `python -m netscan analyze fixtures/validation`, compared with `fixtures/validation/expected_*.csv`; also `results/` (the hour-16 check) |
+| 24 trap files | `fixtures/traps/` (T01–T24) |
+| 1,591 tests | `pytest -q` on `main`, 8 Nov 2026 (1,591 passed, 1 skipped); **re-check on the `final` tag** |
 | 0 → 30 | `fixtures/lab/scan_01_before.xml` → `scan_03_after.xml`, [lab.md](lab.md) |
-| 17.7 MB in ~5 s | measured 4.5–5.2 s (22,780 devices, 28,475 findings) under WSL; see technical.md |
-| LIX 40.2 RO / 34.7 EN | `python scripts/plain_language_report.py` |
+| 17.7 MB in ~5 s | measured 4.5–5.2 s (22,780 devices, 28,475 findings) under WSL |
+| LIX 40 RO / 35 EN | `python scripts/plain_language_report.py` (40.4 / 35.3) |
 
-> Note: an earlier draft said "17.7 MB in 2.5 s". That figure is not in the repo and we could not reproduce it, so the pitch uses the measured ~5 s. If someone re-measures on the demo laptop, update both technical.md and this line.
+> If someone tests the Romanian explanations with a non-technical person before the jury, say it here instead of "we did not". It is a bonus signal in the brief.
 
 ---
 
 ## 5:45–7:00 · Limits and next steps (RBRT, 75 s)
 
-**On screen:** the "Limitări" section, or one slide with two columns: *What we don't do (yet)* / *Next*.
+**On screen:** the "Limitări" section of [technical.md](technical.md), or one slide with two columns: *What we don't do (yet)* / *Next*.
 
 **Say:**
 > We want to be honest about the limits.
@@ -111,7 +114,7 @@ Expected: `Validator: text REJECTED, the predefined answer would be shown. Reaso
 >
 > Three: we only had a small hotspot. A full /24 home network with many devices may take longer than five minutes, and we could not verify that legally.
 >
-> Four: there is no login. That was a choice: the app only listens on this laptop, and it rejects pages from other sites.
+> Four: there is no login. That was a choice: the app only listens on this laptop, and it rejects requests from other websites.
 >
 > Next: protection with an authenticator app, profiles for more than one network, the local AI model built in instead of installed separately, and export and import of the history.
 >
@@ -125,7 +128,10 @@ Expected: `Validator: text REJECTED, the predefined answer would be shown. Reaso
 The UI only listens on `127.0.0.1`, without debug. It accepts only requests addressed to the local machine (protection against DNS rebinding). Every action needs a per-session token, and requests from other websites are refused. A password would only protect against someone already sitting at your unlocked laptop. For that case we plan protection with an authenticator app.
 
 **Why don't you encrypt the database?**
-It stays on your own disk and holds no passwords and no real MAC addresses: MACs are masked, and devices are identified by a hash with a local salt. The right layer is disk encryption (BitLocker / FileVault), which also protects everything else on the laptop. And there is a "delete history" button.
+It stays on your own disk and holds no passwords and no real MAC addresses: MACs are masked, and devices are identified by a hash with a local salt. The right layer is disk encryption (BitLocker / FileVault), which also protects everything else on the laptop. There is a "delete my history" button, and the page "What SafeEel knows about you" lists exactly what is stored.
+
+**How do you know a fix really happened?**
+"I did this, check it" makes one TCP connection to the problem's port, only if the device is on the hotspot we are connected to. If the port refuses, the step is confirmed and the engine recalculates the score shown under the standard one. If it still answers, the step stays to do. A newer scan of the same network confirms fixes too. The standard score of a saved scan never changes.
 
 **What do you do with random MAC addresses?**
 The rule stays exact: no vendor means `UNKNOWN_DEVICE`, as the catalog says. The UI explains it as a "private address" and tells the user to check their own phones first. In the history we recognise a device again by its IP when its MAC changed, and we say so on screen.
@@ -137,7 +143,7 @@ Honestly, we don't know. Our /28 with 2 devices took 3 min 25 s, with `--max-rat
 Then we see it wrongly too: the rules decide on the service name nmap reports, as the mentors confirmed. We document it as a limit. Our trap files cover the tricky cases: the same service on an unusual port, UPnP on TCP vs UDP, HTTP vs HTTPS, and Samba version ranges.
 
 **How do you guarantee a re-run gives the same result?**
-The analysis is pure code with no clock, no randomness and no AI. The output is sorted in a fixed order, so two runs produce byte-identical files (tested). For the Test Set we tag the exact commit as `final` and re-run from that tag.
+The analysis is pure code with no clock, no randomness and no AI. The output is sorted in a fixed order, so two runs produce identical files (tested). For the Test Set we tag the exact commit as `final` and re-run from that tag.
 
 ---
 
@@ -147,11 +153,11 @@ Switch to the screenshots in [`docs/pitch/`](pitch/) and tell the same story. Do
 
 | File | Shows | Use at |
 |---|---|---|
-| `1_overview_worst_device.png` | Score, most dangerous device, "Do this first", step check | 1:00–2:20 |
-| `2_device_steps.png` | One device: explanation and all repair steps | 1:40 |
-| `3_history_trend.png` | Score over time 0 → 30 | 2:40 |
-| `4_before_after.png` | Comparison: 2 problems fixed, 2 ports closed | 2:55 |
-| `5_assistant.png` | Assistant answering "What should I do first?" | 3:15 |
+| `1_home_most_dangerous.png` | Home: verdict, "start with", most dangerous device, what an attacker could do, "Do this first" | 1:00–2:00 |
+| `2_device_steps.png` | One device: explanation and all repair steps | 1:50 |
+| `3_progress_trend.png` | Progress: score over time 0 → 30 | 2:35 |
+| `4_before_after.png` | Proof: before and after, 2 problems fixed, 2 ports closed | 2:50 |
+| `5_assistant.png` | Assistant answering "What should I do first?" | 3:10 |
 | `6_devices.png` | "What is connected to me?" inventory | backup |
 | `7_validator_en.txt` | Validator output (REJECTED, with the reasons) | 4:20 |
 
