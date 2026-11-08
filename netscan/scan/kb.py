@@ -30,6 +30,45 @@ with this that there from at by as not no
 
 W_QUESTION, W_TAGS, W_TEXT = 3.0, 3.0, 1.0
 K1, B = 1.4, 0.75
+W_SYNONYM = 0.6          # cuvintele adăugate prin sinonime contează mai puțin decât cele scrise de utilizator
+
+# Cuvinte în plus pentru intrările din catalog (D1-D15): numele pe înțeles din aplicație (RO/EN), serviciile și
+# porturile obișnuite. Oamenii nu scriu „OUTDATED_SERVICE”, ci „software vechi” sau „portul 9100”.
+CATALOG_TERMS: dict[str, str] = {
+    "TELNET_OPEN": "telnet port 23 intrare veche fara lacat old door without lock remote login",
+    "RDP_EXPOSED": "rdp remote desktop desktop la distanta 3389 windows",
+    "VNC_EXPOSED": "vnc 5900 ecran la distanta remote screen",
+    "DB_EXPOSED": "baza de date database mysql postgresql postgres redis mongodb 3306 5432 6379 27017",
+    "CAMERA_STREAM_EXPOSED": "camera rtsp 554 imagine video supraveghere stream webcam",
+    "OUTDATED_SERVICE": "program vechi software vechi versiune veche outdated old software old version firmware vechi defecte cunoscute",
+    "FTP_CLEARTEXT": "ftp 21 transfer fisiere necriptat file transfer unencrypted",
+    "HTTP_ADMIN_CLEARTEXT": "admin http fara https necriptata unencrypted",
+    "SMB_EXPOSED": "smb 445 139 partajare fisiere file sharing windows share samba",
+    "MQTT_EXPOSED": "mqtt 1883 mosquitto mesagerie iot smart home casa inteligenta",
+    "UPNP_EXPOSED": "upnp 1900 deschide porturi singur opens ports automatically",
+    "SNMP_EXPOSED": "snmp 161 public community",
+    "PRINTER_RAW_EXPOSED": "imprimanta printer 9100 jetdirect tiparire print",
+    "UNKNOWN_DEVICE": "necunoscut nerecunoscut unknown unrecognized strain intrus",
+    "SSH_OPEN": "ssh 22 acces la distanta securizat secure shell",
+}
+
+# Sinonime pentru întrebare (fără diacritice, litere mici): cuvintele obișnuite ale oamenilor, legate de cele din
+# baza de cunoștințe. Fiecare grup: orice cuvânt din grup aduce și celelalte (cu greutatea W_SYNONYM).
+SYNONYM_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("wifi", "retea", "network", "hotspot"),
+    ("producator", "manufacturer", "vendor", "brand", "marca"),
+    ("software", "program", "programul", "firmware", "versiune", "version"),
+    ("vechi", "veche", "old", "outdated", "invechit"),
+    ("imprimanta", "printer"),
+    ("televizor", "tv", "dispozitiv", "device", "aparat"),
+    ("recunosc", "recognize", "recognise", "necunoscut", "unknown", "strain"),
+    ("vreme", "vremea", "meteo", "weather"),
+    ("parola", "password", "parole", "passwords"),
+    ("birou", "office", "serviciu", "scoala", "hotel", "cafenea", "vecin", "altcuiva", "alta"),
+    ("spart", "sparge", "hackuit", "hacked", "atacat", "compromis", "hack"),
+    ("sigur", "siguranta", "safe", "secure", "protejat"),
+    ("intru", "login", "logare", "setari", "settings"),
+)
 
 
 @dataclass(frozen=True)
@@ -95,7 +134,8 @@ def _index():
     docs = []
     for e in load()["entries"]:
         bag: dict[str, float] = {}
-        fields = ((e["q_ro"] + " " + e["q_en"], W_QUESTION), (" ".join(e["tags"]) + " " + e["id"], W_TAGS),
+        extra = " ".join(CATALOG_TERMS.get(t, "") for t in e["tags"])
+        fields = ((e["q_ro"] + " " + e["q_en"], W_QUESTION), (" ".join(e["tags"]) + " " + e["id"] + " " + extra, W_TAGS),
                   (e["a_ro"] + " " + e["a_en"], W_TEXT))
         length = 0.0
         for text, w in fields:
@@ -113,17 +153,40 @@ def _index():
     return docs, idf, avg
 
 
+@lru_cache(maxsize=1)
+def _synonyms() -> dict[str, tuple[str, ...]]:
+    out: dict[str, tuple[str, ...]] = {}
+    for group in SYNONYM_GROUPS:
+        for w in group:
+            out[w] = tuple(x for x in group if x != w)
+    return out
+
+
+def _query_terms(question: str) -> dict[str, float]:
+    """Cuvintele întrebării (greutate 1) plus sinonimele lor (greutate W_SYNONYM), fără dubluri."""
+    terms: dict[str, float] = {}
+    syn = _synonyms()
+    words = re.findall(r"[a-z0-9_]+", _norm(question))
+    for t in tokens(question):
+        terms[t] = 1.0
+    for w in words:
+        for other in syn.get(w, ()):
+            for t in tokens(other):
+                terms.setdefault(t, W_SYNONYM)
+    return terms
+
+
 def search(question: str, k: int = 3) -> list[Hit]:
     """Cele mai potrivite intrări, cu scor BM25 (0 = nicio potrivire)."""
     docs, idf, avg = _index()
-    q = list(dict.fromkeys(tokens(question)))
+    q = _query_terms(question)
     hits = []
     for e, bag, length in docs:
         s = 0.0
-        for t in q:
+        for t, qw in q.items():
             tf = bag.get(t)
             if tf:
-                s += idf.get(t, 0.0) * tf * (K1 + 1) / (tf + K1 * (1 - B + B * length / avg))
+                s += qw * idf.get(t, 0.0) * tf * (K1 + 1) / (tf + K1 * (1 - B + B * length / avg))
         if s > 0:
             hits.append(Hit(e["id"], round(s, 3), e))
     hits.sort(key=lambda h: (-h.score, h.id))

@@ -63,6 +63,10 @@ def test_bot_notes_never_shown_to_user():
     ("Pot afla cine folosește telefonul?", "B2"), ("Pot vedea ce site-uri deschide fratele meu?", "B7"),
     ("Cât de des să scanez?", "F8"), ("Merge fără internet?", "A9"), ("Ce înseamnă ERROR?", "A10"),
     ("Cum intru în pagina routerului?", "F2"), ("Ce e rețeaua pentru oaspeți?", "F4"),
+    # cuvintele oamenilor, nu cele din PDF: numele pe înțeles, porturile și sinonimele (CATALOG_TERMS, SYNONYM_GROUPS)
+    ("software vechi pe router", "D6"), ("imprimanta portul 9100", "D13"),
+    ("ce vreme e maine", "G4"), ("there is a device i don't recognize", "B3"), ("mosquitto pe portul 1883", "D10"),
+    ("can i scan any network", "A2"),
 ])
 def test_search_finds_the_right_entry(q, expected):
     assert kb.search(q, 1)[0].id == expected
