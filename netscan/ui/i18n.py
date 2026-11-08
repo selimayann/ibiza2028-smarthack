@@ -1048,7 +1048,7 @@ def _sentence_end(text: str) -> str:
 
 
 def summary_sentence(lang: str, summary, device_label: str | None = None, step: str | None = None,
-                     error_text: str | None = None) -> str:
+                     error_text: str | None = None, with_counts: bool = True) -> str:
     """Fraza mare din capul paginii. Rezultatul e text simplu: numele dispozitivului poate fi nesigur și se
     escapează în template (niciodată |safe)."""
     lang = normalize_lang(lang)
@@ -1071,6 +1071,10 @@ def summary_sentence(lang: str, summary, device_label: str | None = None, step: 
     sentence = tx["has"].format(counts=counts)
     if not device_label:
         return sentence
+    # Pe Acasă cifrele stau deja în etichetele de sub verdict: fraza spune doar cu ce începi.
+    if not with_counts:
+        return tx["start"].format(device=device_label, step=_sentence_end(step)) if step \
+            else tx["start_no_step"].format(device=device_label)
     if step:
         return f"{sentence} " + tx["start"].format(device=device_label, step=_sentence_end(step))
     return f"{sentence} " + tx["start_no_step"].format(device=device_label)

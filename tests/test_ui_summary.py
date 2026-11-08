@@ -35,14 +35,14 @@ def test_problems_sentence_names_first_device_and_first_step(tmp_path):
     client, _ = make_client(tmp_path, [sample()])
     s = text_of(client.get("/").get_data(as_text=True))
     # sample: 1 problemă „high” (camera), 4 „medium”; primul dispozitiv: camera (30 de puncte)
-    assert s.startswith("Rețeaua ta are o problemă gravă și 4 mai mici. Începe cu Cameră: ")
+    assert s.startswith("Începe cu Cameră: ")
     assert "Schimbă parola din fabrică a camerei cu una lungă și unică." in s
 
 
 def test_sentence_in_english(tmp_path):
     client, _ = make_client(tmp_path, [sample()])
     s = text_of(client.get("/?lang=en").get_data(as_text=True))
-    assert s.startswith("Your network has 1 serious problem and 4 smaller ones. Start with Camera: ")
+    assert s.startswith("Start with Camera: ")
     assert "Change the camera's factory password to a long, unique one." in s
 
 
@@ -87,7 +87,7 @@ def test_history_page_has_the_same_sentence(tmp_path):
     client, app = make_client(tmp_path, [sample()])
     scan_id = storage.save_scan(sample(), app.config["DB_PATH"])
     s = text_of(client.get(f"/scan/{scan_id}").get_data(as_text=True))
-    assert s.startswith("Rețeaua ta are o problemă gravă și 4 mai mici. Începe cu Cameră: ")
+    assert s.startswith("Începe cu Cameră: ")
 
 
 # ---------- fraza și cardul de dedesubt spun același lucru ----------
@@ -104,7 +104,7 @@ def test_sentence_device_is_the_card_device(tmp_path):
     assert worst.host.ip == "10.0.0.9"   # 30 de puncte bat 20, chiar dacă primul e „high”
     client, _ = make_client(tmp_path, [s])
     sentence = text_of(client.get("/").get_data(as_text=True))
-    assert sentence.startswith("Rețeaua ta are o problemă gravă și 3 mai mici. Începe cu Dispozitiv inteligent (IoT): ")
+    assert sentence.startswith("Începe cu Dispozitiv inteligent (IoT): ")
 
 
 # ---------- singular / plural ----------
@@ -150,7 +150,7 @@ def test_untrusted_device_name_is_escaped_in_the_sentence(tmp_path):
     storage.set_device_name("e1f2a3b4c5d6", XSS, app.config["DB_PATH"])   # camera (192.168.1.40)
     page = client.get("/").get_data(as_text=True)
     assert XSS not in page                                   # nicăieri neescapat
-    assert text_of(page).startswith(f"Rețeaua ta are o problemă gravă și 4 mai mici. Începe cu {XSS}: ")
+    assert text_of(page).startswith(f"Începe cu {XSS}: ")
     assert "&lt;script&gt;" in page
 
 

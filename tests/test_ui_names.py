@@ -119,7 +119,7 @@ def test_name_is_in_the_summary_sentence(tmp_path):
     client, app = make_client(tmp_path, [sample()])
     save(client, app, NAME)
     s = html.unescape(re.search(r'<p class="summary-text">(.*?)</p>', page(client, "/"), re.S).group(1))
-    assert s.startswith(f"Rețeaua ta are o problemă gravă și 4 mai mici. Începe cu {NAME}: ")
+    assert s.startswith(f"Începe cu {NAME}: ")
 
 
 def test_other_devices_keep_their_type(tmp_path):
