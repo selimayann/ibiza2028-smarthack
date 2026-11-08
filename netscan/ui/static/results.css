@@ -9,18 +9,18 @@
   column-gap: 1.5rem; align-items: start;
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 1.1rem 1.3rem; }
-.check-score { display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; min-width: 5rem; }
-.check-num { font-family: var(--head); font-size: 2.6rem; font-weight: 700; line-height: 1; }
-.check-of { color: var(--muted); }
-/* Banda ca text colorat (pictogramă + cuvânt), pe un singur rând */
-.check-band { display: inline-flex; align-items: center; gap: .35rem; margin-top: .35rem; font-weight: 700; white-space: nowrap; }
-.check-good .check-num, .check-good .check-band { color: var(--good); }
-.check-fair .check-num, .check-fair .check-band { color: var(--fair); }
-.check-poor .check-num, .check-poor .check-band { color: var(--high); }
-/* Severitățile pe card: text colorat cu simbol + cuvânt + număr, fără etichete (mai puțin zgomot).
-   Simbolul fiecărei severități le desparte; fără „·”, ca la rânduri rupte pe telefon să nu înceapă cu punct. */
-.sev-plain { gap: .2rem 1.1rem; }
-.sev-plain .sev-chip { background: none; border: 0; padding: 0; border-radius: 0; }
+/* Coloana scorului: un inel mic (ca pe Acasă) cu cifra în mijloc, banda dedesubt pe un rând, totul centrat */
+.check-score { display: flex; flex-direction: column; align-items: center; gap: .4rem; min-width: 6.5rem; }
+.check-ring { position: relative; display: block; width: 5.75rem; height: 5.75rem; }
+.check-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.check-ring .ring-track { stroke-width: 11; }
+.check-ring .ring-fill { stroke-width: 11; }
+.check-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--head); font-size: 1.75rem; font-weight: 700; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.check-band { display: inline-flex; align-items: center; gap: .3rem; font-weight: 700; white-space: nowrap; }
+.check-good .check-ring, .check-good .check-band { color: var(--good); }
+.check-fair .check-ring, .check-fair .check-band { color: var(--fair); }
+.check-poor .check-ring, .check-poor .check-band { color: var(--high); }
 .check-error-icon { width: 2.4rem; height: 2.4rem; color: var(--high); }
 .check-body { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
 .check-when { color: var(--muted); display: flex; flex-wrap: wrap; gap: .2rem .8rem; }
@@ -35,6 +35,7 @@
 @media (max-width: 40rem) {
   .check-list { grid-template-columns: minmax(0, 1fr); }
   .check-card { grid-template-columns: minmax(0, 1fr); gap: .6rem; }
-  .check-score { min-width: 0; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
-  .check-band { margin: 0 0 0 .25rem; }
+  .check-score { min-width: 0; flex-direction: row; align-items: center; gap: .75rem; }
+  .check-ring { width: 4.5rem; height: 4.5rem; }
+  .check-num { font-size: 1.4rem; }
 }

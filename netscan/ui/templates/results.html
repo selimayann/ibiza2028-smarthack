@@ -16,8 +16,15 @@
         <li class="check-card {{ 'check-' ~ c.band if c.ok else 'check-error' }}">
           <div class="check-score" aria-hidden="{{ 'false' if c.ok else 'true' }}">
             {% if c.ok %}
-              <span class="check-num">{{ c.score }}</span><span class="check-of">{{ R.of }}</span>
-              {# Aici banda e text colorat (pictogramă + cuvânt), nu etichetă: cardul are deja etichetele de risc #}
+              {# Același inel ca pe Acasă, mai mic: cifra în mijloc, arcul cât scorul; banda dedesubt, text colorat
+                 (etichetele cu contur rămân pentru riscurile din dreapta). Atribute SVG, nu stil inline (CSP). #}
+              <span class="check-ring">
+                <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+                  <circle class="ring-track" cx="60" cy="60" r="50" pathLength="100"/>
+                  <circle class="ring-fill" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="{{ c.score }} 100"/>
+                </svg>
+                <span class="check-num">{{ c.score }}</span>
+              </span>
               <span class="check-band">{{ band_svg(c.band) }}{{ T('band_' ~ c.band) }}</span>
             {% else %}
               <svg class="icon check-error-icon" aria-hidden="true"><use href="#i-high"/></svg>
@@ -27,7 +34,7 @@
             <p class="check-when"><span>{{ when }}</span> <span class="mono muted" translate="no">{{ c.file }}</span></p>
             {% if c.ok %}
               <h2 class="check-verdict">{% if c.ok %}<span class="sr-only">{{ R.score }} {{ c.score }} {{ R.of }}, {{ T('band_' ~ c.band) }}. </span>{% endif %}{{ c.verdict }}</h2>
-              {{ sev_chips(c.sev, 'sev-chips sev-plain check-counts') }}
+              {{ sev_chips(c.sev, 'sev-chips check-counts') }}
               {% if c.worst_name %}
                 <p class="check-worst"><strong>{{ R.worst }}</strong> {{ c.worst_name }}{% if c.worst_problem %} · {{ c.worst_problem }}{% endif %}</p>
                 {# „Fă asta întâi” apare în verificarea deschisă, nu pe fiecare card: lista rămâne scurtă (mai puțin text) #}
