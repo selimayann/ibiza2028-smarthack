@@ -39,3 +39,6 @@
   .check-ring { width: 4.5rem; height: 4.5rem; }
   .check-num { font-size: 1.4rem; }
 }
+/* Cardul unui fișier stricat: semnul de eroare centrat în coloana scorului (pe orizontală și pe verticală) */
+.check-error .check-score { align-self: stretch; justify-content: center; }
+.check-error-icon { display: block; }
