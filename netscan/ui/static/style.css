@@ -1474,3 +1474,10 @@ details.proof-still > summary:hover { text-decoration: none; border-color: var(-
 details.proof-still > summary h3 { text-decoration: none; color: var(--ink); font-size: 1rem; margin: 0; padding: 0; border: 0; }
 /* „Detalii despre scor”: fără subliniere (nici la hover, nici deschis); săgeata arată că se deschide */
 .how-score > summary, .how-score > summary:hover, .how-score[open] > summary { text-decoration: none; }
+/* Butoanele care deschid ceva (<details>: „Ce înseamnă”, „Mai multe opțiuni”, „Ce vede cineva care ascultă”, „Detalii…”,
+   „Încă N pași” etc.) NU sunt linkuri: fără subliniere, nici la hover, nici deschise, peste tot în aplicație.
+   Săgeata și culoarea arată că se deschid. (!important doar pentru text-decoration: regulile vechi au specificități diferite.) */
+details > summary, details > summary:hover, details[open] > summary,
+details > summary *, details > summary:hover * { text-decoration: none !important; }
+/* În „Ce vede cineva care ascultă”, titlul figurii repeta textul butonului: rămâne doar pentru cititorul de ecran */
+.eaves-details .eaves-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
