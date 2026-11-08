@@ -1428,8 +1428,9 @@ form[aria-busy="true"] .button-primary::after { content: ""; width: 1em; height:
 .home-top > .score .score-band { grid-column: 2; grid-row: 2; align-self: start; justify-content: flex-start; margin: 0; }
 .home-top > .score .score-after, .home-top > .score .how-score { grid-column: 1 / -1; }
 .home-top > .score .how-score { margin-top: var(--s-2); }
-.verdict { grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 56rem) { .verdict { grid-template-columns: minmax(0, 1fr); } }
+/* Scorul înapoi în coloana din stânga, lipit sus cât derulezi prin pași (mereu vizibil) */
+@media (min-width: 56rem) { .verdict { grid-template-columns: 19rem minmax(0, 1fr); align-items: start; }
+  .verdict > .score { position: sticky; top: var(--s-4); } }
 
 /* Antetul cardului: eticheta mică deasupra, numele ca titlu, apoi un rând discret „Tip · IP:port” */
 .worst-head { display: flex; flex-direction: column; gap: .3rem; }
@@ -1524,3 +1525,5 @@ details.live-open > summary::after { content: ""; width: .5rem; height: .5rem; m
 details.live-open[open] > summary::after { transform: translateY(.1rem) rotate(-135deg); }
 details.live-open > summary:hover { background: var(--brand-tint); }
 details.live-open > summary .icon { width: 1.1em; height: 1.1em; }
+/* butonul „Pornește protecția live…”: fără linia de deasupra lipită de el, cu spațiu sub text */
+details.live-open { border-top: 0; padding-top: 0; margin-top: var(--s-2, .5rem); }

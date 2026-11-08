@@ -283,9 +283,9 @@
 {% endmacro %}
 
 {% set show_score = not (history_id is not none and proof and proof.direction) %}
-{# 1. Verdictul, într-o propoziție (doar din datele motorului), cu scorul alături (dreapta), ca banda de sus să nu
-   rămână goală pe jumătate. Pe telefon scorul vine sub verdict. Eticheta benzii stă în cardul scorului. #}
-<div class="home-top{% if show_score %} has-score{% endif %}">
+{# 1. Verdictul, într-o propoziție (doar din datele motorului). Scorul stă dedesubt, în coloana din stânga, lipit sus
+   cât derulezi prin pași, ca să rămână mereu vizibil. #}
+<div class="home-top">
 <section class="verdict-head" aria-labelledby="verdict-h">
   {% if history_id is not none and proof and proof.direction %}
     {% set dir = proof.direction %}
@@ -303,7 +303,6 @@
   {% endif %}
   {% if history_id is none %}{{ summary_block() }}{% endif %}
 </section>
-{% if show_score %}{{ score_card(band) }}{% endif %}
 </div>
 
 {# Dovada înainte/după (doar în istoric, cu o scanare citibilă dinainte): prima după verdict, apoi fraza #}
@@ -365,6 +364,8 @@
   {% if scan_file_ref %}<p class="open-check"><a class="button button-secondary" href="{{ url_for('overview', **scan_file_ref) }}">{{ T('open_this_check') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a></p>{% endif %}
 {% else %}
 <div class="verdict">
+  {# Scorul, în stânga, lipit sus (sticky) cât utilizatorul trece prin pași #}
+  {% if show_score %}{{ score_card(band) }}{% endif %}
   {# 4. Cel mai periculos dispozitiv — fă asta întâi (un singur buton principal) #}
   {% if worst %}
     {% set w = worst.worst %}
