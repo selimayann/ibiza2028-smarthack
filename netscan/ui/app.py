@@ -438,9 +438,10 @@ def create_app(test_config: dict | None = None) -> Flask:
                 g.custom_names = {}
         return g.custom_names
 
-    def summary_sentence(scan: Scan, worst, all_fixed: bool = False) -> str:
+    def summary_sentence(scan: Scan, worst, all_fixed: bool = False) -> i18n.SummaryParts:
         """Fraza de sub verdict (cu ce să începi). `scan` și `worst` sunt cele ale cardului de dedesubt (fără
-        problemele confirmate ca rezolvate), ca fraza și cardul să spună același lucru."""
+        problemele confirmate ca rezolvate), ca fraza și cardul să spună același lucru. Vine pe bucăți
+        (înainte, nume, după), ca template-ul să pună numele în <strong> escapat, fără |safe."""
         summary = summary_of(scan, worst, all_fixed)
         label = step = None
         if summary.device is not None and summary.finding is not None:
@@ -452,7 +453,7 @@ def create_app(test_config: dict | None = None) -> Flask:
                      or i18n.device_type_label(g.lang, host.device_type))
             steps = get_explanation(summary.finding.code, g.lang).get("steps") or []
             step = steps[0] if steps else None
-        return i18n.summary_sentence(g.lang, summary, label, step, with_counts=False)
+        return i18n.summary_parts(g.lang, summary, label, step, with_counts=False)
     def pick(scan_list: list[Scan]) -> tuple[Scan | None, int]:
         """Scanarea cerută prin GET: după fișier (+ dată), ca linkurile să rămână corecte când apare o scanare
         nouă. ?scan=<poziție> merge încă (linkuri vechi), doar la citire."""

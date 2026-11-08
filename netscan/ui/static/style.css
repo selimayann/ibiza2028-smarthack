@@ -1382,3 +1382,50 @@ body { background: radial-gradient(70rem 26rem at 15% -8rem, #E2E5FF 0, rgba(226
 .band-chip .icon { width: 1.05em; height: 1.05em; }
 .band-chip-good { --bc: var(--good); } .band-chip-fair { --bc: var(--fair); } .band-chip-poor { --bc: var(--high); }
 .score-band .band-chip { font-size: 1.05rem; }
+
+/* ---------- Acasă: banda de sus (verdict + scor) și antetul cardului „cel mai periculos” ----------
+   Verdictul stătea în stânga și jumătatea dreaptă a benzii rămânea goală: scorul urcă acolo, ca un card compact
+   (inelul în stânga, eticheta benzii și detaliile în dreapta). Cardul „cel mai periculos” ia apoi toată lățimea. */
+.home-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); margin-bottom: var(--s-5); }
+.home-top > .verdict-head { max-width: none; padding-bottom: 0; }
+@media (min-width: 56rem) {
+  .home-top.has-score { grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem); gap: var(--s-6); align-items: center;
+    margin-top: var(--s-5); }
+  .home-top.has-score > .verdict-head { margin-top: 0; padding-top: 0; }
+}
+.home-top > .score { position: static; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--s-4); row-gap: .35rem;
+  align-items: center; text-align: left; padding: var(--s-4) var(--s-5); }
+.home-top > .score .ring-wrap { grid-column: 1; grid-row: 1 / span 2; width: 7.5rem; height: 7.5rem; margin: 0; }
+.home-top > .score .ring-wrap .score-num { font-size: 2.5rem; }
+.home-top > .score .score-label { grid-column: 2; grid-row: 1; align-self: end; margin: 0; }
+.home-top > .score .score-band { grid-column: 2; grid-row: 2; align-self: start; justify-content: flex-start; margin: 0; }
+.home-top > .score .score-after, .home-top > .score .how-score { grid-column: 1 / -1; }
+.home-top > .score .how-score { margin-top: var(--s-2); }
+.verdict { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 56rem) { .verdict { grid-template-columns: minmax(0, 1fr); } }
+
+/* Antetul cardului: eticheta mică deasupra, numele ca titlu, apoi un rând discret „Tip · IP:port” */
+.worst-head { display: flex; flex-direction: column; gap: .3rem; }
+h2.worst-device { margin: 0; }
+h2.worst-device .worst-label { display: block; font-family: inherit; font-size: 1rem; font-weight: 700; color: var(--muted); letter-spacing: .01em; }
+.worst-name { display: block; font-size: var(--fs-4); font-weight: 700; color: var(--ink); line-height: 1.15; overflow-wrap: anywhere; }
+.device-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .5rem; margin: 0; color: var(--muted); font-size: 1rem; }
+.device-meta .worst-ip { margin: 0; font-size: 1rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Problema: un sub-bloc separat de antet; eticheta de risc cu contur, apoi numele problemei */
+.worst .worst-issue { margin-top: var(--s-2); padding-top: var(--s-4); border-top: 1px solid var(--line); gap: .5rem; }
+.worst-problem { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
+.worst-problem .sev-chip { font-family: inherit; font-size: 1rem; }
+/* Lista scanărilor (Acasă, Dispozitive): eticheta începe cu numele fișierului („V1_home_basic.xml · scor 90”) */
+.picker select { min-width: 17rem; max-width: 100%; }
+@media (max-width: 40rem) { .picker, .picker-row, .picker select { min-width: 0; width: 100%; } }
+/* Fraza de sub verdict: numele dispozitivului iese în evidență (text escapat, în <strong>) */
+.summary-device { color: var(--ink); font-weight: 700; }
+@media (max-width: 40rem) {
+  .worst-name { font-size: 1.625rem; }
+  .home-top > .score { padding: var(--s-4); }
+  .home-top > .score .ring-wrap { width: 6.5rem; height: 6.5rem; }
+  .home-top > .score .ring-wrap .score-num { font-size: 2.25rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .home-top > .score { animation: kk-rise .45s cubic-bezier(.2, .7, .2, 1) .06s both; }
+}

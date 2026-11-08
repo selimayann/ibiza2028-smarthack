@@ -15,7 +15,8 @@ def text_of(page: str) -> str:
     """Textul frazei de sus, ca pe ecran (fără HTML)."""
     m = re.search(r'<p class="summary-text">(.*?)</p>', page, re.S)
     assert m, "fraza-rezumat lipsește din pagină"
-    return html.unescape(m.group(1)).strip()
+    # etichetele (ex. <strong> pe numele dispozitivului) se scot ÎNAINTE de unescape, ca un nume escapat să rămână text
+    return html.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip()
 
 
 def finding(ip, port, code, sev, pts, dev=None):
@@ -152,6 +153,16 @@ def test_untrusted_device_name_is_escaped_in_the_sentence(tmp_path):
     assert XSS not in page                                   # nicăieri neescapat
     assert text_of(page).startswith(f"Începe cu {XSS}: ")
     assert "&lt;script&gt;" in page
+    # numele e scos în evidență cu <strong> pus de template, dar conținutul rămâne escapat
+    assert f'<strong class="summary-device">{html.escape(XSS)}</strong>' in page
+
+
+def test_summary_parts_split_out_the_device_name():
+    p = i18n.summary_parts("ro", Summary("problems", serious=1), "Router", "Oprește Telnet", with_counts=False)
+    assert (p.before, p.device, p.after) == ("Începe cu ", "Router", ": Oprește Telnet.")
+    p = i18n.summary_parts("en", Summary("problems", serious=1), "{x}", None)
+    assert (p.before, p.device, p.after) == ("Your network has 1 serious problem. Start with ", "{x}", ".")
+    assert i18n.summary_parts("ro", Summary("clean")).device == ""
 
 
 # ---------- ordinea în pagină ----------

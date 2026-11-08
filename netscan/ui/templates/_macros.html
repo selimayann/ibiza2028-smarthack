@@ -134,6 +134,24 @@
 {%- endmacro %}
 
 {# Câte probleme de fiecare severitate (severitățile motorului, doar numărate). Cele confirmate ca rezolvate nu intră. #}
+{# O singură etichetă de risc cu contur (pictogramă + cuvânt), ca în rândul de sub verdict, fără număr. #}
+{% macro sev_chip(severity) -%}
+  <span class="sev-chip sev-chip-{{ severity }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ severity }}"/></svg>{{ T('sev_' ~ severity) }}</span>
+{%- endmacro %}
+
+{# Rândul discret de sub numele unui dispozitiv: tipul (doar când titlul e un nume, nu deja tipul), numele anunțat
+   (text nesigur, escapat) și adresa. Ex.: „Router · 192.168.1.1:80”. #}
+{% macro device_meta(host, addr) -%}
+  {%- set cn = custom_name(host.device_id) -%}
+  {%- set an = announced(host.ip) -%}
+  <p class="device-meta">
+    {%- if cn or an %}<span class="meta-kind">{{ device_kind(host) }}</span><span class="meta-sep" aria-hidden="true">·</span>{% endif -%}
+    {%- if cn and an %}<span translate="no">{{ an.name }}</span> <span class="announced-tag">{{ T('announced_label') }}</span><span class="meta-sep" aria-hidden="true">·</span>
+    {%- elif an %}{% if an.service %}<span>{{ an.service }}</span> {% endif %}<span class="announced-tag">{{ T('announced_label') }}</span><span class="meta-sep" aria-hidden="true">·</span>{% endif -%}
+    <span class="worst-ip" translate="no">{{ addr }}</span>
+  </p>
+{%- endmacro %}
+
 {# Numărătoarea pe severități ca etichete (aceeași formă peste tot: Acasă, Dispozitive, Verificări, raport):
    simbol + cuvânt + număr, nu doar culoare. `lead` = textul dinainte (ex. „3 dispozitive · 6 probleme:”). #}
 {% macro sev_chips(c, cls='sev-chips', lead=none) -%}
