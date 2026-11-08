@@ -1,8 +1,6 @@
 """Runda P1 a UI-ului: pagina „Ce știe SafeEel despre tine”, ușa-capcană la alegere, eticheta routerului, cuvintele
 noi, jurnalul pliat, textele fără categorii zero, butonul asistentului, linkurile după fișier și vederea CSV.
 Fără rețea: rețeaua curentă e o funcție de test (NETWORK_DETECT), monitorul live e simulat."""
-import csv
-import io
 import re
 from dataclasses import replace
 
@@ -12,7 +10,7 @@ from netscan.scan.network import OK, WRONG_SSID, NetworkInfo
 from netscan.ui import i18n, storage
 from netscan.ui.alerts import FINDING_RESOLVED, PORT_CLOSED, alerts_between, fold_port_alerts
 from netscan.ui.app import create_app
-from netscan.ui.view import csv_view, rank_devices
+from netscan.ui.view import rank_devices
 from tests.test_ui_app import sample
 from tests.test_ui_live import FakeLive
 
@@ -263,20 +261,3 @@ def test_links_use_the_scan_file_not_its_position(tmp_path):
 
 
 # ---------- 9. vederea CSV folosește exact cuvintele din CSV ----------
-
-def test_csv_view_and_technical_details_show_the_exact_csv_severity(tmp_path):
-    from netscan.engine.export import write_findings_csv
-    s = sample()
-    c, _, _ = make(tmp_path, [s])
-    html = c.get("/").get_data(as_text=True)
-    table = html.split("<caption>findings.csv</caption>", 1)[1].split("</table>", 1)[0]
-    cells = re.findall(r'<td class="mono">(high|medium|low|info)</td>', table)
-    assert cells == [r["severity"] for r in csv_view(s)["findings"]]
-    out = tmp_path / "findings.csv"
-    write_findings_csv([s], out)                                      # exportul real al motorului
-    exported = list(csv.DictReader(io.StringIO(out.read_text(encoding="utf-8"))))
-    assert [r["severity"] for r in exported] == cells
-    assert "Severitatea în CSV" in html                                # detaliile tehnice ale cardului
-    dev = rank_devices(s)[0]
-    page = c.get(f"/device/{dev.host.device_id}").get_data(as_text=True)
-    assert f'<dd class="code" translate="no">{dev.findings[0].severity}</dd>' in page

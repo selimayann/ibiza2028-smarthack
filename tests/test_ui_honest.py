@@ -141,7 +141,7 @@ def test_worst_card_equals_first_device_row_after_verified_fixes(tmp_path):
     html = client.get("/").get_data(as_text=True)
     worst_card = html.split('id="worst"', 1)[1].split("</section>", 1)[0]
     first_row = html.split('class="device-row"', 1)[1].split("</li>", 1)[0]
-    assert "192.168.1.1<" in worst_card and "192.168.1.1<" in first_row
+    assert "192.168.1.1" in worst_card and "192.168.1.1<" in first_row
 
 
 def test_order_devices_puts_fixed_findings_last_and_keeps_contract_without_fixes():

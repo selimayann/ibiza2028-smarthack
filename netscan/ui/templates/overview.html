@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_guide.html" import guide_dialog with context %}
-{% from "_macros.html" import harm_line, sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, csv_table, band_icon with context %}
+{% from "_macros.html" import harm_line, sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, band_icon with context %}
 {% block content %}
 {# Câmpurile ascunse ale formularelor pașilor: scanarea după fișier (+ data), niciodată după poziția în listă. #}
 {% macro hidden_fields() %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="file" value="{{ scan_ref.file }}">{% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}{% endmacro %}
@@ -363,16 +363,6 @@
           <p class="do-first-step" id="step-now" tabindex="-1">{{ ex.steps[0] }}</p>
         </div>
       {% endif %}
-      <details class="tech">
-        <summary>{{ T('details_tech') }}</summary>
-        <dl class="tech-list">
-          <div><dt>{{ T('ip') }}</dt><dd class="mono" translate="no">{{ worst.host.ip }}</dd></div>
-          <div><dt>{{ T('port') }}</dt><dd>{% if w.port is not none %}<span class="mono" translate="no">{{ w.port }}</span>{% else %}{{ T('whole_device') }}{% endif %}</dd></div>
-          <div><dt>{{ T('code_label') }}</dt><dd class="code" translate="no">{{ w.code }}</dd></div>
-          <div><dt>{{ T('sev_csv_label') }}</dt><dd class="code" translate="no">{{ T('sev_csv_' ~ w.severity) }}</dd></div>
-          <div><dt>{{ T('evidence') }}</dt><dd><code>{{ evidence_text(w) }}</code></dd></div>
-        </dl>
-      </details>
     </section>
   {% else %}
     {# Fără probleme rămase: fie scanarea nu a găsit nimic, fie toate au fost verificate ca rezolvate #}
@@ -415,7 +405,7 @@
           <a class="dev-link" href="{{ url_for('device', device_id=d.host.device_id, **scan_ref) }}">{{ T('see_fix') if d.findings else T('details') }}<span class="sr-only">: {{ device_name(d.host) }} {{ d.host.ip }}</span></a>
         {% endif %}
         <details class="dev-details">
-          <summary>{{ T('dev_problems_n')|format(d.findings|length) if d.findings else T('details_tech') }}<span class="sr-only">: {{ device_name(d.host) }}</span></summary>
+          <summary>{{ T('dev_problems_n')|format(d.findings|length) if d.findings else T('details') }}<span class="sr-only">: {{ device_name(d.host) }}</span></summary>
           <div class="dev-problems">
             {% for f in d.findings %}
               <p>{{ sev(f.severity) }} <span>{{ code_name(f.code) }}</span> <span class="muted">{{ port_label(f) }}</span>
@@ -430,13 +420,6 @@
   </ol>
 </section>
 
-{# 6. Rezultatul exact ca în CSV (pentru juriu și tehnicieni): codurile catalogului apar doar aici #}
-{% if csv and csv.findings is defined %}
-<details class="fold csv-view">
-  <summary>{{ T('csv_view_title') }}</summary>
-  <div class="fold-body">{{ csv_table(csv) }}</div>
-</details>
-{% endif %}
 {% endif %}{# history_id #}
 
 {% endif %}

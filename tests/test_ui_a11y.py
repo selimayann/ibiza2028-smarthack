@@ -98,10 +98,9 @@ def test_home_has_one_primary_button_and_no_codes_on_the_main_path(tmp_path):
     html = _home(tmp_path)
     main = _outside_details(html)
     assert main.count("button-primary") == 1
-    assert "CAMERA_STREAM_EXPOSED" in html                 # e în pagină (detalii tehnice + CSV)…
-    visible = re.sub(r"<[^>]+>", " ", main)                 # textul văzut (fără câmpurile ascunse ale formularelor)
-    assert "CAMERA_STREAM_EXPOSED" not in visible          # …dar doar în <details>
-    assert "findings.csv" in html and "scores.csv" in html
+    visible = re.sub(r"<[^>]+>", " ", html)                 # textul văzut (fără câmpurile ascunse ale formularelor)
+    assert "CAMERA_STREAM_EXPOSED" not in visible          # codurile tehnice nu apar deloc pe Acasă (sunt în raport)
+    assert "findings.csv" not in html                      # fără secțiunea „format standard” (CSV)
 
 
 def test_home_first_heading_is_h1_and_no_level_is_skipped(tmp_path):
@@ -173,8 +172,8 @@ def test_device_page_summary_jump_list_and_technical_details(tmp_path):
     main = _outside_details(html)
     for f in scan.findings:
         if f.device_id == worst:
-            assert f.code not in main                         # codul catalogului doar „Pentru tehnician”
-    assert "Pentru tehnician" in html
+            assert f.code not in re.sub(r"<[^>]+>", " ", html)   # fără coduri tehnice pe pagina dispozitivului
+    assert "Pentru tehnician" not in html                     # detaliile tehnice sunt doar în raport
 
 
 def test_report_has_legend_and_severity_words(tmp_path):

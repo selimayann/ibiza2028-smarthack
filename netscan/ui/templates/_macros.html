@@ -139,29 +139,6 @@
   {%- endif -%}
 {%- endmacro %}
 
-{# „Rezultatul în format standard”: exact rândurile din findings.csv și scores.csv (codurile apar doar aici). #}
-{% macro csv_table(csv) -%}
-  <div class="table-wrap csv-wrap">
-    <table class="csv-table">
-      <caption>findings.csv</caption>
-      <thead><tr>{% for h in csv.header %}<th scope="col" translate="no">{{ h }}</th>{% endfor %}</tr></thead>
-      <tbody>
-        {% for r in csv.findings %}<tr translate="no"><td>{{ r.file }}</td><td class="mono">{{ r.ip }}</td><td class="mono">{{ r.port }}</td><td class="mono">{{ r.finding_code }}</td>{% set sk = 'sev_csv_' ~ r.severity %}<td class="mono">{{ T(sk) if T(sk) != sk else r.severity }}</td></tr>
-        {% else %}<tr><td colspan="5" class="muted">{{ T('report_none') }}</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if csv.score %}
-  <div class="table-wrap csv-wrap">
-    <table class="csv-table">
-      <caption>scores.csv</caption>
-      <thead><tr><th scope="col" translate="no">file</th><th scope="col" translate="no">network_score</th></tr></thead>
-      <tbody><tr translate="no"><td>{{ csv.score.file }}</td><td class="mono">{{ csv.score.network_score }}</td></tr></tbody>
-    </table>
-  </div>
-  {% endif %}
-{%- endmacro %}
-
 {# Starea goală, cu țiparul SafeEel. `level` = nivelul titlului (3 când e sub un h2). #}
 {% macro empty_state(title, body, button_url, button_label, level=2) -%}
   <section class="empty">

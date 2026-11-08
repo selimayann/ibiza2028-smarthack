@@ -13,6 +13,12 @@
   <h1>{{ device_title(d.host) }}</h1>
   {{ announced_sub(d.host) }}
   <p class="device-ip muted">{{ T('ip') }}: <span class="mono" translate="no">{{ d.host.ip }}</span></p>
+  {# Cine e dispozitivul (fără detaliile tehnice: porturi, coduri, dovezi) #}
+  <dl class="facts">
+    <div><dt>{{ T('vendor') }}</dt><dd>{% if d.host.vendor %}{{ d.host.vendor }}{% if d.info and d.info.vendor_source == 'ieee' %} <span class="muted">({{ T('vendor_ieee') }})</span>{% endif %}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}{{ T('unknown') }}{% endif %}</dd></div>
+    <div><dt>{{ T('hostname') }}</dt><dd>{{ d.host.hostname or T('unknown') }}</dd></div>
+    <div><dt>{{ T('mac') }}</dt><dd class="mono" translate="no">{{ d.host.mac_masked or T('unknown') }}</dd></div>
+  </dl>
 </header>
 
 {# Numele dat de utilizator: salvat local, pe device_id. La cerere (se deschide singur după salvare / eroare).
@@ -83,28 +89,6 @@
       </details>
       {% endif %}
       {% set ev = eavesdrop(f.code) %}{% if ev %}<details class="eaves-details"><summary>{{ T('eaves_title') }}</summary>{{ eavesdrop_block(ev) }}</details>{% endif %}
-      <details class="fold tech">
-        <summary>{{ T('for_technician') }}</summary>
-        <div class="fold-body">
-          <dl class="tech-list">
-            <div><dt>{{ T('code_label') }}</dt><dd class="code" translate="no">{{ f.code }}</dd></div>
-            <div><dt>{{ T('sev_csv_label') }}</dt><dd class="code" translate="no">{{ T('sev_csv_' ~ f.severity) }}</dd></div>
-            <div><dt>{{ T('evidence') }}</dt><dd><code>{{ evidence_text(f) }}</code></dd></div>
-          </dl>
-          {% set std = standards(f.code) %}
-          {% if std.groups %}
-            <div class="standards">
-              <h4>{{ T('standards_title') }}</h4>
-              <ul>
-                {% for g in std.groups %}
-                  <li><a href="{{ g.url }}" rel="noopener noreferrer">{{ g.name }}</a>:
-                    {% for r in g.refs %}<span class="std-ref"><span class="mono" translate="no">{{ r.id }}</span> {{ r.title }}</span>{% if not loop.last %}; {% endif %}{% endfor %}</li>
-                {% endfor %}
-              </ul>
-            </div>
-          {% endif %}
-        </div>
-      </details>
       </div>
     </details>
   {% else %}
@@ -125,33 +109,5 @@
 </details>
 {% endif %}
 
-<section aria-label="{{ T('ports_title') }}">
-  <details class="fold tech">
-    <summary>{{ T('ports_title') }} · {{ T('for_technician') }} ({{ d.host.ports|length }})</summary>
-    <div class="fold-body">
-      <dl class="facts">
-        <div><dt>{{ T('mac') }}</dt><dd class="mono">{{ d.host.mac_masked or T('unknown') }}</dd></div>
-        <div><dt>{{ T('vendor') }}</dt><dd>{% if d.host.vendor %}{{ d.host.vendor }}{% if d.info and d.info.vendor_source == 'ieee' %} <span class="muted">({{ T('vendor_ieee') }})</span>{% endif %}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}{{ T('unknown') }}{% endif %}</dd></div>
-        <div><dt>{{ T('hostname') }}</dt><dd>{{ d.host.hostname or T('unknown') }}</dd></div>
-      </dl>
-      <div class="table-wrap">
-      <table>
-        <thead><tr><th scope="col">{{ T('port') }}</th><th scope="col">{{ T('state') }}</th><th scope="col">{{ T('service') }}</th><th scope="col">{{ T('product') }}</th><th scope="col">{{ T('page_title') }}</th></tr></thead>
-        <tbody>
-          {% for p in d.host.ports %}
-            {% set sk = 'state_' ~ p.state %}
-            <tr>
-              <td class="mono">{{ p.port }}/{{ p.proto }}</td>
-              <td>{{ T(sk) if T(sk) != sk else p.state }}</td>
-              <td>{{ p.service or '—' }}{% if p.tunnel %} ({{ p.tunnel }}){% endif %}</td>
-              <td>{{ [p.product, p.version, p.extrainfo]|select|join(' ') or '—' }}</td>
-              <td>{{ p.title or '—' }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
-    </div>
-  </details>
-</section>
+
 {% endblock %}
