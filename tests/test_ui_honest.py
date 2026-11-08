@@ -220,8 +220,8 @@ def test_analysed_file_is_probed_only_inside_the_team_hotspot(tmp_path):
     resp = _tick(client, app, s, f)
     assert "check=file_only" in resp.headers["Location"]
     db = app.config["DB_PATH"]
-    assert storage.verified_keys(s, db) == set() and storage.done_keys(s, db) == {f.key()}
-    assert "nu verific nimic în rețea" in client.get(resp.headers["Location"]).get_data(as_text=True)
+    assert storage.verified_keys(s, db) == set() and storage.done_keys(s, db) == set()   # nimic bifat
+    assert "Nu am putut verifica" in client.get(resp.headers["Location"]).get_data(as_text=True)
     # adresa e în hotspotul echipei: și o scanare mai veche / din fișier se verifică pe loc (o singură conexiune)
     calls = []
     client2, app2 = make(tmp_path / "in", [s], NET_CHECK=lambda ip: True,
@@ -547,3 +547,37 @@ def test_report_rows_follow_the_home_page_steps(tmp_path):
     assert [r["finding"].key() for r in ctx["rows"]] == [f.key() for f in action_plan(s)]
     assert [r["n"] for r in ctx["rows"]] == list(range(1, len(s.findings) + 1))
     assert ctx["score_std"] == 40 and ctx["csv"]["findings"]
+
+
+# ---------- motivul blocării verificării, spus exact ----------
+
+def _home_with_net(tmp_path, info):
+    s = sample()
+    client, app = make(tmp_path, [s], NETWORK_DETECT=lambda: info)
+    return client.get("/").get_data(as_text=True)
+
+
+def test_wifi_name_unreadable_says_turn_on_location(tmp_path):
+    """Conectat la Wi-Fi (are gateway), dar Windows nu dă numele (Locația oprită): mesajul spune ce să faci."""
+    html = _home_with_net(tmp_path, network.NetworkInfo(iface="Wi-Fi", ip="172.20.10.3", cidr="172.20.10.0/28",
+                                                        gateway="172.20.10.1", ssid=None))
+    assert "Pornește Locația" in html and "disabled" in html
+
+
+def test_other_wifi_name_is_named(tmp_path):
+    html = _home_with_net(tmp_path, network.NetworkInfo(iface="Wi-Fi", ip="10.0.0.5", cidr="10.0.0.0/24",
+                                                        gateway="10.0.0.1", ssid="UnivBuc Free"))
+    assert "UnivBuc Free" in html and "Pornește Locația" not in html
+
+
+def test_no_network_at_all_does_not_blame_location(tmp_path):
+    html = _home_with_net(tmp_path, None)
+    assert "Pornește Locația" not in html
+
+
+def test_scan_from_another_network_while_on_the_hotspot_says_so(tmp_path, monkeypatch):
+    """Ești pe hotspotul echipei, dar scanarea e din altă rețea: nu spunem „conectează-te la hotspot”."""
+    monkeypatch.setenv("NETSCAN_EXPECTED_SSID", "RSH-Ibiza2028")
+    html = _home_with_net(tmp_path, network.NetworkInfo(iface="Wi-Fi", ip="172.20.10.3", cidr="172.20.10.0/28",
+                                                        gateway="172.20.10.1", ssid="RSH-Ibiza2028"))
+    assert "scanarea asta e din altă rețea" in html and "Acum ești pe" not in html

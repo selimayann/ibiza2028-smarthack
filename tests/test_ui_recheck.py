@@ -121,8 +121,48 @@ def test_home_card_is_only_the_film_no_upload_panel(tmp_path):
     assert tick(client, app, scans[0]).status_code == 302
     for lang in ("ro", "en"):
         page = client.get(f"/?lang={lang}").get_data(as_text=True)
-        assert 'action="/scan/upload"' not in page and 'type="file"' not in page
+        # încărcarea unui fișier e doar în meniul „Scanarea din…” (Importă un fișier XML), nu un panou pe pagină
+        assert page.count('action="/scan/upload"') == 2 and page.count('type="file"') == 2     # repară pe Acasă + doar scor
+        up = page.index('action="/scan/upload"')
+        assert page.index('class="home-menu-pop"') < up < page.index('id="worst"')     # în meniul de sus, nu în pași
+        assert 'name="mode" value="import"' in page[up:up + 900]
+        assert 'name="mode" value="score"' in page
         assert "Ai reparat ceva? Verifică din nou." not in page and "Fixed something? Check again." not in page
+
+
+def test_import_opens_the_file_on_home_with_its_steps(tmp_path):
+    """„Importă un fișier XML”: fișierul se deschide pe Acasă (pași, filme, verificări), oricât de vechi ar fi."""
+    scans = load(V6B)
+    client, app = make_client(tmp_path, scans)
+    app.config["IMPORT_DIR"] = tmp_path / "imported"
+    resp = upload(client, app, V6A.read_bytes(), "veche.xml", scan=scans[0], mode="import")
+    loc = resp.headers["Location"]
+    assert resp.status_code == 302 and "file=veche.xml" in loc and "upload_error" not in loc and "/scan/" not in loc
+    page = client.get(loc).get_data(as_text=True)
+    assert "veche.xml" in page and 'action="/action/done"' in page                 # pașii lui, cu verificarea
+    assert (tmp_path / "imported" / "veche.xml").is_file()
+    assert storage.list_scans(app.config["DB_PATH"]) == []                          # nu intră singur în istoric
+
+
+def test_importing_the_same_file_twice_keeps_one_copy_and_a_new_one_gets_its_own_name(tmp_path):
+    scans = load(V6B)
+    client, app = make_client(tmp_path, scans)
+    app.config["IMPORT_DIR"] = tmp_path / "imported"
+    upload(client, app, V6A.read_bytes(), "x.xml", scan=scans[0], mode="import")
+    upload(client, app, V6A.read_bytes(), "x.xml", scan=scans[0], mode="import")
+    r = upload(client, app, V6B.read_bytes(), "x.xml", scan=scans[0], mode="import")
+    assert sorted(p.name for p in (tmp_path / "imported").glob("*.xml")) == ["x.xml", "x_2.xml"]
+    assert "file=x_2.xml" in r.headers["Location"]
+
+
+def test_import_a_broken_file_says_why(tmp_path):
+    scans = load(V6A)
+    client, app = make_client(tmp_path, scans)
+    app.config["IMPORT_DIR"] = tmp_path / "imported"
+    resp = upload(client, app, b"<nmaprun><host>", "stricat.xml", scan=scans[0], mode="import")
+    assert "upload_error=" in resp.headers["Location"]
+    assert list((tmp_path / "imported").glob("*.xml")) == []                        # un fișier stricat nu rămâne
+    assert "Nu am putut folosi fișierul ales." in client.get(resp.headers["Location"]).get_data(as_text=True)
 
 
 def test_compare_shows_proof_v6a_to_v6b(tmp_path):
@@ -353,3 +393,15 @@ def test_scan_without_devices_shows_no_score(tmp_path):
     v = verdict_view(empty)
     assert v["no_devices"] and v["verdict_key"] == "verdict_no_devices"
     assert not verdict_view(load(V6A)[0])["no_devices"]
+
+
+def test_import_for_the_score_only_saves_to_history_and_opens_it(tmp_path):
+    """„Importă XML doar pentru scor”: fără pași pe Acasă; o scanare mai veche se salvează și se deschide cu scorul ei."""
+    scans = load(V6B)
+    client, app = make_client(tmp_path, scans)
+    app.config["IMPORT_DIR"] = tmp_path / "imported"
+    resp = upload(client, app, V6A.read_bytes(), "veche.xml", scan=scans[0], mode="score")
+    loc = resp.headers["Location"]
+    assert resp.status_code == 302 and "/scan/" in loc and "upload_error" not in loc
+    assert len(storage.list_scans(app.config["DB_PATH"])) == 1
+    assert not (tmp_path / "imported").exists()

@@ -127,12 +127,13 @@ def test_scan_button_jobs_and_refusal_message(tmp_path):
 
 
 def test_running_scan_shows_progress_and_found_ports(tmp_path):
-    full = dict(IDLE, state="running", phase="tcp", percent=47.3, eta_s=130,
+    full = dict(IDLE, state="running", phase="tcp", percent=47.3, eta_s=130, started=1_794_125_403.4,
                 discovered=[{"ip": "172.20.10.1", "port": 21, "proto": "tcp"}])
     c, _ = client_for(tmp_path, FakeLive(snapshot("active", [device()]), full))
     html = c.get("/live/panel").get_data(as_text=True)
-    assert "verific ușile obișnuite (porturile)" in html and 'aria-valuenow="47"' in html and "w-45" in html
-    assert "mai durează cam 2 min" in html and "172.20.10.1 · 21/tcp" in html and "Oprește scanarea" in html
+    assert "verific fiecare aparat, pe rând" in html and 'class="scan-timer"' in html and 'aria-valuenow="47"' in html and "w-45" in html
+    assert 'data-start="1794125403"' in html and 'data-total="180"' in html       # numărătoarea: 3 minute de la început
+    assert "172.20.10.1 · 21/tcp" in html and "Oprește scanarea" in html
 
 
 def test_done_scan_links_to_its_result(tmp_path):

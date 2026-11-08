@@ -54,7 +54,31 @@ def test_check_results():
     udp = replace(F, port=1900, code="UPNP_EXPOSED")
     assert verify.check_finding(_scan_with(udp, "udp"), udp, never, lambda ip: True).result == verify.UDP
     unk = replace(F, port=None, code="UNKNOWN_DEVICE")
-    assert verify.check_finding(_scan_with(unk), unk, never, lambda ip: True).result == verify.NO_PORT
+    assert verify.check_finding(_scan_with(unk), unk, never, lambda ip: False).result == verify.OTHER_NETWORK
+    assert verify.check_finding(_scan_with(unk), unk, never, lambda ip: True, probe_allowed=False).result == verify.NO_PORT
+
+
+def test_unknown_device_still_there_or_gone():
+    """Aparatul necunoscut se verifică pe loc: răspunde pe un port al lui din scanare = încă în rețea; tăcere = a plecat."""
+    unk = replace(F, port=None, code="UNKNOWN_DEVICE")
+    s = _host_scan(unk, [(80, "tcp"), (443, "tcp")])
+    assert verify.check_finding(s, unk, lambda ip, port: "open", lambda ip: True).result == verify.STILL_PRESENT
+    assert verify.check_finding(s, unk, lambda ip, port: "unknown", lambda ip: True).result == verify.GONE
+    assert verify.check_finding(s, unk, lambda ip, port: "unknown", lambda ip: True).verified
+    only_udp = _host_scan(unk, [(5353, "udp")])
+    never = lambda ip, port: (_ for _ in ()).throw(AssertionError("nu trebuia atins"))
+    assert verify.check_finding(only_udp, unk, never, lambda ip: True).result == verify.NO_PORT   # fără TCP: nu știm
+
+
+def test_udp_problem_is_checked_on_the_spot():
+    up = replace(F, port=1900, code="UPNP_EXPOSED")
+    s = _host_scan(up, [(1900, "udp")])
+    tcp_never = lambda ip, port: (_ for _ in ()).throw(AssertionError("TCP nu se folosește la UDP"))
+    assert verify.check_finding(s, up, tcp_never, lambda ip: True, udp=lambda ip, p: "closed").result == verify.VERIFIED
+    assert verify.check_finding(s, up, tcp_never, lambda ip: True, udp=lambda ip, p: "open").result == verify.STILL_OPEN
+    assert verify.check_finding(s, up, tcp_never, lambda ip: True, udp=lambda ip, p: "unknown").result == verify.UDP
+    udp_never = lambda ip, p: (_ for _ in ()).throw(AssertionError("altă rețea: nimic"))
+    assert verify.check_finding(s, up, tcp_never, lambda ip: False, udp=udp_never).result == verify.UDP
 
 
 def test_tcp_probe_open_and_closed_on_localhost():
@@ -87,7 +111,7 @@ def test_closed_port_is_verified_and_engine_rescores(tmp_path):
     # cifra mare = scorul de acum (recalculat de motor); cel oficial al scanării (ca în scores.csv) e scris dedesubt
     assert expected > s.score and f'<span class="score-num">{expected}</span>' in html
     assert f"Scorul oficial al acestei scanări: {s.score}." in html
-    assert "am bătut o singură dată la ușa 554" in html
+    assert "portul 554 de pe" in html and "nu mai răspunde din rețea" in html
     assert "Progres după reparațiile confirmate (1)" in html
 
 def test_open_port_keeps_step_and_score(tmp_path):
@@ -101,16 +125,18 @@ def test_open_port_keeps_step_and_score(tmp_path):
     assert storage.done_keys(s, app.config["DB_PATH"]) == set() == storage.verified_keys(s, app.config["DB_PATH"])
 
 
-def test_unconfirmable_step_is_only_declared(tmp_path):
-    # o scanare din fișier (nu rețeaua de acum): nu se atinge rețeaua, pasul e doar bifat
+def test_unconfirmable_step_stays_unticked_with_try_again(tmp_path):
+    """O scanare din fișier, în afara rețelei ei: nu se atinge rețeaua și NU se bifează nimic.
+    Rămâi pe același pas, cu motivul și „reîncearcă” (fără „Pas bifat”)."""
     s = sample()
     client, app = client_for(tmp_path, [s], net=False, own=False)
     first = action_plan(s)[0]
-    html = client.get(tick(client, app, first).headers["Location"]).get_data(as_text=True)
-    assert "nu verific nimic în rețea" in html and ">40<" in html and "Problema 2 din 5" in html
-    assert storage.done_keys(s, app.config["DB_PATH"]) == {first.key()}
-    html = client.get("/?step=1").get_data(as_text=True)
-    assert "Bifat, dar neconfirmat" in html and "Verifică din nou" in html
+    resp = tick(client, app, first)
+    assert "check=file_only" in resp.headers["Location"] and "step=1" in resp.headers["Location"]
+    html = client.get(resp.headers["Location"]).get_data(as_text=True)
+    assert "Nu am putut verifica" in html and "reîncearcă" in html and ">40<" in html and "Problema 1 din 5" in html
+    assert storage.done_keys(s, app.config["DB_PATH"]) == set()
+    assert 'class="not-fixed" data-check="file_only"' in html and "Reîncearcă" in html   # caseta din pagină, nu notificare
 
 
 def test_cross_site_tick_refused(tmp_path):
@@ -221,3 +247,99 @@ def test_on_the_team_hotspot_the_check_button_is_active(tmp_path):
     client, _ = client_for(tmp_path, [s], net=True, own=True)
     html = client.get("/?step=1").get_data(as_text=True)
     assert 'id="verify-block"' not in html and 'aria-describedby="verify-block"' not in html
+
+
+# ---------- verificarea mai precisă: tăcere pe port, dispozitiv pornit, a doua încercare ----------
+
+def _host_scan(f, ports):
+    return Scan(file="x.xml", status="ok", started_at=1, score=50,
+                hosts=[Host(ip=f.ip, device_id=f.device_id, ports=[Port(port=p, proto=pr, state="open") for p, pr in ports])],
+                findings=[f])
+
+
+def test_silent_port_on_a_device_that_answers_elsewhere_is_fixed():
+    """Telefonul / aparatul cu firewall nu răspunde deloc pe portul închis, dar răspunde pe alt port: e pornit,
+    deci portul problemei nu mai e accesibil din rețea -> verificat."""
+    calls = []
+    def probe(ip, port):
+        calls.append(port)
+        return "unknown" if port == 23 else "open"
+    r = verify.check_finding(_host_scan(F, [(23, "tcp"), (80, "tcp")]), F, probe, lambda ip: True)
+    assert r.result == verify.VERIFIED and calls == [23, 80]
+
+
+def test_refused_other_port_also_proves_the_device_is_up():
+    probe = lambda ip, port: "unknown" if port == 23 else "closed"
+    assert verify.check_finding(_host_scan(F, [(23, "tcp"), (443, "tcp")]), F, probe, lambda ip: True).result == verify.VERIFIED
+
+
+def test_silent_everywhere_means_the_device_is_off_not_fixed():
+    calls = []
+    probe = lambda ip, port: calls.append(port) or "unknown"
+    r = verify.check_finding(_host_scan(F, [(23, "tcp"), (80, "tcp"), (8080, "tcp"), (9100, "tcp")]), F, probe, lambda ip: True)
+    assert r.result == verify.NO_ANSWER
+    assert calls[0] == 23 and sorted(calls[1:]) == [80, 8080]       # cel mult 2 alte porturi, doar din scanare
+
+
+def test_no_other_tcp_port_means_we_cannot_tell():
+    calls = []
+    probe = lambda ip, port: calls.append(port) or "unknown"
+    r = verify.check_finding(_host_scan(F, [(23, "tcp"), (1900, "udp")]), F, probe, lambda ip: True)
+    assert r.result == verify.NO_ANSWER and calls == [23]            # UDP nu se încearcă
+
+
+def test_still_open_never_touches_other_ports():
+    calls = []
+    probe = lambda ip, port: calls.append(port) or "open"
+    r = verify.check_finding(_host_scan(F, [(23, "tcp"), (80, "tcp")]), F, probe, lambda ip: True)
+    assert r.result == verify.STILL_OPEN and calls == [23]
+
+
+def test_other_network_touches_nothing_even_with_other_ports():
+    never = lambda ip, port: (_ for _ in ()).throw(AssertionError("nu trebuia atins"))
+    r = verify.check_finding(_host_scan(F, [(23, "tcp"), (80, "tcp")]), F, never, lambda ip: False)
+    assert r.result == verify.OTHER_NETWORK
+
+
+def test_tcp_probe_tries_again_after_silence(monkeypatch):
+    answers = iter(["unknown", "closed"])
+    seen = []
+    monkeypatch.setattr(verify, "_connect_once", lambda ip, port, t: seen.append(t) or next(answers))
+    assert verify.tcp_probe("192.168.1.5", 23) == "closed" and seen == list(verify.PROBE_TRIES)
+
+
+def test_tcp_probe_stops_at_the_first_clear_answer(monkeypatch):
+    seen = []
+    monkeypatch.setattr(verify, "_connect_once", lambda ip, port, t: seen.append(t) or "open")
+    assert verify.tcp_probe("192.168.1.5", 23) == "open" and len(seen) == 1
+
+
+def test_tcp_probe_gives_up_after_two_silences(monkeypatch):
+    seen = []
+    monkeypatch.setattr(verify, "_connect_once", lambda ip, port, t: seen.append(t) or "unknown")
+    assert verify.tcp_probe("192.168.1.5", 23) == "unknown" and len(seen) == len(verify.PROBE_TRIES) == 2
+
+
+def test_alive_check_prefers_ports_without_problems():
+    """Porturile cu alte probleme pot tăcea și ele (reparate): întâi încercăm porturile fără probleme ale aparatului."""
+    other = replace(F, port=21, code="FTP_CLEARTEXT")
+    s = Scan(file="x.xml", status="ok", started_at=1, score=50,
+             hosts=[Host(ip=F.ip, device_id=F.device_id,
+                         ports=[Port(port=p, proto="tcp", state="open") for p in (21, 23, 5900, 62078)])],
+             findings=[F, other, replace(F, port=5900, code="VNC_EXPOSED")])
+    calls = []
+    probe = lambda ip, port: calls.append(port) or ("open" if port == 62078 else "unknown")
+    assert verify.check_finding(s, F, probe, lambda ip: True).result == verify.VERIFIED
+    assert calls[0] == 23 and 62078 in calls[1:]
+
+
+def test_film_slot_carries_the_program_name_from_the_scan_escaped(tmp_path):
+    """Pe un calculator, filmul arată numele programului din scanare (text nesigur: escapat de Jinja)."""
+    f = replace(F, port=8080, code="HTTP_ADMIN_CLEARTEXT")
+    s = Scan(file="x.xml", status="ok", started_at=1, score=50,
+             hosts=[Host(ip=f.ip, device_id=f.device_id, device_type="pc_windows",
+                         ports=[Port(port=8080, proto="tcp", state="open", product='Jetty<script>"9')])], findings=[f])
+    client, app = client_for(tmp_path, [s])
+    html = client.get("/").get_data(as_text=True)
+    assert 'data-prog="Jetty&lt;script&gt;&#34;9"' in html and "<script>\"9" not in html
+    assert 'data-dtype="pc_windows"' in html

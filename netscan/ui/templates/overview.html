@@ -8,10 +8,10 @@
    stă în „Mai multe opțiuni”. #}
 {% macro steps_panel() %}
         {% set hidden = hidden_fields() %}
-        {% if check and not (check in ('open', 'version') and show_steps and steps.current.status != 'verified') %}
+        {% if check and not (check in ('open', 'version', 'present', 'noanswer', 'noport', 'udp', 'file_only', 'other_device') and show_steps and steps.current.status != 'verified') %}
           {# rezultatul verificării pasului tocmai bifat (date reale: verify.py) #}
-          <p class="verify-msg verify-{{ 'good' if check == 'ok' else 'warn' if check in ('open', 'version') else 'info' }}" role="status" tabindex="-1">
-            <svg class="icon" aria-hidden="true"><use href="#i-{{ 'good' if check == 'ok' else 'medium' if check in ('open', 'version') else 'info' }}"/></svg>
+          <p class="verify-msg verify-{{ 'good' if check in ('ok', 'gone') else 'warn' if check in ('open', 'version', 'present', 'noanswer', 'noport', 'udp', 'file_only', 'other_device') else 'info' }}" data-check="{{ check }}" role="status" tabindex="-1">
+            <svg class="icon" aria-hidden="true"><use href="#i-{{ 'good' if check in ('ok', 'gone') else 'medium' if check in ('open', 'version', 'present', 'noanswer', 'noport', 'udp', 'file_only', 'other_device') else 'info' }}"/></svg>
             <span>{{ check_text }}</span>
           </p>
         {% endif %}
@@ -25,7 +25,7 @@
             {# Problema acestui pas (riscul + numele), pe același rând cu „‹ Problema 1 din 6 ›” #}
             {# Titlul scurt spune problema; săgeata ⌄ deschide explicația pe înțeles (și pe ce aparat e) #}
             <details class="step-title">
-              <summary><h3 class="step-problem">{{ sev_chip(st.finding.severity) }} <span class="step-problem-name">{{ short_title(st.finding.code) }}</span><svg class="icon step-chev" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></h3><span class="step-dev">{{ device_name(st.device) }}{% if st.device.ip %}<span class="step-ip"><span class="sr-only">, </span>{{ T('step_addr') }} <b>{{ st.device.ip }}</b></span>{% endif %}</span></summary>
+              <summary><h3 class="step-problem">{{ sev_chip(st.finding.severity) }} <span class="step-problem-name">{{ short_title(st.finding.code) }}</span><svg class="icon step-chev" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></h3><span class="step-dev">{{ device_name(st.device) }}{% if st.device.ip %}<span class="step-ip"><span class="sr-only">, </span>{{ T('step_addr') }} <b>{{ st.device.ip }}</b></span>{% endif %}{% set prt0 = st.device.ports|selectattr('port', 'equalto', st.finding.port)|list|first if st.finding.port is not none else none %}{% if prt0 and prt0.product and (hotspot_kind(st.device) or st.device.device_type) in ('pc_windows', 'server', 'phone_laptop') %}<span class="step-ip"><span class="sr-only">, </span>{{ T('step_prog') }} <b translate="no">{{ prt0.product[:40] }}</b></span>{% endif %}</span></summary>
               <div class="step-explain"><p>{{ sx.text }}</p>{{ harm_line(st.finding.code) }}</div>
             </details>
             <nav class="step-nav step-pager" aria-label="{{ T('step_nav') }}">
@@ -50,7 +50,8 @@
           {# Filmul „cum repari” (films.js): îl alege după problemă și aparat. Fără JavaScript, cu „mișcare redusă”
              sau fără film potrivit, rămâne textul de mai sus. #}
           {% set hk = hotspot_kind(st.device) %}
-          <div class="film-slot" data-code="{{ st.finding.code }}" data-dtype="{{ hk or st.device.device_type or '' }}" data-router="{{ '1' if is_gw or st.device.device_type == 'router' else '0' }}" data-ip="{{ st.device.ip }}" data-lang="{{ lang }}"></div>
+          {% set prt = st.device.ports|selectattr('port', 'equalto', st.finding.port)|list|first if st.finding.port is not none else none %}
+          <div class="film-slot" data-code="{{ st.finding.code }}" data-dtype="{{ hk or st.device.device_type or '' }}" data-router="{{ '1' if is_gw or st.device.device_type == 'router' else '0' }}" data-ip="{{ st.device.ip }}" data-prog="{{ ((prt.product or '') if prt else '')[:40] }}" data-devname="{{ device_name(st.device)|trim }}" data-devip="{{ st.device.ip }}" data-port="{{ st.finding.port if st.finding.port is not none else '' }}" data-net="{{ 'hotspot' if hotspot_net(scan) else '' }}" data-lang="{{ lang }}"></div>
           <div class="do-first-actions">
             {% if st.status != 'verified' %}
             <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .not-fixed, #worst .verify-msg, #step-now">
@@ -64,20 +65,29 @@
             <a class="button button-primary" href="{{ url_for('overview', step=st.number + 1, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now">{{ T('next_problem') }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a>
             {% endif %}
           </div>
-          {% if verify_block and st.status != 'verified' %}<p class="verify-block" id="verify-block"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{% if verify_block.file %}{{ T('verify_blocked_file') }}{% elif verify_block.ssid %}{{ T('verify_blocked')|format(expected_ssid, verify_block.ssid) }}{% else %}{{ T('verify_blocked_nossid')|format(expected_ssid) }}{% endif %}</span></p>{% endif %}
+          {% if verify_block and st.status != 'verified' %}<p class="verify-block" id="verify-block"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{% if verify_block.file %}{{ T('verify_blocked_file') }}{% elif verify_block.unreadable %}{{ T('verify_blocked_location') }}{% elif verify_block.ssid and verify_block.ssid == expected_ssid %}{{ T('verify_blocked_elsewhere') }}{% elif verify_block.ssid %}{{ T('verify_blocked')|format(expected_ssid, verify_block.ssid) }}{% else %}{{ T('verify_blocked_nossid')|format(expected_ssid) }}{% endif %}</span></p>{% endif %}
           </div></div>
           {# Simplu: filmul arată ce faci. Sub el doar „Am făcut asta, verifică”, pașii (‹ ›) și „Accept riscul”, discret.
              Numărul pasului e în antet; restul detaliilor sunt pe pagina dispozitivului. #}
           {# Problema e încă acolo după „Am făcut asta, verifică”: un mic asistent — încearcă din nou (filmul de la capăt)
              sau sari peste, pe riscul tău, după „Ești sigur?”. Sărirea peste cere mereu confirmarea. #}
-          {% if check in ('open', 'version') and st.status != 'verified' %}
-          <div class="not-fixed" role="alert" tabindex="-1">
+          {% if check in ('open', 'version', 'present', 'noanswer', 'noport', 'udp', 'file_only', 'other_device') and st.status != 'verified' %}
+          {% set still = check in ('open', 'version') %}
+          <div class="not-fixed" data-check="{{ check }}" role="alert" tabindex="-1">
             <span class="nf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 7v6m0 4h.01" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span>
             <div class="nf-main">
-              <p class="nf-title">{{ T('nf_title') }}</p>
-              <p class="nf-text">{{ T('nf_text') }}<span class="sr-only"> {{ check_text }}</span></p>
+              <p class="nf-title">{{ T('nf_title') if still else T('nf_title_' ~ check) }}</p>
+              <p class="nf-text">{{ T('nf_text') if still else T('nf_text_' ~ check) }}<span class="sr-only"> {{ check_text }}</span></p>
               <div class="nf-row">
+                {% if still %}
                 <a class="button button-primary nf-retry" href="{{ url_for('overview', step=st.number, **scan_ref) }}#worst-h" data-swap="#summary, #score, #worst" data-focus="#step-now">{{ T('nf_retry') }}</a>
+                {% else %}
+                {# n-am putut verifica: „Reîncearcă” face din nou verificarea, pe loc #}
+                <form method="post" action="{{ url_for('action_done') }}" data-swap="#summary, #score, #worst" data-focus="#worst .not-fixed, #worst .verify-msg, #step-now">
+                  {{ hidden }}{{ key_fields }}
+                  <button type="submit" class="button-primary nf-retry" data-busy="{{ T('step_checking') }}"{% if verify_block %} disabled{% endif %}>{{ T('nf_retry_check') }}</button>
+                </form>
+                {% endif %}
                 <details class="skip-confirm nf-skip">
                   <summary class="button button-secondary">{{ T('skip_short') }}</summary>
                   <div class="skip-box" role="group" aria-label="{{ T('skip_risk') }}">
@@ -419,7 +429,22 @@
   {# Ce scanare e și raportul: ascunse sub data scanării, ca sus să rămână doar scorul și verdictul #}
   <details class="home-menu">
     <summary title="{{ T('home_scan_hint') }}"><svg class="hm-ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 3h6l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M14 3v5h5 M9.5 13h5 M9.5 17h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>{{ T('home_scan_btn')|format(fmt_time(scan.started_at) if scan.started_at else scan.file) }}</span><svg class="hm-chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-    <div class="home-menu-pop"><p class="hm-hint">{{ T('home_scan_hint') }}</p>{{ about_bar(inline=True) }}</div>
+    <div class="home-menu-pop"><p class="hm-hint">{{ T('home_scan_hint') }}</p>{{ about_bar(inline=True) }}
+      {# Importă o scanare nmap (.xml) de pe calculator: o analizează motorul, offline, și o deschide #}
+      <form class="hm-import" method="post" action="{{ url_for('scan_upload') }}" enctype="multipart/form-data">
+        {{ hidden_fields() }}<input type="hidden" name="mode" value="import">
+        <label class="button button-secondary hm-import-btn" for="hm-file"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15V3m0 0-5 5m5-5 5 5M5 21h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('import_xml') }}</label>
+        <input id="hm-file" class="hm-file" name="scanfile" type="file" accept=".xml,text/xml,application/xml" required data-autosubmit-file>
+        <noscript><button type="submit" class="button-secondary">{{ T('import_xml_send') }}</button></noscript>
+      </form>
+      <form class="hm-import" method="post" action="{{ url_for('scan_upload') }}" enctype="multipart/form-data">
+        {{ hidden_fields() }}<input type="hidden" name="mode" value="score">
+        <label class="button button-secondary hm-import-btn" for="hm-file-score"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ T('import_xml_score') }}</label>
+        <input id="hm-file-score" class="hm-file" name="scanfile" type="file" accept=".xml,text/xml,application/xml" required data-autosubmit-file>
+        <noscript><button type="submit" class="button-secondary">{{ T('import_xml_send') }}</button></noscript>
+      </form>
+      <a class="button button-secondary hm-import-btn hm-tour" href="{{ url_for('overview', tour=1) }}"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>{{ T('tour_start') }}</a>
+    </div>
   </details>
   </div>{% elif show_score and not (verdict and verdict.no_devices) %}{{ score_card(band) }}{% endif %}
   {# 4. Cel mai periculos dispozitiv — fă asta întâi (un singur buton principal) #}

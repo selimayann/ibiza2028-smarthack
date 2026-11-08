@@ -20,17 +20,19 @@ from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, abort, g, redirect, render_template, request, url_for
+from flask import Flask, Response, abort, g, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
 
 from netscan.cli import load_env_file
 from netscan.engine import analyze_file, analyze_folder
 from netscan.engine.parser import MAX_BYTES
 from netscan.engine.parser import _DEFAULT_SALT as DEFAULT_SALT   # doar comparat: „cheia echipei sau cea implicită?”
-from netscan.scan.device_info import phone_hotspot
+from netscan.scan.device_info import phone_hotspot, windows_pc
 from netscan.model import Scan
 from netscan.scan import live as live_mod
+from netscan.scan import nbns
 from netscan.ui import extras, i18n, storage, verify
+from netscan.ui import pdf as pdf_mod
 from netscan.ui.alerts import alerts_between, fold_port_alerts, journal
 from netscan.ui.explain_stub import get_explanation, get_harm, get_standards
 from netscan.ui.view import (action_plan, csv_view, evidence_text, ip_key, most_dangerous, order_devices, proof_of,
@@ -269,6 +271,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         TRUSTED_HOSTS=list(LOCAL_HOSTS),   # Flask >= 3.1; verificarea proprie only_local_host() acoperă versiunile vechi
         # verificarea pașilor (verify.py): o conexiune TCP, doar spre adrese din rețeaua mea; înlocuibile în teste
         PORT_PROBE=verify.tcp_probe,
+        UDP_PROBE=verify.udp_probe,
         NET_CHECK=verify.target_in_my_network,
         USER_SCANS_DIR=USER_SCANS_DIR,   # scanările scrise de scanerul nostru (doar pe ele le verificăm live)
         OWN_SCAN_CHECK=None,             # (scan) -> e cea mai nouă scanare a noastră? None = own_newest_scan
@@ -394,7 +397,10 @@ def create_app(test_config: dict | None = None) -> Flask:
             "device_type_label": lambda dt: i18n.device_type_label(lang, dt),
             "short_title": lambda code: i18n.short_title(lang, code),
             # hotspot de pe telefon vs. router adevărat, din datele scanării (doar etichete; CSV-urile și scorul nu se schimbă)
-            "hotspot_kind": lambda h: phone_hotspot(h, h.vendor, g.get("router_ip")),
+            # eticheta pentru afișare: telefonul-hotspot, sau un calculator Windows pe care motorul l-a ghicit altfel
+            "hotspot_kind": lambda h: phone_hotspot(h, h.vendor, g.get("router_ip")) or windows_pc(h),
+            # rețeaua scanării e a unui telefon-hotspot (pentru animația „aparat necunoscut”: acolo nu există router)
+            "hotspot_net": lambda scan: bool(scan) and any(phone_hotspot(h, h.vendor, g.get("router_ip")) for h in (scan.hosts or [])),
             "device_type_the": lambda dt: i18n.device_type_the(lang, dt),
             "error_message": lambda code: i18n.error_message(lang, code),
             "explain": lambda code: get_explanation(code, lang),
@@ -434,8 +440,28 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     # ---------- pagini ----------
 
+    def import_dir() -> Path:
+        """Fișierele importate de pe Acasă: lângă baza de date (data/imported/), doar pe acest calculator."""
+        return Path(app.config.get("IMPORT_DIR") or (Path(app.config["DB_PATH"] or "data/netscan.db").parent / "imported"))
+
+    imported_cache: dict = {"key": None, "scans": []}
+
+    def imported_scans() -> list[Scan]:
+        """Scanările importate (analizate de același motor), cu cache după nume, dată și mărime."""
+        folder = import_dir()
+        files = sorted(folder.glob("*.xml")) if folder.is_dir() else []
+        key = tuple((f.name, f.stat().st_mtime_ns, f.stat().st_size) for f in files)
+        if key != imported_cache["key"]:
+            imported_cache.update(key=key, scans=[analyze_file(f) for f in files])
+        return list(imported_cache["scans"])
+
     def scans() -> list[Scan]:
-        return app.config["SCAN_LOADER"]()
+        base = app.config["SCAN_LOADER"]()
+        extra = [x for x in imported_scans() if x.file not in {b.file for b in base}]
+        if not extra:
+            return base
+        # importate: tot în listă, cea mai nouă întâi (ca restul), fără să schimbe care e „scanarea noastră”
+        return sorted(base + extra, key=lambda x: (x.started_at is not None, x.started_at or 0, x.file), reverse=True)
 
     def _find(scan_list: list[Scan], name: str, started: str | None) -> int | None:
         """Poziția scanării cu acest fișier (și această dată, dacă e dată). None = nu mai e în listă."""
@@ -495,6 +521,14 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/")
     def overview():
+        if not request.args and first_visit():
+            return redirect(url_for("welcome"))
+        if request.args.get("tour") == "1" and not welcome_done():   # turul pornit: „Bun venit” nu mai revine singur
+            try:
+                welcome_flag().parent.mkdir(parents=True, exist_ok=True)
+                welcome_flag().write_text("1", encoding="ascii")
+            except OSError:
+                pass
         scan_list = scans()
         scan, idx = pick(scan_list)
         g.names = names_for(scan)
@@ -552,7 +586,10 @@ def create_app(test_config: dict | None = None) -> Flask:
                     reachable = False
                 if not reachable:
                     info = current_network()
-                    verify_block = {"ssid": getattr(info, "ssid", None) if info else None}
+                    ssid = getattr(info, "ssid", None) if info else None
+                    # conectat la o rețea Wi-Fi, dar Windows nu-i dă numele (Locația oprită): spunem exact ce să facă
+                    unreadable = bool(info) and ssid is None and bool(getattr(info, "gateway", None))
+                    verify_block = {"ssid": ssid, "unreadable": unreadable}
         upload_error = request.args.get("upload_error")
         if upload_error not in UPLOAD_ERRORS:
             upload_error = None
@@ -669,6 +706,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         return (request.form.get("device_id", ""), int(port_raw) if port_raw.lstrip("-").isdigit() else None,
                 request.form.get("code", ""))
 
+    # Rămânem pe pas, fără bifă: problema e încă acolo, aparatul nu răspunde (pornește-l și verifică din nou),
+    # aparatul necunoscut e încă în rețea, sau laptopul nu e în hotspot. Doar ce s-a verificat pe loc mută pasul.
+    STAY_ON_STEP = (verify.STILL_OPEN, verify.STILL_OPEN_VERSION, verify.OTHER_NETWORK, verify.NO_ANSWER,
+                    verify.STILL_PRESENT, verify.NO_PORT, verify.UDP, verify.FILE_ONLY, verify.OTHER_DEVICE)
+
     @app.post("/action/done")
     def action_done():
         """D5: „Am făcut asta” = verifică pasul pe date reale (verify.py). Portul închis -> verificat, iar scorul
@@ -690,7 +732,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             if net_check is verify.target_in_my_network:   # rețeaua citită în ultimele VERIFY_NET_MAX_AGE_S secunde
                 net_check = lambda ip: verify.target_in_my_network(ip, detect=lambda: current_network(VERIFY_NET_MAX_AGE_S))  # noqa: E731
             result = verify.check_finding(scan, finding, app.config["PORT_PROBE"], net_check,
-                                          probe_allowed=probe_allowed, same_device=same)
+                                          probe_allowed=probe_allowed, same_device=same,
+                                          udp=app.config.get("UDP_PROBE"))
         # scanare veche / din fișier și adresa nu e în hotspotul echipei: nu atingem rețeaua, doar reținem pasul (ca înainte).
         # scanarea noastră nouă în afara hotspotului rămâne nebifată (nu s-a verificat nimic).
         if result.result == verify.OTHER_NETWORK and not app.config["OWN_SCAN_CHECK"](scan):
@@ -698,10 +741,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         if result.verified:   # portul e închis: toate problemele de pe acel port al dispozitivului au dispărut
             storage.mark_verified(scan, [f.key() for f in scan.findings
                                          if f.device_id == finding.device_id and f.port == finding.port], db)
-        elif result.result not in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION, verify.OTHER_NETWORK):
+        elif result.result not in STAY_ON_STEP:
             storage.mark_done(scan, key, db)   # în altă rețea nu bifăm nimic: nu s-a verificat nimic
         number = [f.key() for f in action_plan(scan)].index(key) + 1
-        if result.result in (verify.STILL_OPEN, verify.STILL_OPEN_VERSION, verify.OTHER_NETWORK):
+        if result.result in STAY_ON_STEP:
             stay = {"step": number}
         else:
             # Mergem ÎNAINTE: primul pas încă de făcut DUPĂ cel bifat (apoi, circular, unul sărit mai devreme).
@@ -749,14 +792,38 @@ def create_app(test_config: dict | None = None) -> Flask:
         name = secure_filename(upload.filename or "") or "scan.xml"
         if not name.lower().endswith(".xml"):
             name += ".xml"
+        importing = request.form.get("mode") == "import"   # „Importă un fișier XML” din meniul de pe Acasă
+        if importing:
+            # păstrat local (data/imported/), apoi deschis pe Acasă: pașii, filmele și verificările, ca orice scanare
+            folder = import_dir()
+            folder.mkdir(parents=True, exist_ok=True)
+            stem, n = name[:-4][:80] or "scan", 1
+            target = folder / f"{stem}.xml"
+            while target.exists() and target.read_bytes() != data:
+                n += 1
+                target = folder / f"{stem}_{n}.xml"
+            if not target.exists():
+                target.write_bytes(data)
+            imported = analyze_file(target)
+            if imported.status != "ok":
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
+                return back(imported.error_code or "INVALID_XML")
+            return redirect(url_for("overview", **scan_ref(imported)) + "#main")
         with tempfile.TemporaryDirectory(prefix="netscan-upload-") as tmp:
             path = Path(tmp) / name
             path.write_bytes(data)
             after = analyze_file(path)
         if after.status != "ok":
             return back(after.error_code or "INVALID_XML")
-        if before.status == "ok" and None not in (before.started_at, after.started_at) \
-                and after.started_at < before.started_at:
+        older = before.status == "ok" and None not in (before.started_at, after.started_at) \
+            and after.started_at < before.started_at
+        if request.form.get("mode") == "score" and (older or before.status != "ok"):
+            # „Importă doar pentru scor”: o scanare mai veche (sau fără una cu care s-o compar) doar se salvează și se deschide
+            return redirect(url_for("history_scan", scan_id=ensure_saved(after)) + "#main")
+        if older:
             return back("OLDER")
         before_id, after_id = ensure_saved(before), ensure_saved(after)
         return redirect(url_for("history_scan", scan_id=after_id, vs=before_id) + "#proof-h")
@@ -802,6 +869,35 @@ def create_app(test_config: dict | None = None) -> Flask:
         arg = request.args.get("live_msg", "")
         return arg if arg in LIVE_MESSAGES else None
 
+    nb_cache: dict[str, str] = {}
+    nb_lock = threading.Lock()
+
+    def netbios_name(d: dict, own_ip: str | None) -> str | None:
+        """Numele calculatorului (o singură întrebare NetBIOS, în fundal, o dată pe dispozitiv; vezi nbns.py).
+        Găsit: îl ținem minte și, dacă dispozitivul nu are deja un nume, îl salvăm ca numele lui (apare peste tot)."""
+        if not app.config.get("NETBIOS_NAMES", not app.config.get("TESTING")) or not own_ip:
+            return None
+        key = d.get("device_id") or d.get("ip") or ""
+        with nb_lock:
+            if key in nb_cache:
+                return nb_cache[key] or None
+            nb_cache[key] = ""
+        ip, dev_id, db = d.get("ip"), d.get("device_id"), app.config["DB_PATH"]
+
+        def work() -> None:
+            name = nbns.computer_name(ip, own_ip) if ip else None
+            with nb_lock:
+                nb_cache[key] = name or ""
+            if name and dev_id and live_mod.valid_device_id(dev_id):
+                try:
+                    if dev_id not in storage.device_names(db):
+                        storage.set_device_name(dev_id, name, db)
+                except Exception:
+                    pass
+
+        threading.Thread(target=work, name="netscan-netbios", daemon=True).start()
+        return None
+
     def live_ctx() -> dict:
         """Datele panoului „Rețeaua ta acum”, gata de afișat. Tot ce vine de la dispozitive sau din fișiere e text
         nesigur: îl afișează doar Jinja, cu autoescape."""
@@ -811,8 +907,15 @@ def create_app(test_config: dict | None = None) -> Flask:
         en = lang == "en"
         clock = lambda ts: time.strftime("%H:%M:%S", time.localtime(ts)) if ts else ""  # noqa: E731
         devices = []
+        own_ip = snap.get("own_ip")
+        given = custom_names()
         for d in snap["devices"]:
-            if d.get("is_gateway"):
+            pc = netbios_name(d, own_ip) if snap.get("status") == "active" else None
+            if given.get(d.get("device_id") or ""):
+                name = given[d["device_id"]]                 # numele dat de tine (sau cel aflat de la calculator)
+            elif pc and not d.get("is_gateway"):
+                name = pc                                    # numele calculatorului, ca în „Rețea” din Windows
+            elif d.get("is_gateway"):
                 name = i18n.t(lang, "live_gateway")
             elif d["in_scan"] and d["device_type"] and d["device_type"] != "unknown":
                 name = i18n.device_type_label(lang, d["device_type"])
@@ -846,6 +949,9 @@ def create_app(test_config: dict | None = None) -> Flask:
             "found": found[-12:], "found_total": len(found), "file": full.get("file"),
             "message": full.get("msg_en") if en else full.get("msg_ro"),
             "next": clock(full.get("next_at")), "finished": clock(full.get("updated")),
+            "started": int(full.get("started") or 0) or None,      # pentru numărătoarea de 3 minute din pagină
+            "left": (lambda st: (lambda r: f"{r // 60}:{r % 60:02d}" if r > 0 else ("almost done" if en else "aproape gata"))(
+                max(0, int(180 - (time.time() - st)))) if st else None)(full.get("started")),
         }
         status = snap["status"]
         active_scan = state in ("waiting_permission", "running", "waiting_next")
@@ -881,6 +987,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     def _live_back(msg: str | None = None):
         set_live_msg(msg)                      # rămâne vizibil LIVE_MSG_TTL_S secunde (sau până la acțiunea următoare)
         args = {"live_msg": msg} if msg else {}
+        if request.form.get("back") == "welcome":   # scanarea pornită din pagina „Bun venit”
+            return redirect(url_for("welcome", **args))
         if request.headers.get("X-Requested-With") == "fetch":
             return redirect(url_for("live_panel", **args))
         return redirect(url_for("protection", **args) + "#live")
@@ -888,6 +996,56 @@ def create_app(test_config: dict | None = None) -> Flask:
     def _consent_given() -> bool:
         """Consimțământul explicit (echivalentul lui --confirm din linia de comandă): căsuța bifată în formular."""
         return request.form.get("confirm") == "1"
+
+    # ---------- prima intrare: „Bun venit” (prima scanare completă), apoi turul aplicației ----------
+
+    def welcome_flag() -> Path:
+        return Path(app.config["DB_PATH"] or "data/netscan.db").parent / ".welcome_done"
+
+    def welcome_done() -> bool:
+        return welcome_flag().is_file()
+
+    def first_visit() -> bool:
+        """Prima dată în aplicație: nicio scanare a ta (scans/) și pagina „Bun venit” încă neterminată."""
+        if not app.config.get("WELCOME_ON_FIRST_VISIT", not app.config.get("TESTING")):
+            return False
+        own = Path(app.config["USER_SCANS_DIR"])
+        return not welcome_done() and not any(own.glob("*.xml"))
+
+    @app.get("/bun-venit")
+    def welcome():
+        """Pagina de început (și pentru demo, oricând): ce face SafeEel, prima scanare completă, apoi turul."""
+        return render_template("welcome.html", **welcome_ctx())
+
+    @app.get("/bun-venit/stare")
+    def welcome_state():
+        """Doar caseta scanării (cât rulează, pagina o cere la câteva secunde, fără să se reîncarce toată)."""
+        return render_template("_welcome_scan.html", **welcome_ctx())
+
+    def welcome_ctx() -> dict:
+        info = current_network(VERIFY_NET_MAX_AGE_S)
+        expected = (os.environ.get("NETSCAN_EXPECTED_SSID") or "").strip()
+        ssid = getattr(info, "ssid", None) if info else None
+        on_hotspot = bool(info) and bool(expected) and ssid == expected and bool(getattr(info, "scan_allowed", False))
+        ctx = live_ctx()
+        sc = dict((ctx or {}).get("scan") or {})
+        own = Path(app.config["USER_SCANS_DIR"])
+        if sc.get("state") == "done" and not (sc.get("file") and (own / str(sc["file"])).is_file()):
+            sc["state"] = "idle"     # o scanare veche, al cărei fișier nu mai e (istoric curățat): nu spunem „gata”
+        return dict(live=ctx, sc=sc, token=app.config["FORM_TOKEN"], on_hotspot=on_hotspot, ssid=ssid, expected=expected,
+                    unreadable=bool(info) and ssid is None and bool(getattr(info, "gateway", None)))
+
+    @app.post("/bun-venit/gata")
+    def welcome_finish():
+        """Am văzut pagina de început: nu mai apare singură. `next=tour` pornește turul aplicației pe Acasă."""
+        if not same_site_request() or not hmac.compare_digest(request.form.get("token", ""), app.config["FORM_TOKEN"]):
+            abort(403)
+        try:
+            welcome_flag().parent.mkdir(parents=True, exist_ok=True)
+            welcome_flag().write_text("1", encoding="ascii")
+        except OSError:
+            pass
+        return redirect(url_for("overview", tour=1) if request.form.get("next") == "tour" else url_for("overview"))
 
     @app.get("/protectie")
     def protection():
@@ -969,6 +1127,27 @@ def create_app(test_config: dict | None = None) -> Flask:
         fixed = storage.verified_keys(scan, db) | set(verified_by_newer(scan, newer_scans(scan, scan_list)))
         return fixed, storage.accepted_keys(scan, db) - fixed
 
+    def present_not_checked(scan: Scan, in_scan: set, lang: str) -> list[dict]:
+        import json
+        from netscan.scan import runner as runner_mod
+        side = runner_mod.present_path(Path(app.config["USER_SCANS_DIR"]) / scan.file)
+        try:
+            rows = json.loads(side.read_text(encoding="utf-8")) if side.is_file() else []
+        except (OSError, ValueError):
+            rows = []
+        names = custom_names()
+        out = []
+        for r in rows if isinstance(rows, list) else []:
+            ip = str(r.get("ip") or "")
+            if not ip or ip in in_scan:
+                continue
+            dev = str(r.get("device_id") or "")
+            vendor = r.get("vendor")
+            name = names.get(dev) or (i18n.t(lang, "live_device_by") % vendor if vendor else
+                                      i18n.t(lang, "live_private") if r.get("private_mac") else i18n.t(lang, "live_unknown_device"))
+            out.append({"ip": ip, "name": name, "mac_masked": r.get("mac_masked"), "not_checked": True})
+        return out
+
     @app.get("/devices")
     def inventory():
         """D4: „Ce e conectat la mine?”: toate dispozitivele, inclusiv cele fără probleme, după IP."""
@@ -978,7 +1157,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         g.router_ip = router_ip(scan)
         fixed, accepted = progress_keys(scan, scan_list)
         devices = sorted(rank_devices(scan), key=lambda d: ip_key(d.host.ip)) if scan and scan.status == "ok" else []
+        # aparatele conectate când a pornit scanarea (aceeași listă ca Live, salvată de scanare lângă XML), pe care
+        # nmap nu le-a putut verifica: apar și ele, ca numărul să fie același ca pe Live
+        in_scan = {d.host.ip for d in devices}
+        live_extra = []
+        if scan is not None and scan.status == "ok":
+            live_extra = present_not_checked(scan, in_scan, g.get("lang", i18n.DEFAULT_LANG))
         return render_template("inventory.html", scan=scan, scan_list=scan_list, selected=idx, devices=devices,
+                               live_extra=live_extra,
                                fixed_keys=fixed, accepted_keys=accepted, scan_ref=scan_ref(scan), csv=csv_view(scan),
                                dev_ref={**scan_ref(scan), "from": "devices"})   # pagina dispozitivului știe că vii din „Dispozitive”
 
@@ -1120,6 +1306,36 @@ def create_app(test_config: dict | None = None) -> Flask:
         compare = storage.diff(prev, scan) if prev is not None and scan.status == "ok" else None
         return render_report(scan, url_for("history_scan", scan_id=scan_id), compare=compare,
                              prev=prev if compare is not None else None)
+
+    def pdf_download(page_url: str, scan: Scan):
+        """„Descarcă PDF”: pagina raportului (de pe acest calculator) salvată direct ca fișier (vezi pdf.py).
+        Fără browser potrivit: înapoi la raport, care deschide fereastra obișnuită de tipărire."""
+        maker = app.config.get("PDF_MAKER") or pdf_mod.make_pdf
+        port = request.environ.get("SERVER_PORT") or "5000"
+        data = maker(f"http://127.0.0.1:{port}{page_url}")
+        if not data:
+            return redirect(page_url + ("&" if "?" in page_url else "?") + "print=1")
+        when = _fmt_time(scan.started_at, g.lang).replace(":", "-") if scan.started_at else scan.file
+        name = i18n.t(g.lang, "report_pdf_name") % when + ".pdf"
+        ascii_name = "SafeEel-report.pdf"
+        from urllib.parse import quote
+        return Response(data, mimetype="application/pdf", headers={
+            "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(name)}",
+            "Cache-Control": "no-store"})
+
+    @app.get("/report.pdf")
+    def report_pdf():
+        scan, _ = pick(scans())
+        if scan is None:
+            abort(404)
+        return pdf_download(url_for("report", **request.args.to_dict(), lang=g.lang), scan)
+
+    @app.get("/scan/<int:scan_id>/report.pdf")
+    def history_report_pdf(scan_id: int):
+        scan = storage.get_scan(scan_id, app.config["DB_PATH"])
+        if scan is None:
+            abort(404)
+        return pdf_download(url_for("history_report", scan_id=scan_id, lang=g.lang), scan)
 
     @app.get("/journal")
     def journal_page():

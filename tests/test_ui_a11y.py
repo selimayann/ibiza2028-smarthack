@@ -124,7 +124,7 @@ def test_live_panel_off_is_compact_with_required_consent(tmp_path):
     live = _main(html)[_main(html).index('id="live"'):]
     assert live.count('name="confirm" value="1" required') == 2    # pornirea + formularul de scanare
     assert 'name="job" value="scan"' in live and 'name="job" value="auto"' in live
-    assert "button-primary" not in live
+    assert live.count("button-primary") <= 1          # pe pagina Live: cel mult un buton principal (pornirea)
     assert 'role="status"' not in live                              # anunțurile le face #live-announce
     assert '<div class="live-scan' not in live and 'aria-labelledby="scan-h"' in live
 
@@ -137,8 +137,10 @@ def test_status_messages_can_take_focus(tmp_path):
            headers={"X-Requested-With": "fetch"})
     html = c.get("/").get_data(as_text=True)
     assert re.search(r'<p class="saved" role="status" tabindex="-1">', html)
-    page = c.get("/?checked=1&check=file_only").get_data(as_text=True)
-    assert re.search(r'<p class="verify-msg[^"]*" role="status" tabindex="-1">', page)
+    page = c.get("/?checked=1&check=file_only").get_data(as_text=True)   # n-am putut verifica: caseta din pagină
+    assert re.search(r'<div class="not-fixed"[^>]* role="alert" tabindex="-1">', page)
+    page = c.get("/?checked=1&check=gone").get_data(as_text=True)        # confirmat: mesajul primește focus
+    assert re.search(r'<p class="verify-msg[^"]*"[^>]* role="status" tabindex="-1">', page)
 
 
 def test_history_chart_is_a_group_and_rows_newest_first(tmp_path):

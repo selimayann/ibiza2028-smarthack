@@ -1,0 +1,39 @@
+{# Caseta „Fă-ți prima scanare completă” din „Bun venit”. Se reîmprospătează singură (doar ea, nu toată pagina)
+   cât rulează scanarea: films.js o cere de la /bun-venit/stare. #}
+{% set busy = sc.state in ('running', 'waiting_permission', 'waiting_next') %}
+  <section class="wc-card" id="wc-scan" aria-labelledby="wc-scan-h" data-state="{{ sc.state or 'idle' }}"{% if busy %} data-wc-poll="2000"{% endif %}>
+    {% if busy %}
+      <h2 id="wc-scan-h">{{ T('wc_scanning') }}</h2>
+      {% if sc.state == 'waiting_permission' %}
+        <p>{{ T('scan_waiting') }}</p>
+        <p class="muted">{{ T('scan_waiting_hint') }}</p>
+      {% else %}
+        <div class="scan-bar wc-bar"{% if sc.started %} data-start="{{ sc.started }}" data-pct="{{ sc.percent or 0 }}"{% endif %} role="progressbar" aria-label="{{ T('wc_scanning') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ sc.percent or 0 }}"><span class="wc-fill" data-pct="{{ sc.percent or 0 }}"></span></div>
+        <p class="wc-progress"><span class="wc-timer scan-timer"{% if sc.started %} data-start="{{ sc.started }}"{% endif %} data-total="180" aria-live="off">{{ sc.left or '3:00' }}</span> <span class="wc-left">{{ T('wc_left') }}</span></p>
+        <p class="muted wc-phase">{% if sc.phase %}{{ T('wc_phase_' ~ sc.phase) }}{% else %}{{ T('wc_phase_discover') }}{% endif %}</p>
+      {% endif %}
+      <p class="muted">{{ T('wc_scanning_note') }}</p>
+    {% elif sc.state == 'done' %}
+      <h2 id="wc-scan-h">{{ T('wc_done_title') }}</h2>
+      <p>{{ T('wc_done_text') }}</p>
+      <form method="post" action="{{ url_for('welcome_finish') }}">
+        <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="next" value="tour">
+        <button type="submit" class="button-primary">{{ T('wc_see_result') }}</button>
+      </form>
+    {% elif on_hotspot %}
+      <h2 id="wc-scan-h">{{ T('wc_scan_title') }}</h2>
+      <p>{{ T('wc_scan_text') }}</p>
+      {% if sc.state in ('denied', 'auth_failed', 'launch_failed', 'stopped', 'failed') %}<p class="wc-warn">{{ T('scan_' ~ sc.state) }}</p>{% endif %}
+      {% if sc.state == 'refused' %}<p class="wc-warn">{{ T('scan_refused') }} {{ sc.message }}</p>{% endif %}
+      <form method="post" action="{{ url_for('live_scan') }}">
+        <input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="back" value="welcome"><input type="hidden" name="job" value="scan">
+        <label class="consent"><input type="checkbox" name="confirm" value="1" required><span>{{ T('consent_scan') }}</span></label>
+        <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('wc_scan_btn') }}</button>
+      </form>
+      <p class="muted">{{ T('scan_hint') }}</p>
+    {% else %}
+      <h2 id="wc-scan-h">{{ T('wc_scan_title') }}</h2>
+      <p class="wc-warn">{% if unreadable %}{{ T('verify_blocked_location') }}{% elif ssid %}{{ T('wc_not_hotspot_on')|format(expected or 'RSH', ssid) }}{% else %}{{ T('wc_not_hotspot')|format(expected or 'RSH') }}{% endif %}</p>
+      <p class="muted">{{ T('wc_not_hotspot_after') }}</p>
+    {% endif %}
+  </section>

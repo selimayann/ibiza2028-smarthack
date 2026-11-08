@@ -13,8 +13,8 @@
   <section class="live-scan scan-{{ sc.state }}" aria-labelledby="scan-h">
     <h3 id="scan-h" class="live-sub" tabindex="-1">{{ T('scan_title') }}</h3>
     {% if sc.state == 'running' %}
-      <p class="scan-line">{{ T('scan_running') }}{% if sc.phase %}: {{ T('scan_phase_' ~ sc.phase) }}{% endif %}{% if sc.eta %} · {{ T('scan_eta')|format(sc.eta) }}{% endif %}</p>
-      <div class="scan-bar" role="progressbar" aria-label="{{ T('scan_title') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ sc.percent }}"><span class="w-{{ (sc.percent // 5) * 5 }}"></span></div>
+      <p class="scan-line">{{ T('scan_running') }}{% if sc.phase %}: {{ T('wc_phase_' ~ sc.phase)|lower|replace('…', '') }}{% endif %}{% if sc.started %} · <span class="scan-timer" data-start="{{ sc.started }}" data-total="180">{{ sc.left or '3:00' }}</span> {{ T('scan_left_short') }}{% endif %}</p>
+      <div class="scan-bar"{% if sc.started %} data-start="{{ sc.started }}" data-pct="{{ sc.percent }}"{% endif %} role="progressbar" aria-label="{{ T('scan_title') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ sc.percent }}"><span class="w-{{ (sc.percent // 5) * 5 }}"></span></div>
       <p class="scan-pct mono">{{ sc.percent }}%</p>
       {% if sc.found %}
         <p class="muted">{{ T('scan_found')|format(sc.found_total) }}</p>
@@ -84,18 +84,24 @@
        doar o scanare în curs rămâne la vedere. #}
     <p class="live-off-line"><strong>{{ T('live_section_off') }}</strong> {{ T('live_off_short') }}</p>
     {% if scan_busy %}{{ scan_block() }}{% endif %}
-    {# Butonul care deschide în jos pornirea protecției și scanarea (pastilă, nu link): clar pentru un om non-tehnic #}
-    <details class="live-more live-open"{% if live.msg %} open{% endif %}>
-      <summary><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('live_open_controls') }}</summary>
-      <div class="fold-body">
+    {# Cele două blocuri, direct la vedere (fără acordeon): protecția live și scanarea completă #}
+    <div class="live-open-body">
+        {# Două lucruri diferite, două carduri: protecția live (stă pornită, te anunță) și scanarea completă (o dată) #}
+        <div class="live-choices">
+        <section class="live-choice live-choice-watch" aria-labelledby="choice-live-h">
+          <p class="lc-kind"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('lc_live_kind') }}</p>
+          <h3 id="choice-live-h" class="live-sub">{{ T('lc_live_title') }}</h3>
+          <p class="lc-what">{{ T('lc_live_what') }}</p>
         <form class="consent-form" method="post" action="{{ url_for('live_start') }}" data-swap="#live" data-focus="#live-said, #live-h">
           {{ token_field() }}
           <label class="consent"><input type="checkbox" name="confirm" value="1" required><span>{{ T('consent_live') }}</span></label>
           {# Ușa-capcană: separată și nebifată implicit; fără ea, protecția live nu ascultă pe niciun port #}
           <label class="consent consent-optional"><input type="checkbox" name="trap" value="1"><span>{{ T('trap_optin') }}</span></label>
-          <div><button type="submit" class="button-secondary"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('live_start') }}</button></div>
+          <div><button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>{{ T('live_start') }}</button></div>
         </form>
-        {% if not scan_busy %}{{ scan_block() }}{% endif %}
+        </section>
+        {% if not scan_busy %}<div class="live-choice live-choice-scan"><p class="lc-kind"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>{{ T('lc_scan_kind') }}</p><p class="lc-what">{{ T('lc_scan_what') }}</p>{{ scan_block() }}</div>{% endif %}
+        </div>
         <p class="live-lead">{{ T('live_off_body') }}</p>
         <ul class="live-explain">
           <li>{{ T('live_explain_1') }}</li>
@@ -104,12 +110,11 @@
         </ul>
         <p class="live-safe"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>{{ T('live_explain_safe') }}</p>
         <p class="live-note">{{ live.trap_note }}</p>
-      </div>
-    </details>
+    </div>
   {% elif live.status == 'paused' %}
     <p class="live-paused"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>{{ live.reason or T('live_paused_starting') }}</p>
     <p class="muted">{{ T('live_paused_hint') }}</p>
-    {{ scan_block() }}
+    {% if scan_busy %}{{ scan_block() }}{% endif %}
   {% else %}
     <p class="live-where">{{ T('live_where')|format(live.ssid or '?', live.cidr, live.own_ip) }}</p>
     {% if live.paused_for_scan %}
@@ -208,6 +213,7 @@
     {% else %}
       <p class="muted">{{ T('live_events_none') }}</p>
     {% endif %}
-    {{ scan_block() }}
+    {# scanarea completă se pornește din cardul ei (cu protecția oprită) sau din „Bun venit”; aici doar progresul ei #}
+    {% if scan_busy %}{{ scan_block() }}{% endif %}
   {% endif %}
 </section>

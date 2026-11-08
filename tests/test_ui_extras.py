@@ -102,7 +102,7 @@ def test_trap_attempt_calm_text_link_and_no_block_button(tmp_path, monkeypatch):
     assert "Dacă nu știi cine e, verifică dispozitivul." in html
     assert "/device/e1f2a3b4c5d6" in html                               # 192.168.1.40 e camera din scanare
     assert html.count("Vezi dispozitivul") == 1                         # 172.20.10.5 nu e cunoscut: fără link
-    low = html.lower()
+    low = html.lower().replace('blocking="render"', "")          # atributul scriptului, nu un buton „Blochează”
     assert "blochează" not in low and "block" not in low.replace("blocks", "")
 
 

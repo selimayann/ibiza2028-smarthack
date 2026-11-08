@@ -375,14 +375,17 @@ def test_one_step_at_a_time(tmp_path):
     assert [f.code for f in plan][:2] == ["CAMERA_STREAM_EXPOSED", "HTTP_ADMIN_CLEARTEXT"]
     html = client.get("/").get_data(as_text=True)
     assert "Fă asta întâi:" in html and "Problema 1 din 5" in html and "Am făcut asta" in html
+    # în afara hotspotului nu se poate verifica: rămâi pe pas (nimic bifat), cu motivul
     assert _done(client, app, plan[0]).status_code == 302
     html = client.get("/").get_data(as_text=True)
-    assert "Următorul pas:" in html and "Problema 2 din 5" in html
-    assert ">40<" in html                     # bifa neconfirmată (testele nu ating rețeaua) nu schimbă scorul
-    for f in plan[1:]:
-        _done(client, app, f)
+    assert "Problema 1 din 5" in html and storage.done_keys(s, app.config["DB_PATH"]) == set()
+    assert ">40<" in html
+    # „Sar peste” duce la pasul următor; după toți pașii: „Ai trecut prin toți pașii”
+    for f in plan:
+        client.post("/action/accept", data={"token": app.config["FORM_TOKEN"], **ref(s), "device_id": f.device_id,
+                                            "port": "" if f.port is None else f.port, "code": f.code})
     html = client.get("/").get_data(as_text=True)
-    assert "Ai trecut prin toți pașii" in html and "scanare nouă" in html
+    assert "Ai trecut prin toți pașii" in html
     client.post("/action/reset", data={"token": app.config["FORM_TOKEN"], **ref(s)})
     assert "Problema 1 din 5" in client.get("/").get_data(as_text=True)
 
@@ -402,7 +405,7 @@ def test_step_tick_rejects_bad_token_and_unknown_problem(tmp_path):
 def test_delete_history_also_clears_ticks(tmp_path):
     s = sample()
     client, app = make_client(tmp_path, [s])
-    _done(client, app, s.findings[0])
+    storage.mark_done(s, s.findings[0].key(), app.config["DB_PATH"])
     assert storage.done_keys(s, app.config["DB_PATH"])
     storage.delete_history(app.config["DB_PATH"])
     assert storage.done_keys(s, app.config["DB_PATH"]) == set()
@@ -473,3 +476,33 @@ def test_local_ai_used_only_when_enabled_and_checked(tmp_path, monkeypatch):
     assert "AI local pornit" in client.get("/?ask=1").get_data(as_text=True)
     data = client.get("/api/ask?scan=0&q=" + quote("Ce fac întâi?")).get_json()
     assert data["source"] == "fallback" and "10.9.9.9" not in data["text"]   # validatorul a respins IP-ul inventat
+
+
+# ---------- „Descarcă PDF”: fișierul vine de la aplicație (pdf.py), nu din fereastra de tipărire ----------
+
+def test_download_pdf_returns_a_pdf_file(tmp_path):
+    s = sample()
+    seen = []
+    app = create_app({"SCAN_LOADER": lambda: [s], "DB_PATH": tmp_path / "h.db", "TESTING": True,
+                      "NET_CHECK": lambda ip: False, "PDF_MAKER": lambda url: seen.append(url) or b"%PDF-1.7 test"})
+    c = app.test_client()
+    html = c.get("/report").get_data(as_text=True)
+    assert 'href="/report.pdf' in html and "Descarcă PDF" in html
+    r = c.get("/report.pdf")
+    assert r.status_code == 200 and r.mimetype == "application/pdf" and r.data.startswith(b"%PDF")
+    assert "attachment" in r.headers["Content-Disposition"] and ".pdf" in r.headers["Content-Disposition"]
+    assert seen and seen[0].startswith("http://127.0.0.1:") and "/report" in seen[0]   # doar pagina locală
+
+
+def test_download_pdf_without_a_browser_falls_back_to_print(tmp_path):
+    s = sample()
+    app = create_app({"SCAN_LOADER": lambda: [s], "DB_PATH": tmp_path / "h.db", "TESTING": True,
+                      "NET_CHECK": lambda ip: False, "PDF_MAKER": lambda url: None})
+    r = app.test_client().get("/report.pdf")
+    assert r.status_code == 302 and "print=1" in r.headers["Location"]
+
+
+def test_pdf_maker_refuses_anything_but_this_computer():
+    from netscan.ui import pdf
+    assert pdf.make_pdf("http://example.com/report", browser="x") is None
+    assert pdf.make_pdf("http://192.168.1.1/report", browser="x") is None

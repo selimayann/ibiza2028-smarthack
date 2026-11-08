@@ -19,7 +19,7 @@ from __future__ import annotations
 import errno
 import os
 import socket
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Optional
 
 from netscan.model import Finding, Host, Scan
@@ -34,9 +34,14 @@ OTHER_NETWORK = "network"
 NO_ANSWER = "noanswer"
 FILE_ONLY = "file_only"         # scanare dintr-un fișier / mai veche: nu atingem rețeaua deloc
 OTHER_DEVICE = "other_device"   # pe IP-ul din scanare e acum alt dispozitiv (alt device_id)
-RESULTS = (VERIFIED, STILL_OPEN, STILL_OPEN_VERSION, UDP, NO_PORT, OTHER_NETWORK, NO_ANSWER, FILE_ONLY, OTHER_DEVICE)
+STILL_PRESENT = "present"       # aparatul necunoscut e încă în rețea (răspunde)
+GONE = "gone"                   # aparatul necunoscut nu mai e în rețea: verificat
+RESULTS = (VERIFIED, STILL_OPEN, STILL_OPEN_VERSION, UDP, NO_PORT, OTHER_NETWORK, NO_ANSWER, FILE_ONLY, OTHER_DEVICE,
+           STILL_PRESENT, GONE)
 # Rezultate care primesc doar IP-ul în text (restul primesc portul și IP-ul; FILE_ONLY nu primește nimic).
-IP_ONLY = (NO_PORT, OTHER_NETWORK, OTHER_DEVICE)
+IP_ONLY = (NO_PORT, OTHER_NETWORK, OTHER_DEVICE, STILL_PRESENT, GONE)
+# Rezultatele care confirmă pasul (scorul de acum crește)
+CONFIRMED = ("ok", "gone")
 
 # Secunde, o singură încercare. Pe Windows o conexiune refuzată se anunță abia după ~2 s (sistemul mai
 # retrimite SYN de două ori înainte să renunțe): cu 1,5 s un port închis ar părea „fără răspuns".
@@ -55,7 +60,7 @@ class Check:
 
     @property
     def verified(self) -> bool:
-        return self.result == VERIFIED
+        return self.result in (VERIFIED, GONE)
 
 
 _SIO_TCP_INITIAL_RTO = 0x98000011   # Windows: parametrii primului SYN (fără retrimiteri)
@@ -82,8 +87,11 @@ def _no_syn_retries(sock: socket.socket) -> None:
         pass
 
 
-def tcp_probe(ip: str, port: int, timeout: float = PROBE_TIMEOUT) -> str:
-    """O conexiune TCP: "closed" doar dacă dispozitivul a răspuns că portul e închis (refuz)."""
+# Două încercări scurte (fiecare un singur SYN): pe hotspot sau Wi-Fi aglomerat primul pachet se mai pierde.
+PROBE_TRIES = (1.2, 2.0)
+
+
+def _connect_once(ip: str, port: int, timeout: float) -> str:
     try:
         with socket.socket(socket.AF_INET6 if ":" in ip else socket.AF_INET, socket.SOCK_STREAM) as sock:
             _no_syn_retries(sock)
@@ -96,6 +104,40 @@ def tcp_probe(ip: str, port: int, timeout: float = PROBE_TIMEOUT) -> str:
         if exc.errno == errno.ECONNREFUSED:
             return "closed"
         return "unknown"   # timeout, gazdă oprită, firewall care ignoră: nu putem trage concluzii
+
+
+def tcp_probe(ip: str, port: int, timeout: float | None = None) -> str:
+    """Conexiune TCP: "closed" doar dacă dispozitivul a răspuns că portul e închis (refuz), "open" dacă a acceptat.
+    La tăcere mai încercăm o dată (cel mult 2 pachete, ~3 s în total): un pachet pierdut nu mai dă „fără răspuns”."""
+    tries = (timeout,) if timeout else PROBE_TRIES
+    state = "unknown"
+    for t in tries:
+        state = _connect_once(ip, port, t)
+        if state != "unknown":
+            break
+    return state
+
+
+# Pentru UPnP (1900): o întrebare SSDP adresată doar acestui aparat (cum întreabă orice telefon din casă).
+_SSDP = (b"M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n")
+
+
+def udp_probe(ip: str, port: int, timeout: float = 1.5) -> str:
+    """Un pachet UDP mic, doar la acest aparat: răspuns -> "open"; „port inaccesibil” -> "closed"; tăcere -> "unknown"."""
+    payload = _SSDP if port == 1900 else b"\x00"
+    try:
+        with socket.socket(socket.AF_INET6 if ":" in ip else socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.settimeout(timeout)
+            sock.connect((ip, port))
+            sock.send(payload)
+            sock.recv(512)
+            return "open"
+    except (ConnectionResetError, ConnectionRefusedError):
+        return "closed"            # Windows/Linux: aparatul a răspuns „portul nu există”
+    except OSError as exc:
+        if exc.errno in (errno.ECONNREFUSED, errno.ECONNRESET):
+            return "closed"
+        return "unknown"
 
 
 def target_in_my_network(ip: str, env: Optional[dict] = None, detect: Optional[Callable] = None) -> bool:
@@ -124,16 +166,32 @@ def _tcp_port(host: Host | None, port: int) -> bool:
 
 def check_finding(scan: Scan, finding: Finding, probe: Probe = tcp_probe,
                   in_my_network: TargetCheck = target_in_my_network, *, probe_allowed: bool = True,
-                  same_device: Optional[SameDevice] = None) -> Check:
+                  same_device: Optional[SameDevice] = None, udp: Optional[Probe] = None) -> Check:
     """O singură conexiune TCP, doar dacă TOATE condițiile sunt îndeplinite:
     - `probe_allowed`: scanarea e a noastră (scrisă de scanerul nostru în scans/) și e cea mai nouă; altfel
       (Validation / Test Set / lab / un fișier mai vechi) -> FILE_ONLY, fără nicio conexiune;
     - `same_device(ip, device_id)` nu spune False (pe IP e alt dispozitiv -> OTHER_DEVICE);
     - `in_my_network(ip)`: rețeaua echipei (SSID exact + subnet + allowlist)."""
-    if finding.port is None:
-        return Check(NO_PORT, finding.ip, None)
     host = next((h for h in scan.hosts if h.device_id == finding.device_id), None)
+    if finding.port is None:
+        # Aparatul necunoscut: e încă în rețea? Doar porturile lui TCP din scanare; fără ele nu putem afla.
+        tcp = [p.port for p in (host.ports if host else []) if p.proto == "tcp" and p.state == "open"]
+        if finding.code != "UNKNOWN_DEVICE" or not tcp or not probe_allowed:
+            return Check(NO_PORT, finding.ip, None)
+        if not in_my_network(finding.ip):
+            return Check(OTHER_NETWORK, finding.ip, None)
+        if device_is_up(replace(finding, port=-1), host, probe, None):
+            return Check(STILL_PRESENT, finding.ip, None)
+        return Check(GONE, finding.ip, None)
     if not _tcp_port(host, finding.port):
+        # UDP (UPnP, SNMP…): un singur pachet; doar „răspunde” sau „port inaccesibil” sunt răspunsuri sigure
+        if udp is None or not probe_allowed or not in_my_network(finding.ip):
+            return Check(UDP, finding.ip, finding.port)
+        state = udp(finding.ip, finding.port)
+        if state == "closed":
+            return Check(VERIFIED, finding.ip, finding.port)
+        if state == "open":
+            return Check(STILL_OPEN, finding.ip, finding.port)
         return Check(UDP, finding.ip, finding.port)
     if not probe_allowed:
         return Check(FILE_ONLY, finding.ip, finding.port)
@@ -152,7 +210,36 @@ def check_finding(scan: Scan, finding: Finding, probe: Probe = tcp_probe,
     if state == "open":
         return Check(STILL_OPEN_VERSION if finding.code == "OUTDATED_SERVICE" else STILL_OPEN,
                      finding.ip, finding.port)
+    # Tăcere pe portul problemei. Multe aparate (telefoanele, cele cu firewall) nu răspund deloc pe un port închis.
+    # Dacă ACELAȘI dispozitiv răspunde pe alt port din scanare, e pornit și în rețea: portul problemei nu mai e
+    # accesibil din rețea, deci problema nu mai poate fi folosită -> verificat. Dacă nu răspunde nimic: e oprit.
+    if device_is_up(finding, host, probe, scan):
+        return Check(VERIFIED, finding.ip, finding.port)
     return Check(NO_ANSWER, finding.ip, finding.port)
+
+
+# Câte alte porturi ale dispozitivului încercăm ca să aflăm dacă e pornit (în paralel, câte o conexiune fiecare).
+ALIVE_PORTS = 2
+
+
+def device_is_up(finding: Finding, host: Host | None, probe: Probe, scan: Scan | None = None) -> bool:
+    """Dispozitivul răspunde (deschis SAU refuzat) pe alt port TCP pe care scanarea l-a găsit deschis.
+    Doar porturile din scanare, ale aceluiași dispozitiv, pe aceeași adresă: nimic nou atins.
+    Întâi porturile FĂRĂ probleme (ele rămân deschise după reparații); cele cu probleme pot tăcea și ele, fiind reparate."""
+    problem_ports = {f.port for f in (scan.findings if scan else []) if f.device_id == finding.device_id}
+    others = []
+    for p in (host.ports if host else []):
+        if p.proto == "tcp" and p.state == "open" and p.port != finding.port and p.port not in others:
+            others.append(p.port)
+    others.sort(key=lambda port: port in problem_ports)      # stabil: fără probleme întâi, în ordinea din scanare
+    others = others[:ALIVE_PORTS]
+    if not others:
+        return False
+    if len(others) == 1:
+        return probe(finding.ip, others[0]) in ("open", "closed")
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=len(others)) as pool:
+        return any(r in ("open", "closed") for r in pool.map(lambda port: probe(finding.ip, port), others))
 
 
 def message_args(result: str, ip: str, port: int | None) -> tuple:

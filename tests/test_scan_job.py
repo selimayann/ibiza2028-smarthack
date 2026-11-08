@@ -236,7 +236,8 @@ def test_execute_streaming_only_adds_display_flags(tmp_path, monkeypatch):
 
     assert runner.execute_streaming(plan, lines.append, nmap_path="C:/nmap.exe", popen=popen, poll_s=0.01).ok
     args, kw = calls[0]
-    assert args == ["C:/nmap.exe", "-v", "--stats-every", "5s", *runner.SPEED_ARGS, *plan.args[1:]]
+    expected = [a if a != plan.out_path else plan.out_path + runner.PART_SUFFIX for a in plan.args[1:]]
+    assert args == ["C:/nmap.exe", "-v", "--stats-every", "5s", *runner.SPEED_ARGS, *expected]   # -oX în .part
     assert kw.get("shell") is False and lines == NMAP_OUT[:3]
 
 
@@ -317,3 +318,121 @@ def test_busy_because_of_the_terminal_monitor_is_written_for_the_app(tmp_path):
         proc.kill()
     p = scan_job.read_progress(scans)
     assert p["state"] == "refused" and p["code"] == "BUSY" and p["msg_en"]
+
+
+
+# ---------- o singură scanare odată; aplicația nu vede fișierul pe jumătate scris ----------
+
+def test_nmap_writes_a_part_file_that_becomes_xml_only_at_the_end(tmp_path, monkeypatch):
+    probes = tmp_path / "probes"
+    probes.write_text("Probe TCP NULL q||\n")
+    plan = _plan(tmp_path, probes)
+    monkeypatch.setattr(runner, "is_admin", lambda: True)
+    seen = {}
+
+    def popen(args, **kw):
+        part = Path(args[args.index("-oX") + 1])
+        part.write_text("<nmaprun>")                       # pe jumătate scris, cât rulează
+        seen["xml_while_running"] = sorted(p.name for p in Path(plan.out_path).parent.glob("*.xml"))
+        part.write_text("<nmaprun/>")
+        return FakeProc(NMAP_OUT[:1])
+
+    assert runner.execute_streaming(plan, lambda l: None, nmap_path="C:/nmap.exe", popen=popen, poll_s=0.01).ok
+    assert seen["xml_while_running"] == []                 # aplicația (care citește *.xml) nu vede nimic
+    assert Path(plan.out_path).read_text() == "<nmaprun/>" and not Path(plan.out_path + runner.PART_SUFFIX).exists()
+
+
+def test_failed_scan_leaves_no_half_file(tmp_path, monkeypatch):
+    probes = tmp_path / "probes"
+    probes.write_text("Probe TCP NULL q||\n")
+    plan = _plan(tmp_path, probes)
+    monkeypatch.setattr(runner, "is_admin", lambda: True)
+
+    def popen(args, **kw):
+        Path(args[args.index("-oX") + 1]).write_text("<nmaprun>")
+        return FakeProc(NMAP_OUT[:1], rc=1)
+
+    r = runner.execute_streaming(plan, lambda l: None, nmap_path="C:/nmap.exe", popen=popen, poll_s=0.01)
+    assert not r.ok and list(Path(plan.out_path).parent.glob("*.part")) == [] and not Path(plan.out_path).exists()
+
+
+def test_only_one_scan_at_a_time(tmp_path, monkeypatch):
+    probes = tmp_path / "probes"
+    probes.write_text("Probe TCP NULL q||\n")
+    plan = _plan(tmp_path, probes)
+    monkeypatch.setattr(runner, "is_admin", lambda: True)
+    scans = Path(plan.out_path).parent
+    assert runner.acquire_lock(scans)                       # altă scanare (de ex. din terminal) rulează acum
+    called = []
+    r = runner.execute_streaming(plan, lambda l: None, nmap_path="C:/nmap.exe",
+                                 popen=lambda *a, **k: called.append(a), poll_s=0.01)
+    assert r.reason_code == runner.ALREADY_RUNNING and called == [] and runner.scan_running(scans)
+    runner.release_lock(scans)
+    assert not runner.scan_running(scans)
+
+
+def test_a_lock_left_by_a_dead_process_is_replaced(tmp_path):
+    (tmp_path / runner.LOCK_NAME).write_text("999999")     # PID care nu există
+    assert runner.acquire_lock(tmp_path)
+    runner.release_lock(tmp_path)
+
+
+def test_power_saving_laptops_get_a_full_second_to_answer():
+    i = runner.SPEED_ARGS.index("--max-rtt-timeout")
+    assert runner.SPEED_ARGS[i + 1] == "1000ms" and runner.SPEED_ARGS[:2] == ["--min-rate", "80"]
+
+
+
+# ---------- scanarea vede aceleași dispozitive ca protecția live (tabela ARP a sistemului) ----------
+
+def _netplan(tmp_path):
+    from netscan.scan import network as net
+    out = tmp_path / "scans" / "scan_y.xml"
+    info = net.NetworkInfo(iface="Wi-Fi", ip="172.20.10.10", cidr="172.20.10.0/28", gateway="172.20.10.1", status=net.OK)
+    return runner.ScanPlan(True, "OK", "", "", network=info, target="172.20.10.0/28",
+                           args=["nmap", "-n", "-sS", "--max-rate", "100", "-oX", str(out), "172.20.10.0/28"], out_path=str(out))
+
+
+def test_scan_targets_the_devices_the_system_sees_connected(tmp_path):
+    plan = _netplan(tmp_path)
+    poked = []
+    known = runner.known_hosts(plan, poke=lambda ips, bind: poked.extend(ips),
+                               read=lambda info: {"172.20.10.1": 1, "172.20.10.14": 1, "172.20.10.3": 1, "8.8.8.8": 1},
+                               sleep=lambda s: None)
+    assert known == ["172.20.10.1", "172.20.10.3", "172.20.10.14"]          # doar din hotspot, fără laptopul nostru
+    assert "172.20.10.10" not in poked and len(poked) == 13
+    args = runner._with_known(plan.args, plan, known)
+    assert args[-5:] == ["-Pn", "--disable-arp-ping", "172.20.10.1", "172.20.10.3", "172.20.10.14"]
+    assert "172.20.10.0/28" not in args
+
+
+def test_without_the_system_table_the_scan_is_as_before(tmp_path):
+    plan = _netplan(tmp_path)
+    assert runner.known_hosts(plan, poke=lambda *a: None, read=lambda info: None, sleep=lambda s: None) == []
+    assert runner._with_known(plan.args, plan, []) == plan.args
+    boom = lambda *a: (_ for _ in ()).throw(OSError("fără rețea"))
+    assert runner.known_hosts(plan, poke=boom, read=boom, sleep=lambda s: None) == []
+
+
+
+def test_gateway_and_laptops_are_scanned_in_two_short_passes_into_one_file(tmp_path):
+    """Telefonul-hotspot răspunde doar la ARP-ul lui nmap, laptopurile doar la cel al sistemului: două treceri."""
+    plan = _netplan(tmp_path)
+    passes = runner._passes(plan.args, plan, ["172.20.10.1", "172.20.10.2", "172.20.10.14"])
+    assert len(passes) == 2
+    gw, rest = passes
+    assert gw[-1] == "172.20.10.1" and "-Pn" not in gw and gw[gw.index("-oX") + 1].endswith(".gw")
+    assert rest[-4:] == ["-Pn", "--disable-arp-ping", "172.20.10.2", "172.20.10.14"]
+    assert rest[rest.index("-oX") + 1] == plan.out_path
+    # fără gateway în listă: o singură trecere; fără listă: ca înainte
+    assert len(runner._passes(plan.args, plan, ["172.20.10.2"])) == 1
+    assert runner._passes(plan.args, plan, []) == [plan.args]
+
+
+def test_hosts_from_the_gateway_pass_are_merged_into_the_main_file(tmp_path):
+    main, extra = tmp_path / "a.xml", tmp_path / "a.xml.gw"
+    main.write_text('<nmaprun><host><address addr="172.20.10.2"/></host><runstats><finished/></runstats></nmaprun>')
+    extra.write_text('<nmaprun><host><address addr="172.20.10.1"/></host><runstats/></nmaprun>')
+    runner._merge_hosts(main, extra)
+    text = main.read_text()
+    assert text.index("172.20.10.2") < text.index("172.20.10.1") < text.index("<runstats>") and not extra.exists()

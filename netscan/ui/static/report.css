@@ -101,3 +101,51 @@ th { color: var(--muted); }
   h2 { break-after: avoid; }
   a { color: inherit; text-decoration: none; }
 }
+
+/* ================= Pe ecran: același stil ca aplicația (alb, aerisit, fără rame groase, lumini moi) ================= */
+@media screen {
+  body { background: #fff; }
+  .report-actions { max-width: 56rem; margin-top: 1.25rem; }
+  .r-back { border: 0; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgba(52,58,64,.03), 0 4px 18px rgba(31,35,40,.12); }
+  .r-back:hover { background: #fff; box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 6px 24px rgba(31,35,40,.18); }
+  .r-print { border-radius: 16px; box-shadow: 0 0 0 1px rgba(51,51,255,.15), 0 6px 22px rgba(51,51,255,.35); }
+  .report { max-width: 56rem; margin: 1.5rem auto 3rem; padding: 0 1rem; background: transparent; border-radius: 0; }
+  h1 { font-size: 2rem; letter-spacing: -.01em; }
+  .r-head { align-items: flex-end; }
+  .r-meta { padding: .8rem 1rem; border-radius: 14px; background: #F7F8FA; }
+  /* verdictul: un card cu lumină moale, scorul mare colorat după bandă */
+  .r-verdict { margin-top: 2rem; border: 0; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 8px 30px rgba(31,35,40,.10); }
+  .r-score { border-right: 1px solid rgba(52,58,64,.08); padding: 1.2rem 1.6rem; }
+  .r-good .r-num { color: var(--good); } .r-fair .r-num { color: var(--fair); } .r-poor .r-num { color: var(--high); }
+  .r-verdict-text { padding: 1.1rem 1.5rem; }
+  .r-first { margin-top: 1.25rem; border-left: 0; border-radius: 14px; background: #EEF0FF; padding: .9rem 1.2rem; }
+  .r-first strong { color: var(--brand); }
+  h2 { margin: 2.5rem 0 .8rem; padding-bottom: 0; border-bottom: 0; font-size: 1.3rem; }
+  th { font-weight: 600; border-bottom: 1px solid rgba(52,58,64,.14); }
+  td { border-bottom: 1px solid rgba(52,58,64,.07); padding-top: .7rem; padding-bottom: .7rem; }
+  .r-legend { margin-top: 1.25rem; padding: .9rem 1.1rem; border-radius: 14px; background: #F7F8FA; }
+  .r-foot { border-top: 0; margin-top: 2.5rem; text-align: center; }
+}
+
+/* Fără data, titlul și adresa pe care browserul le pune sus/jos pe pagina tipărită: pagina nu mai are margine
+   (acolo le scrie browserul), iar marginea o face raportul însuși. Tot o singură pagină A4 (report.js). */
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { margin: 0; }
+  body { padding: 9mm 12mm !important; }
+}
+
+/* Ieșirea raportului: „Descarcă PDF” (principal) + „Tipărește”, jos în dreapta; sub ele, indiciul pentru PDF */
+.r-out { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 5; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .6rem; max-width: 26rem; }
+.r-out .r-print { position: static; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 6px 22px rgba(31,35,40,.14); }
+.r-out .r-print:hover { background: #fff; }
+.r-pdf { min-height: 2.75rem; display: inline-flex; align-items: center; gap: .4rem; padding: .6rem 1.1rem; border: 0; border-radius: 16px; font: inherit; font-weight: 700; cursor: pointer;
+  color: #fff; background: var(--brand); box-shadow: 0 0 0 1px rgba(51,51,255,.15), 0 6px 22px rgba(51,51,255,.35); }
+.r-pdf:hover { background: #2424d6; }
+.r-pdf-hint { flex-basis: 100%; margin: 0; padding: .7rem .9rem; border-radius: 14px; background: #fff; color: var(--ink); font-size: 1rem; line-height: 1.4;
+  box-shadow: 0 0 0 1px rgba(52,58,64,.04), 0 6px 22px rgba(31,35,40,.14); }
+@media (max-width: 40rem) { .r-out { left: 1rem; right: 1rem; max-width: none; } .r-out button { flex: 1; justify-content: center; } }
+@media print { .r-out { display: none !important; } }
+
+a.r-pdf { text-decoration: none; }
+.r-pdf.busy { opacity: .75; cursor: progress; }
