@@ -28,7 +28,7 @@
               {% if c.counts %}<p class="check-counts">{{ c.counts }}</p>{% endif %}
               {% if c.worst_name %}
                 <p class="check-worst"><strong>{{ R.worst }}</strong> {{ c.worst_name }}{% if c.worst_problem %} · {{ c.worst_problem }}{% endif %}</p>
-                {% if c.first_step %}<p class="check-first"><strong>{{ R.first }}</strong> {{ c.first_step }}</p>{% endif %}
+                {# „Fă asta întâi” apare în verificarea deschisă, nu pe fiecare card: lista rămâne scurtă (mai puțin text) #}
               {% endif %}
               <p class="check-open"><a class="button button-secondary" href="{{ url_for('overview', file=c.file) }}">{{ R.open }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a></p>
             {% else %}

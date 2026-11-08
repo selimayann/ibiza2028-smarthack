@@ -21,9 +21,9 @@ bp = Blueprint("results", __name__)
 TEXTS = {
     "ro": {
         "title": "Toate verificările",
-        "lead": "Pentru fiecare verificare a rețelei: ce a găsit, cel mai periculos dispozitiv și ce faci întâi.",
+        "lead": "Pentru fiecare verificare a rețelei: scorul, ce a găsit și cel mai periculos dispozitiv. Deschide una ca să vezi ce faci întâi.",
         "summary": "Ai %s verificări: %s.",
-        "s_poor": "%s au nevoie de atenție", "s_fair": "%s se pot îmbunătăți", "s_good": "%s arată bine",
+        "s_poor": "%s au nevoie de atenție", "s_fair": "%s se pot îmbunătăți", "s_good": "%s au scor bun",
         "s_error": "%s nu s-au putut citi",
         "and": " și ",
         "error_title": "Fișierul nu a putut fi citit.",
@@ -37,9 +37,9 @@ TEXTS = {
     },
     "en": {
         "title": "All checks",
-        "lead": "For every check of your network: what it found, the most dangerous device and what to do first.",
+        "lead": "For every check of your network: the score, what it found and the most dangerous device. Open one to see what to do first.",
         "summary": "You have %s checks: %s.",
-        "s_poor": "%s need attention", "s_fair": "%s could be better", "s_good": "%s look good",
+        "s_poor": "%s need attention", "s_fair": "%s could be better", "s_good": "%s have a good score",
         "s_error": "%s could not be read",
         "and": " and ",
         "error_title": "The file could not be read.",
@@ -67,7 +67,7 @@ def check_cards(scans: list, lang: str = "ro") -> list[dict]:
             cards.append({"file": s.file, "started_at": s.started_at, "ok": False})
             continue
         v = verdict_view(s, lang=lang)
-        key = "verdict_clean" if v["clean"] else f"verdict_{v['band']}"
+        key = v.get("verdict_key") or ("verdict_clean" if v["clean"] else f"verdict_{v['band']}")
         cards.append({"file": s.file, "started_at": s.started_at, "ok": True, "score": s.score, "band": v["band"],
                       "verdict": i18n.t(lang, key), "counts": v["counts_text"], "worst_name": v["worst_name"],
                       "worst_problem": i18n.code_name(lang, v["first_code"]) if v["first_code"] else None,

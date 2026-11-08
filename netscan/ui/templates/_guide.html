@@ -125,7 +125,7 @@
               <input type="hidden" name="device_id" value="{{ st.finding.device_id }}">
               <input type="hidden" name="port" value="{{ st.finding.port if st.finding.port is not none else '' }}">
               <input type="hidden" name="code" value="{{ st.finding.code }}">
-              <button type="submit" class="button-primary"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('step_done_btn') }}</button>
+              <button type="submit" class="button-primary" data-busy="{{ T('step_checking') }}"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg><span>{{ T('step_done_btn') }}</span></button>
             </form>
           {% endif %}
         </li>

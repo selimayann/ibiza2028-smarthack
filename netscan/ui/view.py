@@ -393,8 +393,18 @@ def verdict_view(scan: Scan | None, fixed_keys=frozenset(), accepted_keys=frozen
             (ranked[1].total_points, ranked[1].max_severity) == (worst.total_points, worst.max_severity):
         tie = ranked[1]
     first = get_explanation(worst.worst.code, lang) if worst is not None else None
+    band = score_band(scan.score)
+    # Textul verdictului: scorul poate ieși „Bun” (formula oficială) deși rămâne o problemă gravă (ex. o cameră
+    # expusă = 20 de puncte, scor 80). Pentru un om netehnic „arată bine” ar fi înșelător, deci spunem și asta.
+    # Scorul și banda NU se schimbă; doar propoziția.
+    if not scan.findings:
+        verdict_key = "verdict_clean"
+    elif band in ("good", "fair") and counts["high"]:
+        verdict_key = f"verdict_{band}_high" + ("_1" if counts["high"] == 1 else "")
+    else:
+        verdict_key = f"verdict_{band}"
     return {
-        "band": score_band(scan.score), "score": scan.score, "clean": not scan.findings,
+        "band": band, "score": scan.score, "clean": not scan.findings, "verdict_key": verdict_key,
         **{f"n_{k}": v for k, v in counts.items()},
         "n_findings": len(scan.findings), "n_devices": len(scan.hosts),
         "n_devices_with_problems": len({f.device_id for f in scan.findings}),
