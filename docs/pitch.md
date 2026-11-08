@@ -1,7 +1,7 @@
 # Pitch · SafeEel (Ibiza2028) · 7 minutes
 
 > The pitch is in English; all four of us speak. Each part lists **what to say**, **how long**, and **what is on screen**.
-> About 140 spoken words per minute. Every figure below comes from the repo (see [technical.md](technical.md), "Cifre") and was re-checked on 8 Nov 2026.
+> About 140 spoken words per minute. Every figure below comes from the repo (see [technical.md](technical.md), "Cifre") and was re-checked on 8 Nov 2026 (screenshots: current UI, 8 Nov, 04:30).
 > The app menu is **Home · Checks · Devices · Alerts · Progress**. Plan B screenshots are in [`docs/pitch/`](pitch/).
 
 | Time | Part | Speaker |
@@ -31,17 +31,19 @@
 
 ## 1:00–3:30 · Live demo (Radu, 2 min 30 s)
 
-**On screen:** `python -m netscan ui` on `127.0.0.1:5000`, with `NETSCAN_SCANS_DIR=fixtures/lab` (our lab: one hotspot, one scanner laptop, one target laptop with Docker). The demo laptop is on the hotspot, with `NETSCAN_EXPECTED_SSID` in `.env`. Before the session the lab is **running**, so the problems really exist. Full checklist: [demo.md](demo.md).
+**On screen:** `python -m netscan ui` on `127.0.0.1:5000`, with `NETSCAN_SCANS_DIR=fixtures/lab` (our lab: one hotspot, one scanner laptop, one target laptop with Docker). The demo laptop is on the hotspot, with `NETSCAN_EXPECTED_SSID` in `.env`.
+
+**Right before the session:** with the lab **running**, press **Scan now** in SafeEel, so the newest check is of our network right now. "I did this, check it" only works on that newest scan, on our own hotspot; on an older scan or a file it is greyed out and says why. Save `scan_01_before.xml` and `scan_03_after.xml` to history for the before/after part. Full checklist: [demo.md](demo.md).
 
 | Time | Click | Say |
 |---|---|---|
-| 1:00 | **Home**, scan `scan_01_before.xml` | "This is our lab network, scanned with the tool. The first thing you read is the verdict: your network needs attention. Score: zero out of a hundred." |
+| 1:00 | **Home**, the scan made just now | "This is our lab network, scanned a few minutes ago with the tool. The first thing you read is the verdict: your network needs attention, and the score next to it." |
 | 1:15 | Point at the sentence under the verdict | "And right under it, the answer to the only question that matters: start with this device, do this." |
 | 1:30 | Point at **Most dangerous device** | "It is this smart device. High risk, shown with a triangle and a word, not just a colour. One sentence says what is wrong, in words a twelve-year-old understands, and one line says what an attacker could do." |
-| 1:50 | Point at **Do this first** | "One step, not a list of forty. And it tells you where to do it." |
-| 2:00 | On the target laptop: `docker compose -f lab/docker-compose.yml stop redis`. Back in SafeEel, on the database step: **I did this, check it** | "We just turned off the exposed database. Now, when I say I fixed it, SafeEel does not take my word for it: it knocks once on that port, only on our own hotspot. Nobody answers, so the step is confirmed, and the engine recalculates the score." |
+| 1:50 | Point at **Do this first** and **Show me how, step by step** | "One step, not a list of forty. And if you don't know where that setting is, it shows you, step by step." |
+| 2:00 | On the target laptop: `docker compose -f lab/docker-compose.yml stop redis`. Back in SafeEel, on the database step (use **Skip for now** to reach it): **I did this, check it** | "We just turned off the exposed database. Now, when I say I fixed it, SafeEel does not take my word for it: it knocks once on that port, only on our own hotspot. Nobody answers, so the step is confirmed, and the engine recalculates the score." |
 | 2:35 | **Progress** tab: score over time | "Every scan is saved on this laptop. Here is the score over time." |
-| 2:50 | **See the proof** on `scan_03_after.xml` | "Before and after: zero to thirty. Two problems fixed, two doors closed, and what is still open is still listed. Nothing hidden." |
+| 2:50 | **See the proof** on `scan_03_after.xml` (saved lab pair) | "Here is the proof from our lab: before and after, zero to thirty. Two problems fixed, two doors closed, and what is still open is still listed. Nothing hidden." |
 | 3:10 | **Ask the AI assistant** → "What should I do first?" | "And if you are not sure, you just ask. The answer is built from your scan. Ayan will explain why you can trust it." |
 
 If the target laptop is not reachable: skip the 2:00 row and say "on our hotspot this step is confirmed with a single connection; here the laptop is not on the network, so SafeEel refuses to touch it". That refusal is also the guardrail working.
@@ -80,7 +82,7 @@ Expected: `Validator: text REJECTED, the predefined answer would be shown. Reaso
 **Say:**
 > On the official Validation Set we match the answer key exactly: **24 of 24** finding rows and **8 of 8** scores, including the broken file reported as an error instead of crashing.
 >
-> On top of that we wrote **24 trap files** of our own, and we have **1,591 automated tests**. Two runs of the analysis give identical files.
+> On top of that we wrote **24 trap files** of our own, and we have **1,608 automated tests**. Two runs of the analysis give identical files.
 >
 > In our own lab, the score went from **0 to 30** after we fixed two problems.
 >
@@ -92,7 +94,7 @@ Expected: `Validator: text REJECTED, the predefined answer would be shown. Reaso
 |---|---|
 | 24/24 rows, 8/8 scores | `python -m netscan analyze fixtures/validation`, compared with `fixtures/validation/expected_*.csv`; also `results/` (the hour-16 check) |
 | 24 trap files | `fixtures/traps/` (T01–T24) |
-| 1,591 tests | `pytest -q` on `main`, 8 Nov 2026 (1,591 passed, 1 skipped); **re-check on the `final` tag** |
+| 1,608 tests | `pytest -q` on `main`, 8 Nov 2026 (1,608 passed, 1 skipped); **re-check on the `final` tag** |
 | 0 → 30 | `fixtures/lab/scan_01_before.xml` → `scan_03_after.xml`, [lab.md](lab.md) |
 | 17.7 MB in ~5 s | measured 4.5–5.2 s (22,780 devices, 28,475 findings) under WSL |
 | LIX 40 RO / 35 EN | `python scripts/plain_language_report.py` (40.4 / 35.3) |
@@ -153,8 +155,8 @@ Switch to the screenshots in [`docs/pitch/`](pitch/) and tell the same story. Do
 
 | File | Shows | Use at |
 |---|---|---|
-| `1_home_most_dangerous.png` | Home: verdict, "start with", most dangerous device, what an attacker could do, "Do this first" | 1:00–2:00 |
-| `2_device_steps.png` | One device: explanation and all repair steps | 1:50 |
+| `1_home_most_dangerous.png` | Home: verdict, risk labels, "start with", score, most dangerous device, what an attacker could do, "Do this first" (here "I did this, check it" is greyed out, because it is an older lab scan) | 1:00–2:00 |
+| `2_device_steps.png` | One device: masked MAC, its problems, explanation and repair steps | 1:50 |
 | `3_progress_trend.png` | Progress: score over time 0 → 30 | 2:35 |
 | `4_before_after.png` | Proof: before and after, 2 problems fixed, 2 ports closed | 2:50 |
 | `5_assistant.png` | Assistant answering "What should I do first?" | 3:10 |

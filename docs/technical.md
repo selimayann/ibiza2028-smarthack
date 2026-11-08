@@ -33,7 +33,7 @@ Problemele, severitățile și scorul vin **doar din reguli**, la fel la fiecare
 
 ## Cifre
 - **Validation Set:** 24/24 de rânduri și 8/8 scoruri identice cu baremul (V7 = ERROR, fără crash); două rulări dau fișiere identice.
-- **24 de fișiere-capcană** proprii și **1 591 de teste** automate (`pytest -q`).
+- **24 de fișiere-capcană** proprii și **1 608 teste** automate (`pytest -q`).
 - **Viteză:** Validation Set analizat sub o secundă; un XML de 17,7 MB în circa 5 s; scanare live /28 în 3 min 25 s.
 - **Explicații:** trec un test automat de limbaj simplu (fără jargon neexplicat, propoziții de max. 20 de cuvinte, pași care încep cu o acțiune, LIX mediu 40 RO / 35 EN). Testul e automat; nu au fost testate cu un om netehnic.
 - **Securitate:** gitleaks fără secrete; MAC-uri mascate peste tot; SQL parametrizat; buton „șterge istoricul”.
