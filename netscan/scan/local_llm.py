@@ -108,3 +108,55 @@ def make_llm(env: Optional[dict] = None, opener_factory: Callable = _no_proxy_op
         return text.strip() if isinstance(text, str) and text.strip() else None
 
     return llm
+
+
+# --- vectorii pentru căutarea după sens (RAG) ------------------------------------------------------------------
+DEFAULT_EMBED_MODEL = "bge-m3"
+EMBED_TIMEOUT = 8.0
+EMBED_RETRY_AFTER = 60.0   # după o eroare (Ollama oprit) nu mai încercăm un minut: căutarea rămâne pe BM25
+
+
+def make_embedder(env: Optional[dict] = None, opener_factory: Callable = _no_proxy_opener,
+                  force: bool = False, timeout: float = EMBED_TIMEOUT) -> Optional[Callable[[list[str]], list[list[float]]]]:
+    """`embed(texts) -> vectori` prin Ollama local (doar 127.0.0.1), sau None dacă AI-ul local e oprit."""
+    env = os.environ if env is None else env
+    if not (force or is_enabled(env)):
+        return None
+    base = check_local_url(env.get("NETSCAN_LOCAL_LLM_URL") or DEFAULT_URL)
+    model = (env.get("NETSCAN_LOCAL_EMBED_MODEL") or DEFAULT_EMBED_MODEL).strip()
+    keep_alive = (env.get("NETSCAN_LOCAL_KEEP_ALIVE") or DEFAULT_KEEP_ALIVE).strip()
+    opener = opener_factory()
+
+    def embed(texts: list[str]) -> list[list[float]]:
+        body = json.dumps({"model": model, "input": list(texts), "keep_alive": keep_alive}).encode("utf-8")
+        req = urllib.request.Request(f"{base}/api/embed", data=body, headers={"Content-Type": "application/json"},
+                                     method="POST")
+        with opener.open(req, timeout=timeout) as resp:
+            data = json.loads(resp.read(20_000_000).decode("utf-8"))
+        vecs = data.get("embeddings") if isinstance(data, dict) else None
+        if not isinstance(vecs, list) or len(vecs) != len(texts):
+            raise ValueError("răspuns neașteptat de la modelul de embeddings")
+        return vecs
+
+    return embed
+
+
+_EMBED_STATE: dict = {"fn": None, "made": False, "failed_at": 0.0}
+
+
+def default_embedder() -> Optional[Callable[[list[str]], list[list[float]]]]:
+    """Embedder-ul aplicației (o singură dată), cu pauză de un minut după o eroare."""
+    import time
+    if not _EMBED_STATE["made"]:
+        _EMBED_STATE["fn"], _EMBED_STATE["made"] = make_embedder(), True
+    fn = _EMBED_STATE["fn"]
+    if fn is None or time.monotonic() - _EMBED_STATE["failed_at"] < EMBED_RETRY_AFTER:
+        return None
+
+    def guarded(texts):
+        try:
+            return fn(texts)
+        except Exception:
+            _EMBED_STATE["failed_at"] = time.monotonic()
+            raise
+    return guarded

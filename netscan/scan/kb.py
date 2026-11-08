@@ -5,9 +5,13 @@
   textul. Locală, deterministă, fără internet și fără model de embeddings.
 - Folosirea: (1) fără AI, asistentul răspunde direct cu intrarea găsită când scanarea nu e întrebată;
   (2) cu modelul local, intrările găsite sunt contextul (RAG), iar textul modelului trece prin validator.
+- Căutarea după sens (doar cu AI-ul local pornit): vectorii intrărilor (bge-m3, calculați o dată de
+  build_kb_embeddings.py) stau în data/kb_embeddings.json; întrebarea primește vectorul ei de la Ollama local.
+  Rezultatul combină sensul (de SEM_WEIGHT ori mai important) cu BM25. Fără Ollama sau fără fișier: doar BM25.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -18,6 +22,10 @@ from pathlib import Path
 from typing import Optional
 
 KB_FILE = Path(__file__).with_name("data") / "knowledge_base.json"
+EMBED_FILE = Path(__file__).with_name("data") / "kb_embeddings.json"
+EMBED_MODEL = "bge-m3"
+SEM_WEIGHT = 3.0         # măsurat pe 98 de întrebări realiste: sensul de 3 ori mai important decât BM25
+RRF_K = 30
 
 # cuvinte foarte comune, care nu ajută la căutare
 STOPWORDS = frozenset("""
@@ -193,6 +201,65 @@ def search(question: str, k: int = 3) -> list[Hit]:
     return hits[:k]
 
 
+# --- căutarea după sens (embeddings) ------------------------------------------------------------------------
+
+def doc_text(e: dict) -> str:
+    """Textul din care se face vectorul unei intrări: întrebările, etichetele, termenii din catalog, începutul
+    răspunsurilor (RO și EN)."""
+    extra = " ".join(CATALOG_TERMS.get(t, "") for t in e["tags"])
+    return " | ".join([e["q_ro"], e["q_en"], ", ".join(e["tags"]), extra, e["a_ro"][:300], e["a_en"][:300]])
+
+
+def fingerprint(model: str = EMBED_MODEL) -> str:
+    """Amprenta textelor indexate: dacă baza de cunoștințe sau termenii se schimbă, vectorii trebuie refăcuți."""
+    h = hashlib.sha256(model.encode())
+    for e in load()["entries"]:
+        h.update(b"\0" + e["id"].encode() + b"\0" + doc_text(e).encode())
+    return h.hexdigest()
+
+
+def _unit(v: list[float]) -> list[float]:
+    n = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / n for x in v]
+
+
+@lru_cache(maxsize=1)
+def vectors() -> Optional[dict[str, list[float]]]:
+    """Vectorii intrărilor, doar dacă fișierul se potrivește cu baza de cunoștințe de acum; altfel None (BM25)."""
+    try:
+        data = json.loads(EMBED_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if data.get("fingerprint") != fingerprint(data.get("model", "")) or data.get("model") != EMBED_MODEL:
+        return None
+    vecs = data.get("vectors") or {}
+    if {e["id"] for e in load()["entries"]} != set(vecs):
+        return None
+    return {i: _unit(v) for i, v in vecs.items()}
+
+
+def hybrid_search(question: str, k: int = 3, embed=None) -> list[Hit]:
+    """Căutarea pentru RAG: după sens (vectorul întrebării de la `embed`) combinat cu BM25, prin RRF ponderat.
+    `embed(texts) -> list[vector]` vine de la Ollama local; dacă lipsește, cade sau nu are fișierul: doar BM25."""
+    vecs = vectors() if embed is not None else None
+    if vecs is None:
+        return search(question, k)
+    try:
+        qv = _unit(embed([question])[0])
+    except Exception:  # Ollama oprit / model lipsă: căutarea obișnuită
+        return search(question, k)
+    entries = {e["id"]: e for e in load()["entries"]}
+    sem = sorted(vecs, key=lambda i: -sum(a * b for a, b in zip(qv, vecs[i])))
+    bm = [h.id for h in search(question, len(entries))]
+    score: dict[str, float] = {}
+    for pos, i in enumerate(bm):
+        score[i] = score.get(i, 0.0) + 1.0 / (RRF_K + pos + 1)
+    for pos, i in enumerate(sem):
+        score[i] = score.get(i, 0.0) + SEM_WEIGHT / (RRF_K + pos + 1)
+    ranked = sorted(score, key=lambda i: (-score[i], i))[:k]
+    return [Hit(i, round(score[i], 4), entries[i]) for i in ranked]
+
+
 def get(entry_id: str) -> Optional[dict]:
     return next((e for e in load()["entries"] if e["id"] == entry_id), None)
 
@@ -207,10 +274,11 @@ def answer_text(entry: dict, lang: str = "ro") -> str:
     return text
 
 
-def context(question: str, lang: str = "ro", k: int = 2, max_chars: int = 1600) -> list[dict]:
-    """Fragmentele pentru modelul local (RAG): [{"id", "question", "text", "note"}], tăiate la max_chars în total."""
+def context(question: str, lang: str = "ro", k: int = 2, max_chars: int = 1600, embed=None) -> list[dict]:
+    """Fragmentele pentru modelul local (RAG): [{"id", "question", "text", "note"}], tăiate la max_chars în total.
+    Cu `embed` (Ollama local), căutarea e după sens + BM25; fără, doar BM25."""
     out, used = [], 0
-    for h in search(question, k):
+    for h in hybrid_search(question, k, embed):
         text = answer_text(h.entry, lang)
         if used + len(text) > max_chars:
             text = text[: max(0, max_chars - used)]

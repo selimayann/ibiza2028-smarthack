@@ -833,8 +833,9 @@ def fallback_answer(question: str, scan: Scan, lang: str = "ro", previous: Optio
 
 def _kb_context(question: str, lang: str) -> list[dict]:
     """Fragmentele din baza de cunoștințe pentru modelul local (RAG)."""
-    from netscan.scan import kb
-    return kb.context(question[:MAX_QUESTION_LEN], lang if lang in LANGS else "ro")
+    from netscan.scan import kb, local_llm
+    return kb.context(question[:MAX_QUESTION_LEN], lang if lang in LANGS else "ro",
+                      embed=local_llm.default_embedder())   # după sens, cu Ollama local; altfel BM25
 
 
 LLMFunc = Callable[[dict], Optional[str]]
