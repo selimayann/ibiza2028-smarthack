@@ -42,7 +42,7 @@ def test_new_device_and_port_and_order():
     assert [(a.ip, a.port) for a in out if a.kind == al.PORT_OPENED] == [("10.0.0.1", 23)]
     assert i18n.alert_text("ro", out[2]) == "Un dispozitiv nou a apărut în rețea: Cameră, 10.0.0.9."
     assert i18n.alert_text("ro", out[3]) == "Un port nou s-a deschis: 23/tcp pe Router, 10.0.0.1."
-    assert i18n.alert_text("en", out[0]) == "New problem: “Telnet open” on Router, 10.0.0.1."
+    assert i18n.alert_text("en", out[0]) == "New problem: “Old login without a lock (Telnet)” on Router, 10.0.0.1."
 
 
 def test_no_change_no_alerts():
@@ -65,11 +65,11 @@ def test_journal_page(tmp_path):
     db = tmp_path / "h.db"
     app = create_app({"DB_PATH": db, "SCAN_LOADER": lambda: [], "TESTING": True})
     client = app.test_client()
-    assert "Jurnalul e încă gol" in client.get("/journal").get_data(as_text=True)
+    assert "Nu e nicio alertă încă" in client.get("/journal").get_data(as_text=True)
     for name in ("V6a_before.xml", "V6b_after.xml"):
         storage.save_scan(analyze_file(VAL / name), db)
     html = client.get("/journal").get_data(as_text=True)
-    assert "Jurnalul de securitate" in html
+    assert "Alertele rețelei" in html
     assert "a fost rezolvată pe Router, 192.168.1.1." in html
     assert html.count('class="alert alert-good"') >= 3
 

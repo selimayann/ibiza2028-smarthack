@@ -5,67 +5,35 @@
 <div class="page-head">
   <div>
     <h1 class="page-title">{{ T('history_title') }}</h1>
-    <p class="lead">{{ T('history_hint') }}</p>
-  </div>
-</div>
-{% if deleted %}<p class="notice" role="status">{{ T('history_deleted') }}</p>{% endif %}
-
-{% if items %}
-  <section class="trend" aria-labelledby="trend-h">
-    <h2 id="trend-h">{{ T('trend_title') }}</h2>
+    {# Propoziția principală: cum s-a schimbat scorul standard (al motorului) de la prima scanare salvată #}
     {% if trend %}
       {% set n = trend.points|length %}
-      <p class="trend-summary">
+      <p class="lead headline">
         {% if trend.direction == 'up' %}{{ T('trend_up')|format(trend.first.score, trend.last.score, n) }}
         {% elif trend.direction == 'down' %}{{ T('trend_down')|format(trend.first.score, trend.last.score, n) }}
         {% else %}{{ T('trend_same')|format(trend.last.score, n) }}{% endif %}
       </p>
-      <div class="trend-body">
-      <svg class="trend-chart" viewBox="0 0 {{ trend.width }} {{ trend.height }}" role="img" aria-labelledby="trend-h">
-        {# zonele de prag: sub 50 risc mare, 50-79 de îmbunătățit, de la 80 bun #}
-        {% for v in (0, 50, 80, 100) %}
-          <line class="trend-grid{% if v in (50, 80) %} trend-threshold{% endif %}" x1="{{ trend.plot_left }}" x2="{{ trend.plot_right }}" y1="{{ trend.y_for(v) }}" y2="{{ trend.y_for(v) }}"/>
-          <text class="trend-axis trend-y-{{ v }}" x="{{ trend.plot_left - 10 }}" y="{{ trend.y_for(v) + 5 }}" text-anchor="end">{{ v }}</text>
-        {% endfor %}
-        <path class="trend-line" d="{{ trend.path }}"/>
-        {% for p in trend.points %}
-          <a href="{{ url_for('history_scan', scan_id=p.scan_id) }}" aria-label="{{ T('trend_point')|format(p.file, p.score) }}">
-            <title>{{ p.file }}, {{ fmt_time(p.started_at) }}: {{ p.score }}</title>
-            <circle class="trend-hit" cx="{{ p.x }}" cy="{{ p.y }}" r="14"/>
-            <circle class="trend-dot" cx="{{ p.x }}" cy="{{ p.y }}" r="5"/>
-          </a>
-        {% endfor %}
-        <text class="trend-value" x="{{ trend.last.x + 12 }}" y="{{ trend.last.y + 6 }}">{{ trend.last.score }}</text>
-        <text class="trend-axis trend-date" x="{{ trend.first.x }}" y="{{ trend.height - 8 }}" text-anchor="start">{{ fmt_time(trend.first.started_at) }}</text>
-        <text class="trend-axis trend-date" x="{{ trend.last.x }}" y="{{ trend.height - 8 }}" text-anchor="end">{{ fmt_time(trend.last.started_at) }}</text>
-      </svg>
-      {% set ok_items = items|selectattr('status', 'equalto', 'ok')|list %}
-      {% set best = ok_items|sort(attribute='score')|last %}
-      <dl class="trend-aside">
-        <div class="stat"><dt>{{ T('stat_last') }}</dt><dd>{{ score_pill(trend.last.score) }}<br><span class="muted">{{ trend.last.file }}</span></dd></div>
-        <div class="stat"><dt>{{ T('stat_best') }}</dt><dd>{{ score_pill(best.score) }}<br><span class="muted">{{ best.file }}</span></dd></div>
-        <div class="stat"><dt>{{ T('stat_saved') }}</dt><dd><strong>{{ items|length }}</strong></dd></div>
-      </dl>
-      </div>
-    {% else %}
-      <p class="muted">{{ T('trend_need_two') }}</p>
     {% endif %}
-  </section>
+    <p class="lead">{{ T('history_hint') }}</p>
+  </div>
+</div>
+{% if deleted %}<p class="notice-msg" role="status" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('history_deleted') }}{% if deleted_raw %} {{ T('delete_raw_done') }}{% endif %}</p>{% endif %}
 
+{% if items %}
+  {# Rândurile: cea mai nouă scanare prima; data e textul linkului spre comparație (dovada) #}
   <div class="table-wrap">
-  <table>
+  <table class="history-table">
     <caption class="sr-only">{{ T('history_title') }}</caption>
     <thead><tr>
-      <th scope="col">{{ T('scan_date') }}</th><th scope="col">{{ T('scan_file') }}</th>
+      <th scope="col">{{ T('scan_date') }}</th>
       <th scope="col">{{ T('score_label') }}</th><th scope="col">{{ T('hist_change') }}</th>
-      <th scope="col"><span class="sr-only">{{ T('open') }}</span></th>
+      <th scope="col"><span class="sr-only">{{ T('report_short') }}</span></th>
     </tr></thead>
     <tbody>
-      {% for r in rows %}
+      {% for r in rows|reverse %}
         {% set s = r.item %}
         <tr>
-          <td>{{ fmt_time(s.started_at) }}</td>
-          <td>{{ s.file }}</td>
+          <td><a class="row-main-link" href="{{ url_for('history_scan', scan_id=s.id) }}" title="{{ s.file }}">{{ fmt_time(s.started_at) }}<span class="sr-only"> ({{ s.file }})</span></a></td>
           <td>{% if s.status == 'error' %}<span class="sev sev-high"><svg class="icon" aria-hidden="true"><use href="#i-high"/></svg>{{ T('hist_unreadable') }}</span>{% else %}{{ score_pill(s.score) }}{% endif %}</td>
           <td>
             {% if s.status == 'error' %}<span class="muted">{{ error_message(s.error_code) }}</span>
@@ -75,14 +43,53 @@
             {% else %}<span class="delta delta-same">{{ T('hist_same') }}: {{ s.score }}</span>{% endif %}
           </td>
           <td><span class="row-links">
-            <a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('open') }}<span class="sr-only"> {{ s.file }}</span></a>
-            {% if s.status == 'ok' %}<a href="{{ url_for('history_report', scan_id=s.id) }}">{{ T('report_short') }}<span class="sr-only"> {{ s.file }}</span></a>{% endif %}
+            {% if s.status == 'ok' and r.prev is not none %}<a href="{{ url_for('history_scan', scan_id=s.id) }}">{{ T('see_proof') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
+            {% if s.status == 'ok' %}<a href="{{ url_for('history_report', scan_id=s.id) }}">{{ T('report_short') }}<span class="sr-only"> {{ fmt_time(s.started_at) }}</span></a>{% endif %}
           </span></td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
+
+  <section class="trend section" aria-labelledby="trend-h">
+    <h2 id="trend-h">{{ T('trend_title') }}</h2>
+    {% if trend %}
+      <div class="trend-body">
+      {# role=group (nu img): punctele sunt linkuri și trebuie să rămână vizibile pentru cititorul de ecran #}
+      <svg class="trend-chart" viewBox="0 0 {{ trend.width }} {{ trend.height }}" role="group" aria-labelledby="trend-h">
+        {# zonele de prag: sub 50 risc mare, 50-79 de îmbunătățit, de la 80 bun #}
+        {% for v in (0, 50, 80, 100) %}
+          <line class="trend-grid{% if v in (50, 80) %} trend-threshold{% endif %}" x1="{{ trend.plot_left }}" x2="{{ trend.plot_right }}" y1="{{ trend.y_for(v) }}" y2="{{ trend.y_for(v) }}" aria-hidden="true"/>
+          <text class="trend-axis trend-y-{{ v }}" x="{{ trend.plot_left - 10 }}" y="{{ trend.y_for(v) + 5 }}" text-anchor="end" aria-hidden="true">{{ v }}</text>
+        {% endfor %}
+        <path class="trend-line" d="{{ trend.path }}" aria-hidden="true"/>
+        {% for p in trend.points %}
+          <a href="{{ url_for('history_scan', scan_id=p.scan_id) }}" aria-label="{{ T('trend_point')|format(fmt_time(p.started_at), p.score) }}">
+            <title>{{ fmt_time(p.started_at) }}: {{ p.score }}</title>
+            <circle class="trend-hit" cx="{{ p.x }}" cy="{{ p.y }}" r="14"/>
+            <circle class="trend-dot" cx="{{ p.x }}" cy="{{ p.y }}" r="5"/>
+          </a>
+        {% endfor %}
+        <text class="trend-value" x="{{ trend.last.x + 12 }}" y="{{ trend.last.y + 6 }}" aria-hidden="true">{{ trend.last.score }}</text>
+        <text class="trend-axis trend-date" x="{{ trend.first.x }}" y="{{ trend.height - 8 }}" text-anchor="start" aria-hidden="true">{{ fmt_time(trend.first.started_at) }}</text>
+        <text class="trend-axis trend-date" x="{{ trend.last.x }}" y="{{ trend.height - 8 }}" text-anchor="end" aria-hidden="true">{{ fmt_time(trend.last.started_at) }}</text>
+      </svg>
+      {% set ok_items = items|selectattr('status', 'equalto', 'ok')|list %}
+      {% set best = ok_items|sort(attribute='score')|last %}
+      <dl class="trend-aside">
+        <div class="stat"><dt>{{ T('stat_last') }}</dt><dd>{{ score_pill(trend.last.score) }}<br><span class="muted">{{ fmt_time(trend.last.started_at) }}</span></dd></div>
+        {% if best.score != trend.last.score %}
+        <div class="stat"><dt>{{ T('stat_best') }}</dt><dd>{{ score_pill(best.score) }}<br><span class="muted">{{ fmt_time(best.started_at) }}</span></dd></div>
+        {% endif %}
+        <div class="stat"><dt>{{ T('stat_saved') }}</dt><dd><strong>{{ items|length }}</strong></dd></div>
+      </dl>
+      </div>
+    {% else %}
+      <p class="muted">{{ T('trend_need_two') }}</p>
+    {% endif %}
+  </section>
+
   <div class="danger-zone">
     <p>{{ T('history_delete_hint') }}</p>
     <a class="button button-danger" href="{{ url_for('history_delete_confirm') }}">{{ T('history_delete') }}</a>

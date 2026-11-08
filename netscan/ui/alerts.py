@@ -91,3 +91,26 @@ def journal(path: str | Path | None = None) -> list[Alert]:
     order = {s.id: i for i, s in enumerate(ok)}
     out.sort(key=lambda a: -order.get(a.scan_id, -1))  # sortare stabilă: păstrează ordinea din scanare
     return out
+
+
+FOLDABLE = {PORT_OPENED, PORT_CLOSED}
+EXPLAINS_PORT = {FINDING_NEW, FINDING_RESOLVED}
+
+
+def fold_port_alerts(alerts: list[Alert]) -> tuple[list[Alert], list[Alert]]:
+    """Jurnalul pe înțeles: un port deschis/închis care e chiar portul unei probleme noi/rezolvate din ACEEAȘI
+    scanare spune același lucru de două ori. Le pliem: (alertele afișate, porturile pliate dedesubt).
+    Potrivire după (ip, port) sau (dispozitiv, port); ordinea alertelor rămâne aceeași."""
+    keys = set()
+    for a in alerts:
+        if a.kind in EXPLAINS_PORT and a.port is not None:
+            keys.add(("ip", a.ip, a.port))
+            keys.add(("dev", a.device_id, a.port))
+    shown, folded = [], []
+    for a in alerts:
+        if a.kind in FOLDABLE and a.port is not None and (("ip", a.ip, a.port) in keys
+                                                          or ("dev", a.device_id, a.port) in keys):
+            folded.append(a)
+        else:
+            shown.append(a)
+    return shown, folded

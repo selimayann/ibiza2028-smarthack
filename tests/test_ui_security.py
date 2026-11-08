@@ -1,5 +1,6 @@
 """RBRT: reparațiile din auditul de securitate (DNS rebinding, AI pornit de alte site-uri, raportul descărcat)."""
 import json
+import re
 from pathlib import Path
 from urllib.parse import quote
 
@@ -49,10 +50,12 @@ def test_language_link_drops_internal_parameters(tmp_path):
     assert "_scheme" not in html and "_anchor" not in html and "_method" not in html
 
 
-def test_delete_page_says_raw_scans_are_not_deleted(tmp_path):
+def test_delete_page_offers_to_delete_raw_scans_too(tmp_path):
     c, _ = client(tmp_path)
     html = c.get("/history/delete").get_data(as_text=True)
-    assert "Nu se șterg fișierele brute ale scanărilor" in html and "scans/" in html
+    # căsuța pentru fișierele brute (pot conține MAC-uri reale) e bifată implicit și spune unde sunt
+    assert "Șterge și fișierele de scanare" in html and "scans/" in html
+    assert re.search(r'<input type="checkbox" name="delete_raw" value="1" checked>', html)
 
 
 def test_host_check_works_without_flask_trusted_hosts(tmp_path, monkeypatch):

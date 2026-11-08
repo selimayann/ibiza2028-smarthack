@@ -5,11 +5,14 @@
   <h1>{{ T('history_delete_confirm_title') }}</h1>
   <p>{{ T('history_delete_confirm_body') }}</p>
   <p>{{ T('history_delete_what') }}</p>
-  <p class="delete-note"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>{{ T('history_delete_not') }}</span></p>
-  <form method="post" action="{{ url_for('history_delete') }}" class="actions">
+  <form method="post" action="{{ url_for('history_delete') }}" class="delete-form">
     <input type="hidden" name="token" value="{{ token }}">
+    {# Și fișierele brute ale scanărilor (pot conține adresele MAC reale): bifat implicit, doar din scans/ #}
+    <label class="consent"><input type="checkbox" name="delete_raw" value="1"{% if delete_raw_default %} checked{% endif %}><span>{{ T('delete_raw_label') }}</span></label>
+    <div class="actions">
     <button type="submit" class="button-danger">{{ T('history_delete_yes') }}</button>
-    <a class="button" href="{{ url_for('history') }}">{{ T('history_delete_no') }}</a>
+    <a class="button button-secondary" href="{{ url_for('history') }}">{{ T('history_delete_no') }}</a>
+    </div>
   </form>
 </section>
 {% endblock %}

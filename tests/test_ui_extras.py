@@ -21,9 +21,12 @@ def sample() -> Scan:
     return Scan.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
 
 
-def client_for(tmp_path, scans=None):
-    app = create_app({"SCAN_LOADER": lambda: scans if scans is not None else [sample()],
-                      "DB_PATH": tmp_path / "h.db", "TESTING": True})
+def client_for(tmp_path, scans=None, own=False):
+    cfg = {"SCAN_LOADER": lambda: scans if scans is not None else [sample()],
+           "DB_PATH": tmp_path / "h.db", "TESTING": True}
+    if own:
+        cfg["OWN_SCAN_CHECK"] = lambda s: True
+    app = create_app(cfg)
     return app.test_client()
 
 
@@ -49,9 +52,11 @@ def ev(kind, ts, ip="192.168.1.1", port=None, code=None, ro="", en=""):
 
 # ---------- 1. alertele monitorului ----------
 
-def test_monitor_not_run_shows_command(tmp_path):
+def test_monitor_not_run_links_to_live_protection(tmp_path):
     html = client_for(tmp_path).get("/journal").get_data(as_text=True)
-    assert "Monitorul nu a rulat încă" in html and "python -m netscan watch --confirm" in html
+    # fără comenzi de terminal: linkul duce la protecția live de pe pagina Acasă
+    assert "Protecția live nu a rulat încă" in html and 'href="/#live-h"' in html
+    assert "python -m netscan" not in html
 
 
 def test_monitor_alerts_in_journal_newest_first(tmp_path, monkeypatch):
@@ -133,7 +138,8 @@ def test_eavesdrop_on_do_first_card_when_step_is_one_of_three(tmp_path, monkeypa
     s = sample()
     f = action_plan(s)[0]
     token = app_client.application.config["FORM_TOKEN"]
-    app_client.post("/action/done", data={"token": token, "scan": 0, "device_id": f.device_id, "port": f.port, "code": f.code})
+    app_client.post("/action/done", data={"token": token, "file": s.file, "started_at": s.started_at,
+                                          "device_id": f.device_id, "port": f.port, "code": f.code})
     html = app_client.get("/").get_data(as_text=True)                # pasul 2: HTTP_ADMIN_CLEARTEXT
     assert "eaves-details" in html and "Ce vede cineva care ascultă" in html
 
@@ -142,17 +148,37 @@ def test_eavesdrop_on_do_first_card_when_step_is_one_of_three(tmp_path, monkeypa
 
 def test_announced_names_shown_escaped_and_cut(tmp_path, monkeypatch):
     long = "Chromecast-" + "x" * 80
+    heard = sample().started_at + 60          # auzite chiar lângă scanare
     install(monkeypatch, "passive", load_names=lambda: {
-        "192.168.1.40": {"name": XSS, "service": "Google Cast", "ts": 1},
-        "192.168.1.1": {"name": long, "service": None, "ts": 1},
+        "192.168.1.40": {"name": XSS, "service": "Google Cast", "ts": heard},
+        "192.168.1.1": {"name": long, "service": None, "ts": heard},
         "bad-ip": {"name": "ignorat"}})
-    c = client_for(tmp_path)
+    c = client_for(tmp_path, own=True)        # cea mai nouă scanare a noastră
     for url in ("/", "/devices", "/device/e1f2a3b4c5d6"):
         html = c.get(url).get_data(as_text=True)
         assert XSS not in html and "&lt;script&gt;alert(1)&lt;/script&gt;" in html
         assert "nume anunțat de dispozitiv" in html
     html = c.get("/devices").get_data(as_text=True)
     assert long[:60] in html and long[:61] not in html and "ignorat" not in html
+
+
+def test_announced_names_only_on_our_newest_scan_and_near_its_time(tmp_path, monkeypatch):
+    """Numele unui telefon de acum nu se lipește pe o scanare din fișier (lab, Validation) sau pe una veche."""
+    from netscan.engine.parser import analyze_file
+
+    lab = analyze_file(str(Path(__file__).parent.parent / "fixtures" / "lab" / "scan_01_before.xml"))
+    ip = lab.hosts[0].ip
+    install(monkeypatch, "passive", load_names=lambda: {ip: {"name": "Telefonul-Juratului", "service": None,
+                                                             "ts": lab.started_at + 60}})
+    # fișier analizat (nu e scanarea noastră): niciun nume
+    assert "Telefonul-Juratului" not in client_for(tmp_path, [lab]).get("/").get_data(as_text=True)
+    # a noastră, dar numele e auzit la 7 ore distanță de scanare: tot nimic
+    install(monkeypatch, "passive", load_names=lambda: {ip: {"name": "Telefonul-Juratului", "service": None,
+                                                             "ts": lab.started_at + 7 * 3600}})
+    assert "Telefonul-Juratului" not in client_for(tmp_path, [lab], own=True).get("/").get_data(as_text=True)
+    from netscan.ui import extras
+    assert extras.names_near({ip: {"name": "x", "ts": None}}, lab.started_at) == {}
+    assert extras.names_near({ip: {"name": "x", "ts": 5}}, None) == {}
 
 
 def test_without_ayans_modules_pages_still_work(tmp_path, monkeypatch):

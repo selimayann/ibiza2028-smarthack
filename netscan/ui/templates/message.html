@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<p class="notice">{{ T(message_key) }}</p>
-<p class="back"><a href="{{ url_for('overview') }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back') }}</a></p>
+<section class="panel card message" aria-labelledby="msg-h">
+  <h1 id="msg-h"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-info"/></svg>{{ T(message_key) }}</h1>
+  <p>{{ T('home_or_devices') }}</p>
+  <p class="actions">
+    <a class="button button-primary" href="{{ url_for('overview') }}">{{ T('nav_overview') }}</a>
+    <a class="button button-secondary" href="{{ url_for('inventory') }}">{{ T('nav_devices') }}</a>
+  </p>
+</section>
 {% endblock %}

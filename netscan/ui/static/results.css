@@ -1,0 +1,33 @@
+/* „Toate verificările” (results.html): un card pe verificare, același răspuns ca pe Acasă. */
+.checks { padding: 1.5rem 0 2rem; display: flex; flex-direction: column; gap: 1rem; }
+.checks-lead { max-width: 60rem; color: var(--muted); }
+.checks-summary { font-weight: 700; font-size: 1.125rem; }
+.check-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; }
+.check-card { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 1.25rem; align-items: start;
+  background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--line-strong);
+  border-radius: var(--radius); padding: 1.1rem 1.3rem; }
+.check-good { border-left-color: var(--good); }
+.check-fair { border-left-color: var(--fair); }
+.check-poor, .check-error { border-left-color: var(--high); }
+.check-score { display: flex; flex-direction: column; gap: .15rem; }
+.check-num { font-family: var(--head); font-size: 2.6rem; font-weight: 700; line-height: 1; }
+.check-of { color: var(--muted); }
+.check-band { display: inline-flex; align-items: center; gap: .35rem; font-weight: 700; margin-top: .35rem; }
+.check-good .check-num, .check-good .check-band { color: var(--good); }
+.check-fair .check-num, .check-fair .check-band { color: var(--fair); }
+.check-poor .check-num, .check-poor .check-band { color: var(--high); }
+.check-error-icon { width: 2.4rem; height: 2.4rem; color: var(--high); }
+.check-body { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.check-when { color: var(--muted); display: flex; flex-wrap: wrap; gap: .2rem .8rem; }
+.check-verdict { font-size: 1.25rem; }
+.check-counts { color: var(--muted); }
+.check-worst strong, .check-first strong { margin-right: .3rem; }
+.check-first { max-width: 60rem; }
+.check-open { margin-top: .4rem; }
+.checks-tech summary { cursor: pointer; color: var(--link); text-decoration: underline; text-underline-offset: .18em; min-height: 2.75rem; display: inline-flex; align-items: center; }
+.checks-tech p { margin: .3rem 0 .6rem; color: var(--muted); }
+.checks-tech-buttons { display: flex; flex-wrap: wrap; gap: .6rem; }
+@media (max-width: 40rem) {
+  .check-card { grid-template-columns: 1fr; gap: .6rem; }
+  .check-score { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+}

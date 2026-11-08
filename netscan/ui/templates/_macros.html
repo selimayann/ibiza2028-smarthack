@@ -7,20 +7,22 @@
   {%- if f.port is not none -%}{{ T('port') }} <span class="mono" translate="no">{{ f.port }}</span>{%- else -%}{{ T('whole_device') }}{%- endif -%}
 {%- endmacro %}
 
+{# Routerul rețelei de acum (la noi, telefonul cu hotspotul): doar eticheta, tipul din motor rămâne același.
+   router_ip vine din app.router_ip(): doar pe hotspotul echipei și doar pentru cea mai nouă scanare a noastră. #}
 {% macro device_name(host) -%}
-  {{ device_type_label(host.device_type) }}
+  {%- if router_ip and host.ip == router_ip -%}{{ T('live_gateway') }}{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
 {%- endmacro %}
 
 {# Titlul unui dispozitiv: numele anunțat de el (dacă există, text nesigur), altfel tipul. #}
 {% macro device_title(host) -%}
   {%- set an = announced(host.ip) -%}
-  {%- if an -%}<span class="announced" translate="no">{{ an.name }}</span>{%- else -%}{{ device_type_label(host.device_type) }}{%- endif -%}
+  {%- if an -%}<span class="announced" translate="no">{{ an.name }}</span>{%- else -%}{{ device_name(host) }}{%- endif -%}
 {%- endmacro %}
 
 {# Sub titlu, când există nume anunțat: tipul + eticheta mică. #}
 {% macro announced_sub(host) -%}
   {%- set an = announced(host.ip) -%}
-  {%- if an -%}<span class="announced-sub">{{ device_type_label(host.device_type) }}{% if an.service %} · {{ an.service }}{% endif %} <span class="announced-tag">{{ T('announced_label') }}</span></span>{%- endif -%}
+  {%- if an -%}<span class="announced-sub">{{ device_name(host) }}{% if an.service %} · {{ an.service }}{% endif %} <span class="announced-tag">{{ T('announced_label') }}</span></span>{%- endif -%}
 {%- endmacro %}
 
 {# „Ce vede cineva care ascultă”: exemplu inventat, ca un terminal; rândul cu parola e marcat cu etichetă, nu doar culoare. #}
@@ -50,7 +52,7 @@
       <p class="mon-head"><strong class="mon-kind">{{ T('ev_' ~ ev.kind) }}</strong><span class="mon-time">{{ fmt_time(ev.ts) }}</span></p>
       {% if ev.kind == 'TRAP' %}
         <p>{% if ev.port is not none %}{{ T('trap_text')|format(ev.ip, fmt_time(ev.ts), ev.port) }}{% else %}{{ T('trap_text_noport')|format(ev.ip, fmt_time(ev.ts)) }}{% endif %}</p>
-        {% if ev.ip in known %}<p><a href="{{ url_for('device', device_id=known[ev.ip][0], scan=known[ev.ip][1]) }}">{{ T('trap_device') }}<span class="sr-only"> {{ ev.ip }}</span></a></p>{% endif %}
+        {% if ev.ip in known %}<p><a href="{{ url_for('device', device_id=known[ev.ip][0], **known[ev.ip][1]) }}">{{ T('trap_device') }}<span class="sr-only"> {{ ev.ip }}</span></a></p>{% endif %}
       {% else %}
         <p>{{ ev.text_ro if lang == 'ro' else ev.text_en }}</p>
       {% endif %}
@@ -86,12 +88,51 @@
   <span class="score-pill b-{{ b }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ icon }}"/></svg><span class="num">{{ score }}</span> <span>{{ T('band_' ~ b) }}</span></span>
 {%- endmacro %}
 
-{# Starea goală, cu țiparul SafeEel. #}
-{% macro empty_state(title, body, button_url, button_label) -%}
+{# Iconița benzii scorului (formă diferită pentru fiecare bandă). #}
+{% macro band_icon(band, large=false) -%}
+  <svg class="icon{% if large %} icon-lg{% endif %}" aria-hidden="true" focusable="false"><use href="#i-{{ {'good': 'good', 'fair': 'fair', 'poor': 'high'}.get(band, 'info') }}"/></svg>
+{%- endmacro %}
+
+{# Câte probleme de fiecare severitate (severitățile motorului, doar numărate). Cele confirmate ca rezolvate nu intră. #}
+{% macro sev_counts(findings, cls='sev-line', skip_keys=none) -%}
+  {%- set ns = namespace(c={'high': 0, 'medium': 0, 'low': 0, 'info': 0}) -%}
+  {%- for f in findings -%}{%- if not skip_keys or f.key() not in skip_keys -%}{%- set _ = ns.c.update({f.severity: ns.c.get(f.severity, 0) + 1}) -%}{%- endif -%}{%- endfor -%}
+  {%- if ns.c.values()|sum -%}
+  <p class="{{ cls }}">
+    {%- for s in ('high', 'medium', 'low', 'info') %}{% if ns.c[s] %}<span class="sev sev-{{ s }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ s }}"/></svg>{{ T('sev_' ~ s) }}<span class="count">{{ ns.c[s] }}</span></span>{% endif %}{% endfor -%}
+  </p>
+  {%- endif -%}
+{%- endmacro %}
+
+{# „Rezultatul în format standard”: exact rândurile din findings.csv și scores.csv (codurile apar doar aici). #}
+{% macro csv_table(csv) -%}
+  <div class="table-wrap csv-wrap">
+    <table class="csv-table">
+      <caption>findings.csv</caption>
+      <thead><tr>{% for h in csv.header %}<th scope="col" translate="no">{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for r in csv.findings %}<tr translate="no"><td>{{ r.file }}</td><td class="mono">{{ r.ip }}</td><td class="mono">{{ r.port }}</td><td class="mono">{{ r.finding_code }}</td>{% set sk = 'sev_csv_' ~ r.severity %}<td class="mono">{{ T(sk) if T(sk) != sk else r.severity }}</td></tr>
+        {% else %}<tr><td colspan="5" class="muted">{{ T('report_none') }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if csv.score %}
+  <div class="table-wrap csv-wrap">
+    <table class="csv-table">
+      <caption>scores.csv</caption>
+      <thead><tr><th scope="col" translate="no">file</th><th scope="col" translate="no">network_score</th></tr></thead>
+      <tbody><tr translate="no"><td>{{ csv.score.file }}</td><td class="mono">{{ csv.score.network_score }}</td></tr></tbody>
+    </table>
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+{# Starea goală, cu țiparul SafeEel. `level` = nivelul titlului (3 când e sub un h2). #}
+{% macro empty_state(title, body, button_url, button_label, level=2) -%}
   <section class="empty">
     <svg class="eel-big" aria-hidden="true" focusable="false"><use href="#i-eel"/></svg>
     <div>
-      <h2>{{ title }}</h2>
+      <h{{ level }} class="empty-title">{{ title }}</h{{ level }}>
       <p>{{ body }}</p>
       {% if button_url %}<a class="button button-primary" href="{{ button_url }}">{{ button_label }}</a>{% endif %}
     </div>

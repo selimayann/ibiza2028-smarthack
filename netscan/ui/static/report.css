@@ -1,5 +1,5 @@
 /* Raportul pentru furnizorul IT (FR-14): sobru, tipăribil pe A4, fără resurse externe. */
-:root { --ink: #343A40; --muted: #5B6570; --line: #CDD8E6; --high: #b3261e; --fair: #8f4700; --good: #16663a; --link: #3333FF; --brand: #3333FF; --bg: #F0F8FF; color-scheme: light; }
+:root { --ink: #343A40; --muted: #5B6570; --line: #D5DEEA; --line-strong: #7D8A9C; --medium: #8f4700; --low: #6e5a00; --info: #5B6570; --good-tint: #EAF5EE; --high: #b3261e; --fair: #8f4700; --good: #16663a; --link: #3333FF; --brand: #3333FF; --bg: #F0F8FF; color-scheme: light; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
 a { color: var(--link); }
@@ -37,6 +37,12 @@ th { color: var(--muted); }
 .r-table tr { break-inside: avoid; }
 .r-table .r-n { width: 1.5em; }
 .r-box { padding: 1rem; border: 2px solid var(--high); border-radius: 10px; margin-top: 1.5rem; }
+.r-sev { font-weight: 700; white-space: nowrap; }
+.r-sev-high { color: var(--high); } .r-sev-medium { color: var(--medium); } .r-sev-low { color: var(--low); } .r-sev-info { color: var(--info); }
+.r-tag { display: inline-block; margin-left: .3em; padding: 0 .45em; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.r-tag-good { color: var(--good); border-color: var(--good); background: var(--good-tint); }
+.r-legend th { color: inherit; width: 11em; }
+.r-before-after { margin-top: .6rem; font-weight: 700; }
 .r-foot { margin-top: 1.6em; padding-top: .8em; border-top: 1px solid var(--line); color: var(--muted); }
 @media (max-width: 40rem) {
   .report { padding: 1.2rem 1rem; border-radius: 0; }

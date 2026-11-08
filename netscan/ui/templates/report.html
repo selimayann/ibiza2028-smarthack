@@ -32,6 +32,7 @@
     <section class="r-box r-error"><h2>{{ T('error_title') }}</h2><p>{{ error_message(scan.error_code) }}</p></section>
   {% else %}
     {% set band = score_band(scan.score) %}
+    {% set sev_mark = {'high': '▲', 'medium': '◆', 'low': '○', 'info': 'ℹ'} %}
     <section class="r-summary" aria-label="{{ T('report_summary') }}">
       <div class="r-score r-{{ band }}">
         <p class="r-label">{{ T('score_label') }}</p>
@@ -41,14 +42,25 @@
       <div class="r-counts">
         <p><strong>{{ devices|length }}</strong> {{ T('report_devices')|lower }}, <strong>{{ scan.findings|length }}</strong> {{ T('report_problems')|lower }}</p>
         <ul>
-          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li>{{ T('sev_' ~ sev) }}: {{ counts[sev] }}</li>{% endif %}{% endfor %}
+          {% for sev in ('high', 'medium', 'low', 'info') %}{% if counts[sev] %}<li><span class="r-sev r-sev-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }}</span>: {{ counts[sev] }}</li>{% endif %}{% endfor %}
         </ul>
         {% set worst = devices[0] if devices and devices[0].findings else none %}
         {% if worst %}
           <p class="r-first"><strong>{{ T('do_first') }}</strong> {{ explain(worst.worst.code).steps[0] }}
             <span class="r-muted">({{ device_type_label(worst.host.device_type) }}, {{ worst.host.ip }})</span></p>
         {% endif %}
+        {% if compare and proof %}<p class="r-before-after">{{ T('report_before_after')|format(compare.score_before, compare.score_after, proof.n_fixed, proof.n_new) }}</p>{% endif %}
       </div>
+    </section>
+
+    {# Legenda: ce înseamnă fiecare etichetă de risc (forma + cuvântul, nu doar culoarea) #}
+    <section class="r-legend" aria-labelledby="legend-h">
+      <h2 id="legend-h">{{ T('legend_title') }}</h2>
+      <table class="r-table">
+        <tbody>
+          {% for sev in ('high', 'medium', 'low', 'info') %}<tr><th scope="row" class="r-nowrap"><span class="r-sev r-sev-{{ sev }}"><span aria-hidden="true">{{ sev_mark[sev] }}</span> {{ T('sev_' ~ sev) }}</span></th><td>{{ T('legend_' ~ sev) }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
     </section>
 
     <section>
@@ -57,19 +69,21 @@
       <table class="r-table">
         <thead><tr><th scope="col">#</th><th scope="col">{{ T('report_problems') }}</th><th scope="col">{{ T('report_device') }}</th><th scope="col">{{ T('report_fix_first') }}</th></tr></thead>
         <tbody>
-        {% set ns = namespace(n=0) %}
-        {% for d in devices %}{% for f in d.findings %}
-          {% set ns.n = ns.n + 1 %}
+        {# Aceeași ordine și numerotare ca pașii de pe pagina Acasă (rows vine din app.py) #}
+        {% for row in rows %}
+          {% set f = row.finding %}
           {% set std = standards(f.code) %}
           <tr>
-            <td class="r-n">{{ ns.n }}</td>
-            <td><strong>{{ T('sev_' ~ f.severity) }}:</strong> {{ code_name(f.code) }}<br><span class="r-code">{{ f.code }}</span>
-              <br><span class="r-small r-muted">{{ T('evidence') }}: <span class="r-mono">{{ f.evidence }}</span>
-              {% if std.groups %}<span class="r-std"><br>{% for g in std.groups %}{{ g.name }} {% for r in g.refs %}{{ r.id }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}; {% endif %}{% endfor %}</span>{% endif %}</span></td>
-            <td>{{ device_type_label(d.host.device_type) }}<br><span class="r-mono r-nowrap">{{ d.host.ip }}{% if f.port is not none %}:{{ f.port }}{% endif %}</span></td>
+            <td class="r-n">{{ row.n }}</td>
+            <td><strong class="r-sev r-sev-{{ f.severity }}"><span aria-hidden="true">{{ sev_mark[f.severity] }}</span> {{ T('sev_' ~ f.severity) }}:</strong> {{ code_name(f.code) }}
+              {% if row.status == 'fixed' %}<span class="r-tag r-tag-good">✓ {{ T('fixed_tag') }}</span>{% elif row.status == 'accepted' %}<span class="r-tag">{{ T('accepted_tag') }}</span>{% endif %}
+              <br><span class="r-code">{{ f.code }} · {{ T('sev_csv_' ~ f.severity) }}</span>
+              <br><span class="r-small r-muted">{{ T('evidence') }}: <span class="r-mono">{{ evidence_text(f) }}</span>
+              {% if std.groups %}<span class="r-std"><br>{{ T('report_std') }}: {% for g in std.groups %}{{ g.name }} {% for r in g.refs %}{{ r.id }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}; {% endif %}{% endfor %}</span>{% endif %}</span></td>
+            <td>{{ device_type_label(row.device.device_type) }}<br><span class="r-mono r-nowrap">{{ row.device.ip }}{% if f.port is not none %}:{{ f.port }}{% endif %}</span></td>
             <td>{{ explain(f.code).steps[0] }}</td>
           </tr>
-        {% endfor %}{% endfor %}
+        {% endfor %}
         </tbody>
       </table>
       <p class="r-small r-muted">{{ T('report_more') }}</p>

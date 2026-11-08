@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{# Toate verificările (netscan/ui/results.py): același răspuns ca pe Acasă, pentru fiecare verificare.
+   Numele fișierelor și textele din scanare sunt text nesigur: doar autoescape. #}
+{% block title %}SafeEel · {{ R.title }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='results.css') }}">
+<section class="checks" aria-labelledby="checks-h">
+  <h1 id="checks-h">{{ R.title }}</h1>
+  <p class="checks-lead">{{ R.lead }}</p>
+  {% if cards %}
+    <p class="checks-summary">{{ summary }}</p>
+    <ol class="check-list">
+      {% for c in cards %}
+        {% set when = fmt_time(c.started_at) if c.started_at else R.no_date %}
+        <li class="check-card {{ 'check-' ~ c.band if c.ok else 'check-error' }}">
+          <div class="check-score" aria-hidden="{{ 'false' if c.ok else 'true' }}">
+            {% if c.ok %}
+              <span class="check-num">{{ c.score }}</span><span class="check-of">{{ R.of }}</span>
+              <span class="check-band"><svg class="icon" aria-hidden="true"><use href="#i-{{ band_icon[c.band] }}"/></svg>{{ T('band_' ~ c.band) }}</span>
+            {% else %}
+              <svg class="icon check-error-icon" aria-hidden="true"><use href="#i-high"/></svg>
+            {% endif %}
+          </div>
+          <div class="check-body">
+            <p class="check-when"><span>{{ when }}</span> <span class="mono muted" translate="no">{{ c.file }}</span></p>
+            {% if c.ok %}
+              <h2 class="check-verdict">{% if c.ok %}<span class="sr-only">{{ R.score }} {{ c.score }} {{ R.of }}, {{ T('band_' ~ c.band) }}. </span>{% endif %}{{ c.verdict }}</h2>
+              {% if c.counts %}<p class="check-counts">{{ c.counts }}</p>{% endif %}
+              {% if c.worst_name %}
+                <p class="check-worst"><strong>{{ R.worst }}</strong> {{ c.worst_name }}{% if c.worst_problem %} · {{ c.worst_problem }}{% endif %}</p>
+                {% if c.first_step %}<p class="check-first"><strong>{{ R.first }}</strong> {{ c.first_step }}</p>{% endif %}
+              {% endif %}
+              <p class="check-open"><a class="button button-secondary" href="{{ url_for('overview', file=c.file) }}">{{ R.open }}<svg class="icon icon-flip" aria-hidden="true"><use href="#i-back"/></svg></a></p>
+            {% else %}
+              <h2 class="check-verdict">{{ R.error_title }}</h2>
+              <p class="check-counts">{{ R.error_body }}</p>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+    <details class="checks-tech">
+      <summary>{{ R.tech }}</summary>
+      <p>{{ R.tech_body }}</p>
+      <div class="checks-tech-buttons">
+        <a class="button button-secondary" href="{{ url_for('results.results_csv', name='findings') }}" download><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>{{ R.export_findings }}</a>
+        <a class="button button-secondary" href="{{ url_for('results.results_csv', name='scores') }}" download><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>{{ R.export_scores }}</a>
+      </div>
+    </details>
+  {% else %}
+    <p class="notice">{{ R.empty }}</p>
+  {% endif %}
+  <p><a href="{{ url_for('overview') }}">{{ R.back }}</a></p>
+</section>
+{% endblock %}

@@ -1,65 +1,123 @@
 {% extends "base.html" %}
-{% from "_macros.html" import sev, port_label, device_name, device_title, announced_sub, eavesdrop_block with context %}
+{% from "_macros.html" import sev, sev_counts, port_label, device_name, device_title, announced_sub, eavesdrop_block with context %}
 {% block title %}{{ device_name(d.host) }} {{ d.host.ip }} · SafeEel{% endblock %}
 {% block content %}
-<p class="back"><a href="{{ url_for('overview', scan=selected) }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back') }}</a></p>
+<p class="back"><a href="{{ url_for('overview', **scan_ref) }}"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>{{ T('back') }}</a></p>
 
 <header class="device-page-head">
-  <h1>{{ device_title(d.host) }} <span class="mono ip" translate="no">{{ d.host.ip }}</span></h1>
+  <h1>{{ device_title(d.host) }}</h1>
   {{ announced_sub(d.host) }}
-  <dl class="facts">
-    <div><dt>{{ T('mac') }}</dt><dd class="mono">{{ d.host.mac_masked or T('unknown') }}</dd></div>
-    <div><dt>{{ T('vendor') }}</dt><dd>{% if d.host.vendor %}{{ d.host.vendor }}{% if d.info and d.info.vendor_source == 'ieee' %} <span class="muted">({{ T('vendor_ieee') }})</span>{% endif %}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}{{ T('unknown') }}{% endif %}</dd></div>
-    <div><dt>{{ T('hostname') }}</dt><dd>{{ d.host.hostname or T('unknown') }}</dd></div>
-  </dl>
+  <p class="device-ip muted">{{ T('ip') }}: <span class="mono" translate="no">{{ d.host.ip }}</span></p>
 </header>
+
+{# Pe scurt: câte probleme, cel mai mare risc (severitățile motorului) și primul pas ghidat #}
+<section class="device-summary card" aria-labelledby="sum-h">
+  <h2 id="sum-h" class="sr-only">{{ T('report_summary') }}</h2>
+  {% if d.findings %}
+    <p class="sum-line"><strong>{{ T('problems_count')|format(d.findings|length) }}</strong>
+      <span class="sum-risk">{{ T('highest_risk') }} {{ sev(d.max_severity) }}</span></p>
+    {{ sev_counts(d.findings, 'sev-line', fixed_keys) }}
+    {% if first_finding %}
+      <p class="sum-first"><span class="muted">{{ T('do_first') }}</span> {{ explain(first_finding.code).steps[0] }}</p>
+      {% if first_step %}
+        <p><a class="button button-primary" href="{{ url_for('overview', step=first_step, **scan_ref) }}#worst-h"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('go_first_step') }}</a></p>
+      {% endif %}
+    {% endif %}
+  {% else %}
+    <p class="sum-line"><span class="sev sev-ok"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('no_findings') }}</span></p>
+  {% endif %}
+</section>
+
+{% if d.findings|length > 2 %}
+<nav class="problem-index" aria-labelledby="jump-h">
+  <h2 id="jump-h" class="jump-title">{{ T('jump_title') }}</h2>
+  <ol>
+    {% for f in d.findings %}<li><a href="#p-{{ loop.index }}">{{ sev(f.severity) }} <span>{{ code_name(f.code) }}</span></a></li>{% endfor %}
+  </ol>
+</nav>
+{% endif %}
 
 <section aria-labelledby="f-h">
   <h2 id="f-h">{{ T('findings_title') }}</h2>
   {% for f in d.findings %}
     {% set ex = explain(f.code) %}
-    <article class="problem">
-      <h3>{{ sev(f.severity) }} {{ code_name(f.code) }} <span class="code" translate="no">{{ f.code }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
+    <article class="problem" id="p-{{ loop.index }}" aria-labelledby="p-{{ loop.index }}-h">
+      <h3 id="p-{{ loop.index }}-h">{{ sev(f.severity) }} <span>{{ code_name(f.code) }}</span> <span class="muted">{{ port_label(f) }}</span></h3>
+      {% if f.key() in fixed_keys %}<p class="badges"><span class="tag tag-good"><svg class="icon" aria-hidden="true"><use href="#i-good"/></svg>{{ T('fixed_tag') }}</span></p>
+      {% elif f.key() in accepted_keys %}<p class="badges"><span class="tag">{{ T('accepted_tag') }}</span></p>{% endif %}
       <p class="problem-text">{{ ex.text }}</p>
       {% set ev = eavesdrop(f.code) %}{% if ev %}{{ eavesdrop_block(ev) }}{% endif %}
       <h4>{{ T('how_to_fix') }}</h4>
       <ol class="steps">{% for s in ex.steps %}<li>{{ s }}</li>{% endfor %}</ol>
-      {% set std = standards(f.code) %}
-      {% if std.groups %}
-        <div class="standards">
-          <h4>{{ T('standards_title') }}</h4>
-          <ul>
-            {% for g in std.groups %}
-              <li><a href="{{ g.url }}" rel="noopener noreferrer">{{ g.name }}</a>:
-                {% for r in g.refs %}<span class="std-ref"><span class="mono" translate="no">{{ r.id }}</span> {{ r.title }}</span>{% if not loop.last %}; {% endif %}{% endfor %}</li>
-            {% endfor %}
-          </ul>
+      <details class="fold tech">
+        <summary>{{ T('for_technician') }}</summary>
+        <div class="fold-body">
+          <dl class="tech-list">
+            <div><dt>{{ T('code_label') }}</dt><dd class="code" translate="no">{{ f.code }}</dd></div>
+            <div><dt>{{ T('sev_csv_label') }}</dt><dd class="code" translate="no">{{ T('sev_csv_' ~ f.severity) }}</dd></div>
+            <div><dt>{{ T('evidence') }}</dt><dd><code>{{ evidence_text(f) }}</code></dd></div>
+          </dl>
+          {% set std = standards(f.code) %}
+          {% if std.groups %}
+            <div class="standards">
+              <h4>{{ T('standards_title') }}</h4>
+              <ul>
+                {% for g in std.groups %}
+                  <li><a href="{{ g.url }}" rel="noopener noreferrer">{{ g.name }}</a>:
+                    {% for r in g.refs %}<span class="std-ref"><span class="mono" translate="no">{{ r.id }}</span> {{ r.title }}</span>{% if not loop.last %}; {% endif %}{% endfor %}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
         </div>
-      {% endif %}
-      <p class="evidence"><span class="muted">{{ T('evidence') }}:</span> <code>{{ f.evidence }}</code></p>
+      </details>
     </article>
   {% else %}
     <p class="notice">{{ T('no_findings') }}</p>
   {% endfor %}
 </section>
 
+{# „Cuvinte noi”: termenii tehnici din explicațiile și pașii de mai sus, din glosarul echipei #}
+{% if words %}
+<details class="fold new-words">
+  <summary>{{ T('new_words') }} ({{ words|length }})</summary>
+  <div class="fold-body">
+    <p class="muted">{{ T('new_words_hint') }}</p>
+    <dl class="glossary">
+      {% for w in words %}<div><dt>{{ w.term }}</dt><dd>{{ w.definition }}</dd></div>{% endfor %}
+    </dl>
+  </div>
+</details>
+{% endif %}
+
 <section aria-labelledby="p-h">
   <h2 id="p-h">{{ T('ports_title') }}</h2>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th scope="col">{{ T('port') }}</th><th scope="col">{{ T('state') }}</th><th scope="col">{{ T('service') }}</th><th scope="col">{{ T('product') }}</th><th scope="col">{{ T('page_title') }}</th></tr></thead>
-    <tbody>
-      {% for p in d.host.ports %}
-        <tr>
-          <td class="mono">{{ p.port }}/{{ p.proto }}</td>
-          <td>{{ p.state }}</td>
-          <td>{{ p.service or '—' }}{% if p.tunnel %} ({{ p.tunnel }}){% endif %}</td>
-          <td>{{ [p.product, p.version, p.extrainfo]|select|join(' ') or '—' }}</td>
-          <td>{{ p.title or '—' }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
+  <details class="fold tech">
+    <summary>{{ T('for_technician') }} ({{ d.host.ports|length }})</summary>
+    <div class="fold-body">
+      <dl class="facts">
+        <div><dt>{{ T('mac') }}</dt><dd class="mono">{{ d.host.mac_masked or T('unknown') }}</dd></div>
+        <div><dt>{{ T('vendor') }}</dt><dd>{% if d.host.vendor %}{{ d.host.vendor }}{% if d.info and d.info.vendor_source == 'ieee' %} <span class="muted">({{ T('vendor_ieee') }})</span>{% endif %}{% elif d.info and d.info.private_mac %}{{ T('private_mac') }}{% else %}{{ T('unknown') }}{% endif %}</dd></div>
+        <div><dt>{{ T('hostname') }}</dt><dd>{{ d.host.hostname or T('unknown') }}</dd></div>
+      </dl>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">{{ T('port') }}</th><th scope="col">{{ T('state') }}</th><th scope="col">{{ T('service') }}</th><th scope="col">{{ T('product') }}</th><th scope="col">{{ T('page_title') }}</th></tr></thead>
+        <tbody>
+          {% for p in d.host.ports %}
+            {% set sk = 'state_' ~ p.state %}
+            <tr>
+              <td class="mono">{{ p.port }}/{{ p.proto }}</td>
+              <td>{{ T(sk) if T(sk) != sk else p.state }}</td>
+              <td>{{ p.service or '—' }}{% if p.tunnel %} ({{ p.tunnel }}){% endif %}</td>
+              <td>{{ [p.product, p.version, p.extrainfo]|select|join(' ') or '—' }}</td>
+              <td>{{ p.title or '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </details>
 </section>
 {% endblock %}

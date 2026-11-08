@@ -45,8 +45,9 @@ class FakeLive:
     def full_scan_status(self):
         return self.full
 
-    def start(self):
+    def start(self, trap=False):
         self.calls.append("start")
+        self.trap = trap
 
     def stop(self):
         self.calls.append("stop")
@@ -68,11 +69,11 @@ def client_for(tmp_path, live, scans=None):
 def test_dashboard_name_and_live_panel_off(tmp_path):
     c, _ = client_for(tmp_path, FakeLive())
     html = c.get("/").get_data(as_text=True)
-    assert ">Dashboard<" in html and "Rezumat" not in html
+    assert ">Acasă<" in html and "Rezumat" not in html
     assert 'id="live"' in html and "Pornește protecția live" in html and 'data-poll="0"' in html
     assert "Nimic nu iese din hotspot" in html
     en = c.get("/?lang=en").get_data(as_text=True)
-    assert ">Dashboard<" in en and "Start live protection" in en
+    assert ">Home<" in en and "Start live protection" in en
 
 
 def test_live_panel_active_escapes_device_data_and_masks_mac(tmp_path):
@@ -103,7 +104,7 @@ def test_live_actions_need_the_token_and_same_site(tmp_path, path):
 def test_start_stop_and_redirects(tmp_path):
     live = FakeLive()
     c, token = client_for(tmp_path, live)
-    r = c.post("/live/start", data={"token": token})
+    r = c.post("/live/start", data={"token": token, "confirm": "1"})
     assert r.status_code == 302 and r.headers["Location"].endswith("/#live")
     r = c.post("/live/stop", data={"token": token}, headers={"X-Requested-With": "fetch"})
     assert r.headers["Location"].endswith("/live/panel")
@@ -113,13 +114,16 @@ def test_start_stop_and_redirects(tmp_path):
 def test_scan_button_jobs_and_refusal_message(tmp_path):
     live = FakeLive(code="NOT_ON_HOTSPOT")
     c, token = client_for(tmp_path, live)
+    other = c.get("/live/panel?live_msg=%3Cb%3E").get_data(as_text=True)   # doar mesajele cunoscute
+    assert "live-msg" not in other and "&lt;b&gt;" not in other
     assert c.post("/live/scan", data={"token": token, "job": "rm -rf /"}).status_code == 400
-    r = c.post("/live/scan", data={"token": token, "job": "auto"}, headers={"X-Requested-With": "fetch"})
+    r = c.post("/live/scan", data={"token": token, "job": "auto", "confirm": "1"},
+               headers={"X-Requested-With": "fetch"})
     assert live.calls == [("scan", "auto")] and "live_msg=NOT_ON_HOTSPOT" in r.headers["Location"]
     html = c.get("/live/panel?live_msg=NOT_ON_HOTSPOT").get_data(as_text=True)
     assert "Nu ești pe hotspotul echipei" in html
-    other = c.get("/live/panel?live_msg=%3Cb%3E").get_data(as_text=True)   # doar mesajele cunoscute
-    assert "live-msg" not in other and "&lt;b&gt;" not in other
+    # mesajul rămâne și la reîmprospătarea panoului (fără parametru), nu dispare după 2 s
+    assert "Nu ești pe hotspotul echipei" in c.get("/live/panel").get_data(as_text=True)
 
 
 def test_running_scan_shows_progress_and_found_ports(tmp_path):
@@ -127,7 +131,7 @@ def test_running_scan_shows_progress_and_found_ports(tmp_path):
                 discovered=[{"ip": "172.20.10.1", "port": 21, "proto": "tcp"}])
     c, _ = client_for(tmp_path, FakeLive(snapshot("active", [device()]), full))
     html = c.get("/live/panel").get_data(as_text=True)
-    assert "verific porturile TCP" in html and 'aria-valuenow="47"' in html and "w-45" in html
+    assert "verific ușile obișnuite (porturile)" in html and 'aria-valuenow="47"' in html and "w-45" in html
     assert "mai durează cam 2 min" in html and "172.20.10.1 · 21/tcp" in html and "Oprește scanarea" in html
 
 
@@ -139,7 +143,7 @@ def test_done_scan_links_to_its_result(tmp_path):
     html = c.get("/").get_data(as_text=True)
     assert "/?file=scan_03_after.xml" in html
     page = c.get("/?file=scan_03_after.xml").get_data(as_text=True)
-    assert re.search(r'<option value="1" selected>scan_03_after.xml', page)
+    assert re.search(r'<option value="scan_03_after.xml" title="scan_03_after.xml" selected>', page)
 
 
 def test_dashboard_prefers_your_own_scans_newest_first(tmp_path, monkeypatch):
