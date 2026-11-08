@@ -31,6 +31,22 @@
   window.addEventListener("scroll", compactFab, { passive: true });
   document.addEventListener("DOMContentLoaded", compactFab);
 
+  // Ghidul animat („Arată-mi cum, pas cu pas”) e un <dialog> în afara lui #worst (în #guide-slot), dar ține de
+  // pasul afișat în #worst. Când #worst se schimbă, schimbăm și ghidul: altfel ar rămâne cel al pasului vechi
+  // (iar „Am făcut asta, verifică” din el ar bifa alt pas, cu butonul blocat pe „Verific…”), ori ar lipsi de tot
+  // (și primul clic pe „Arată-mi cum” ar duce la pagina dispozitivului în loc să deschidă animația).
+  const syncGuide = (doc) => {
+    const now = document.getElementById("guide-slot");
+    const next = doc.getElementById("guide-slot");
+    if (!now || !next) return;
+    const open = now.querySelector("dialog.guide[open]");
+    const nextDlg = next.querySelector("dialog.guide");
+    // Ghidul deschis pentru același pas (de ex. o reîmprospătare automată a scorului): îl lăsăm în pace.
+    if (open && nextDlg && open.dataset.key === nextDlg.dataset.key) return;
+    if (open) open.close();
+    now.replaceWith(next);
+  };
+
   async function swap(url, init, selectors, focusSel, keepUrl) {
     if (selectors.includes("#live")) liveSeq += 1;
     let res;
@@ -48,6 +64,7 @@
         if (now && next) now.replaceWith(next);
         else if (now && !next) now.remove(); // de ex. o scanare ilizibilă nu are asistent
       }
+      if (selectors.includes("#worst") || selectors.includes("#main")) syncGuide(doc);
       if (doc.title) document.title = doc.title;
       compactFab();   // butonul asistentului poate fi unul nou, înlocuit mai sus
     };
@@ -64,7 +81,15 @@
       apply();
       focus();
     }
-    if (keepUrl) history.replaceState(null, "", res.url);
+    if (keepUrl === "post") {
+      // După un POST (de ex. „Am făcut asta”) serverul redirecționează spre pasul următor: adresa din bară urmează
+      // pagina (reîncărcarea arată același pas), dar fără mesajul de verificare, ca să nu apară din nou.
+      const u = new URL(res.url);
+      if (res.redirected && u.origin === location.origin && u.pathname === location.pathname) {
+        ["check", "checked", "upload_error", "notice"].forEach((k) => u.searchParams.delete(k));
+        history.replaceState(null, "", u.pathname + u.search);
+      }
+    } else if (keepUrl) history.replaceState(null, "", res.url);
     return true;
   }
 
@@ -88,7 +113,9 @@
     const label = e.submitter && e.submitter.dataset.busy ? e.submitter.querySelector("span") : null;
     const before = label ? label.textContent : null;
     if (label) { label.textContent = e.submitter.dataset.busy; form.setAttribute("aria-busy", "true"); }
-    const ok = await swap(url, init, targets(form), form.dataset.focus, method === "GET" || form.dataset.keepUrl === "1");
+    // Pașii (#worst): după POST, adresa urmează pasul arătat acum (vezi swap); restul formularelor POST nu o schimbă.
+    const keep = method === "GET" || form.dataset.keepUrl === "1" || (targets(form).includes("#worst") ? "post" : false);
+    const ok = await swap(url, init, targets(form), form.dataset.focus, keep);
     if (!ok) {
       // dacă ceva nu merge, revenim la comportamentul normal (cu butonul apăsat, ca valoarea lui să ajungă la server)
       busy.forEach((b) => { b.disabled = false; });

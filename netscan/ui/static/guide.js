@@ -16,7 +16,13 @@
     const next = dlg.querySelector("[data-guide-next]");
     if (prev) prev.disabled = n === 0;
     if (next) next.hidden = n === scenes.length - 1;     // pe ultimul pas rămâne doar „Am făcut asta, verifică”
-    const text = scenes[n] && scenes[n].querySelector(".scene-text");
+    focusScene(dlg);
+  }
+
+  // Focusul pe textul scenei vizibile (cititorul de ecran îl citește). Doar cu fereastra deschisă: într-un
+  // <dialog> închis focus() nu face nimic, iar showModal() l-ar muta oricum pe primul buton.
+  function focusScene(dlg) {
+    const text = dlg.open && dlg.querySelector("[data-scene]:not([hidden]) .scene-text");
     if (text) text.focus({ preventScroll: true });
   }
 
@@ -26,8 +32,10 @@
       const dlg = document.getElementById("guide");
       if (!dlg || !dlg.showModal) return;
       e.preventDefault();
+      if (dlg.open) dlg.close();   // showModal() pe un dialog deja deschis aruncă eroare (și nu se mai deschide)
       setStep(dlg, 0);
       dlg.showModal();
+      focusScene(dlg);
       return;
     }
     const dlg = e.target.closest("dialog.guide");

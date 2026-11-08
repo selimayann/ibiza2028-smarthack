@@ -95,7 +95,7 @@
   {% set an = announced(st.device.ip) %}
   {% set cn = custom_name(st.finding.device_id) %}
   {% set dev_phrase = cn if cn else an.name if an else device_type_the(st.device.device_type) %}
-  <dialog class="guide" id="guide" aria-labelledby="guide-title" data-total="{{ plan.scenes|length }}">
+  <dialog class="guide" id="guide" aria-labelledby="guide-title" data-total="{{ plan.scenes|length }}" data-key="{{ st.finding.device_id }}|{{ st.finding.port if st.finding.port is not none else '' }}|{{ st.finding.code }}">
     <div class="guide-head">
       <h2 id="guide-title">{{ T('g_title') }}</h2>
       <button type="button" class="button button-secondary guide-close" data-guide-close><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>{{ T('g_close') }}</button>
