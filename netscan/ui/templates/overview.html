@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_guide.html" import guide_dialog with context %}
-{% from "_macros.html" import harm_line, sev, sev_counts, sev_chips, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, band_icon with context %}
+{% from "_macros.html" import harm_line, sev, sev_counts, sev_chips, port_label, device_name, device_title, announced_sub, eavesdrop_block, meter, alert_list, band_icon, band_chip with context %}
 {% block content %}
 {# Câmpurile ascunse ale formularelor pașilor: scanarea după fișier (+ data), niciodată după poziția în listă. #}
 {% macro hidden_fields() %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="file" value="{{ scan_ref.file }}">{% if scan_ref.started_at is defined %}<input type="hidden" name="started_at" value="{{ scan_ref.started_at }}">{% endif %}{% endmacro %}
@@ -310,7 +310,7 @@
       </svg>
       <p class="score-value"><span class="score-num">{{ score_std }}</span><span class="score-of">{{ T('score_of') }}</span></p>
     </div>
-    <p class="score-band">{{ band_icon(band, true) }}{{ T('band_' ~ band) }}</p>
+    <p class="score-band">{{ band_chip(band) }}</p>
     {% if score_now_differs %}
       {# Progresul după reparațiile confirmate, separat de scorul standard. Culoarea urmează eticheta scorului NOU
          (verde doar la „Bun”), ca o casetă verde să nu sugereze „gata” când rețeaua e încă în risc. #}

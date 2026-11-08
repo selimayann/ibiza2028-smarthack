@@ -10,12 +10,12 @@
 {# Aceleași forme ca în aplicație (triunghiul și rombul cu „!”), desenate aici: raportul descărcat nu are sprite-ul paginii. #}
 {% macro ico(k) -%}
 <svg class="r-ico" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-{%- if k == 'high' or k == 'poor' %}<path d="M10 1.5 19 17.5H1z" fill="currentColor"/><path d="M10 7v5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.1" fill="#fff"/>
-{%- elif k == 'medium' %}<path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M10 6.2v4.6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="13.6" r="1.1" fill="#fff"/>
-{%- elif k == 'fair' %}<path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M6.5 10h7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+{%- if k == 'high' or k == 'poor' %}<path d="M10 1.5 19 17.5H1z" fill="currentColor"/><path d="M10 7v5" stroke="var(--ico-cut, #fff)" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.1" fill="var(--ico-cut, #fff)"/>
+{%- elif k == 'medium' %}<path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M10 6.2v4.6" stroke="var(--ico-cut, #fff)" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="13.6" r="1.1" fill="var(--ico-cut, #fff)"/>
+{%- elif k == 'fair' %}<path d="M10 1.5 18.5 10 10 18.5 1.5 10z" fill="currentColor"/><path d="M6.5 10h7" stroke="var(--ico-cut, #fff)" stroke-width="2.2" stroke-linecap="round"/>
 {%- elif k == 'low' %}<circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2.5"/>
-{%- elif k == 'info' %}<circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="M10 9v5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="6.2" r="1.1" fill="#fff"/>
-{%- else %}<circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="m6 10.3 2.7 2.7L14.2 7.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+{%- elif k == 'info' %}<circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="M10 9v5" stroke="var(--ico-cut, #fff)" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="6.2" r="1.1" fill="var(--ico-cut, #fff)"/>
+{%- else %}<circle cx="10" cy="10" r="8.5" fill="currentColor"/><path d="m6 10.3 2.7 2.7L14.2 7.5" fill="none" stroke="var(--ico-cut, #fff)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 {%- endif %}</svg>
 {%- endmacro %}
   <nav class="report-actions" aria-label="{{ T('report_title') }}">
@@ -46,7 +46,7 @@
       <div class="r-score">
         <p class="r-label">{{ T('report_score_short') }}</p>
         <p class="r-score-line"><span class="r-num">{{ scan.score }}</span> <span class="r-of">{{ T('score_of') }}</span></p>
-        <p class="r-band">{{ ico(band) }} {{ T('band_' ~ band) }}</p>
+        <p class="r-band"><span class="r-band-chip">{{ ico(band) }} {{ T('band_' ~ band) }}</span></p>
       </div>
       <div class="r-verdict-text">
         <p class="r-verdict-title">{{ T('verdict_clean') if verdict and verdict.clean else T('verdict_' ~ band) }}</p>

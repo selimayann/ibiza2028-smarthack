@@ -3,16 +3,16 @@
 .checks-lead { max-width: 60rem; color: var(--muted); }
 .checks-summary { font-weight: 700; font-size: 1.125rem; }
 .check-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; }
-.check-card { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 1.25rem; align-items: start;
+.check-card { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1.25rem; align-items: start;
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 1.1rem 1.3rem; }
-.check-score { display: flex; flex-direction: column; gap: .15rem; }
+.check-score { display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; }
 .check-num { font-family: var(--head); font-size: 2.6rem; font-weight: 700; line-height: 1; }
 .check-of { color: var(--muted); }
-.check-band { display: inline-flex; align-items: center; gap: .35rem; font-weight: 700; margin-top: .35rem; }
-.check-good .check-num, .check-good .check-band { color: var(--good); }
-.check-fair .check-num, .check-fair .check-band { color: var(--fair); }
-.check-poor .check-num, .check-poor .check-band { color: var(--high); }
+.check-band { margin-top: .45rem; }
+.check-good .check-num { color: var(--good); }
+.check-fair .check-num { color: var(--fair); }
+.check-poor .check-num { color: var(--high); }
 .check-error-icon { width: 2.4rem; height: 2.4rem; color: var(--high); }
 .check-body { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
 .check-when { color: var(--muted); display: flex; flex-wrap: wrap; gap: .2rem .8rem; }

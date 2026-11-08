@@ -35,7 +35,12 @@ p { margin: .3rem 0; }
 .r-score-line { color: var(--ink); white-space: nowrap; }
 .r-num { font-size: 2.6em; font-weight: 800; line-height: 1.05; }
 .r-of { color: var(--muted); }
-.r-score .r-band { color: inherit; font-weight: 700; font-size: 1.1em; }
+.r-score .r-band { margin-top: .3rem; }
+/* Banda scorului: etichetă plină (ca în aplicație); „!” din pictogramă ia culoarea fundalului */
+.r-band-chip { display: inline-flex; align-items: center; gap: .3em; padding: .1em .7em; border-radius: 999px; font-weight: 700; white-space: nowrap; }
+.r-good .r-band-chip { background: var(--good); color: #fff; --ico-cut: var(--good); }
+.r-fair .r-band-chip { background: var(--fair); color: #fff; --ico-cut: var(--fair); }
+.r-poor .r-band-chip { background: var(--high); color: #fff; --ico-cut: var(--high); }
 .r-verdict-text { padding: .8rem 1.3rem; color: var(--ink); display: grid; gap: .35rem; }
 .r-verdict-text p { margin: 0; }
 .r-verdict-title { font-size: 1.3em; font-weight: 800; line-height: 1.2; }
@@ -84,7 +89,7 @@ th { color: var(--muted); }
   .r-verdict { margin-top: 8pt; } .r-score { padding: 5pt 12pt; } .r-verdict-text { padding: 5pt 10pt; gap: 3pt; } .r-verdict-title { font-size: 12pt; }
   .r-chip { padding: 0 6pt; } .r-first { margin-top: 6pt; } .r-legend { margin-top: 5pt; }
   .r-legend ul { display: flex; flex-wrap: wrap; gap: 0 10pt; }   /* pe hârtie legenda e un paragraf, nu o listă */
-  .r-verdict, .r-chip, .r-first { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .r-num { font-size: 22pt; } .r-logo { height: 18pt; margin-bottom: 4pt; }
+  .r-verdict, .r-chip, .r-first, .r-band-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .r-num { font-size: 22pt; } .r-logo { height: 18pt; margin-bottom: 4pt; }
   th, td { padding: 2pt 4pt; } .r-foot { margin-top: 6pt; padding-top: 4pt; }
   .r-first { padding: 4pt 8pt; }
   /* Numărul rândului (10, 11...) și antetele (Producător, Probleme) nu se mai rup pe două linii. */

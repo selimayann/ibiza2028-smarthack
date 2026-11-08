@@ -412,7 +412,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .trend-chart a:focus-visible .trend-hit { stroke: var(--focus); stroke-width: 3; }
 .score-pill { display: inline-flex; align-items: center; gap: .35rem; font-weight: 700; white-space: nowrap; }
 .score-pill .num { font-variant-numeric: tabular-nums; }
-.score-pill.b-good { color: var(--good); } .score-pill.b-fair { color: var(--fair); } .score-pill.b-poor { color: var(--high); }
+
 .delta { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .delta-up { color: var(--good); font-weight: 700; } .delta-down { color: var(--high); font-weight: 700; } .delta-same { color: var(--muted); }
 .row-links { display: flex; flex-wrap: wrap; gap: 0 1.5rem; }
@@ -1375,3 +1375,10 @@ body { background: radial-gradient(70rem 26rem at 15% -8rem, #E2E5FF 0, rgba(226
 .sev-chip-ok { --c: var(--good); --cl: var(--good-line); --ct: var(--good-tint); }
 .verdict-chips { margin-top: var(--s-2, .5rem); }
 .check-counts.sev-chips { color: inherit; }
+/* Banda scorului (Bun / De îmbunătățit / Risc mare): etichetă PLINĂ, text alb (contrast 6.3–7:1), pe un singur rând.
+   Severitățile problemelor rămân cu contur, ca verdictul rețelei să nu se confunde cu o singură problemă. */
+.band-chip { --bc: var(--info); display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .8rem; border-radius: 999px;
+  background: var(--bc); color: #fff; --on-icon: var(--bc); font-size: 1rem; font-weight: 700; white-space: nowrap; }
+.band-chip .icon { width: 1.05em; height: 1.05em; }
+.band-chip-good { --bc: var(--good); } .band-chip-fair { --bc: var(--fair); } .band-chip-poor { --bc: var(--high); }
+.score-band .band-chip { font-size: 1.05rem; }

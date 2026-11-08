@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {# Toate verificările (netscan/ui/results.py): același răspuns ca pe Acasă, pentru fiecare verificare.
    Numele fișierelor și textele din scanare sunt text nesigur: doar autoescape. #}
-{% from "_macros.html" import sev_chips with context %}
+{% from "_macros.html" import sev_chips, band_chip with context %}
 {% block title %}SafeEel · {{ R.title }}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='results.css') }}">
@@ -17,7 +17,7 @@
           <div class="check-score" aria-hidden="{{ 'false' if c.ok else 'true' }}">
             {% if c.ok %}
               <span class="check-num">{{ c.score }}</span><span class="check-of">{{ R.of }}</span>
-              <span class="check-band"><svg class="icon" aria-hidden="true"><use href="#i-{{ band_icon[c.band] }}"/></svg>{{ T('band_' ~ c.band) }}</span>
+              <span class="check-band">{{ band_chip(c.band) }}</span>
             {% else %}
               <svg class="icon check-error-icon" aria-hidden="true"><use href="#i-high"/></svg>
             {% endif %}

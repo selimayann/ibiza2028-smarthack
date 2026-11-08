@@ -120,7 +120,12 @@
 {% macro score_pill(score) -%}
   {%- set b = score_band(score) -%}
   {%- set icon = {'good': 'good', 'fair': 'fair', 'poor': 'high'}[b] -%}
-  <span class="score-pill b-{{ b }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ icon }}"/></svg><span class="num">{{ score }}</span> <span>{{ T('band_' ~ b) }}</span></span>
+  <span class="score-pill band-chip band-chip-{{ b }}"><svg class="icon" aria-hidden="true"><use href="#i-{{ icon }}"/></svg><span class="num">{{ score }}</span> <span>{{ T('band_' ~ b) }}</span></span>
+{%- endmacro %}
+
+{# Banda scorului ca etichetă PLINĂ (verdictul pentru toată rețeaua); severitățile problemelor au doar contur. #}
+{% macro band_chip(b) -%}
+  <span class="band-chip band-chip-{{ b }}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ {'good': 'good', 'fair': 'fair', 'poor': 'high'}.get(b, 'info') }}"/></svg>{{ T('band_' ~ b) }}</span>
 {%- endmacro %}
 
 {# Iconița benzii scorului (formă diferită pentru fiecare bandă). #}
